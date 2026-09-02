@@ -76,15 +76,20 @@ import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.Hrshd1eux.filemanager.feature.browser.components.CreateFolderDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.RenameDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +109,8 @@ fun FileBrowserScreen(
     var nodeToCopy by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToMove by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
     var activeOperationTitle by remember { mutableStateOf("Processing Files") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -140,6 +147,20 @@ fun FileBrowserScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        floatingActionButton = {
+            if (uiState is BrowserUiState.Success) {
+                FloatingActionButton(
+                    onClick = { showCreateFolderDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CreateNewFolder,
+                        contentDescription = "New Folder"
+                    )
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -252,6 +273,9 @@ fun FileBrowserScreen(
                                     onMoveClick = {
                                         nodeToMove = node
                                     },
+                                    onRenameClick = {
+                                        nodeToRename = node
+                                    },
                                     onDeleteClick = {
                                         nodeToDelete = node
                                     },
@@ -308,6 +332,44 @@ fun FileBrowserScreen(
                 )
             },
             onDismiss = { nodeToMove = null }
+        )
+    }
+
+    // Rename Dialog
+    val targetToRename = nodeToRename
+    if (targetToRename != null) {
+        RenameDialog(
+            node = targetToRename,
+            onConfirmRename = { newName ->
+                nodeToRename = null
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.rename(
+                    target = targetToRename,
+                    newName = newName,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { nodeToRename = null }
+        )
+    }
+
+    // Create Folder Dialog
+    if (showCreateFolderDialog) {
+        val currentPath = (uiState as? BrowserUiState.Success)?.breadcrumbs?.lastOrNull()?.path
+            ?: initialPath
+            ?: viewModel.storageProvider.getRootNode().path
+
+        CreateFolderDialog(
+            onConfirmCreate = { folderName ->
+                showCreateFolderDialog = false
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.createDirectory(
+                    parentPath = currentPath,
+                    dirName = folderName,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { showCreateFolderDialog = false }
         )
     }
 
@@ -407,6 +469,7 @@ private fun StorageNodeItem(
     onClick: () -> Unit,
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
+    onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -506,6 +569,16 @@ private fun StorageNodeItem(
                         onClick = {
                             showMenu = false
                             onMoveClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Rename") },
+                        leadingIcon = {
+                            Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        onClick = {
+                            showMenu = false
+                            onRenameClick()
                         }
                     )
                     DropdownMenuItem(

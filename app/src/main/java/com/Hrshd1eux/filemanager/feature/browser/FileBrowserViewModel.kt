@@ -180,6 +180,54 @@ class FileBrowserViewModel(
         }
     }
 
+    fun rename(
+        target: StorageNode,
+        newName: String,
+        hasPermission: Boolean
+    ) {
+        if (!hasPermission) {
+            _uiState.value = BrowserUiState.PermissionRequired()
+            return
+        }
+
+        viewModelScope.launch {
+            val result = operationEngine.rename(target = target, newName = newName)
+            result.onSuccess { renamedNode ->
+                _userMessage.emit("Renamed to '${renamedNode.name}'")
+                refresh(hasPermission)
+            }.onFailure { error ->
+                _userMessage.emit("Rename failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun createDirectory(
+        parentPath: String,
+        dirName: String,
+        hasPermission: Boolean
+    ) {
+        if (!hasPermission) {
+            _uiState.value = BrowserUiState.PermissionRequired()
+            return
+        }
+
+        viewModelScope.launch {
+            val parentNode = StorageNode(
+                id = parentPath,
+                name = File(parentPath).name,
+                path = parentPath,
+                isDirectory = true
+            )
+            val result = operationEngine.createDirectory(parentDir = parentNode, dirName = dirName)
+            result.onSuccess { newDir ->
+                _userMessage.emit("Created folder '${newDir.name}'")
+                refresh(hasPermission)
+            }.onFailure { error ->
+                _userMessage.emit("Failed to create folder: ${error.localizedMessage}")
+            }
+        }
+    }
+
     fun cancelActiveOperation() {
         activeJob?.cancel()
         activeJob = null
