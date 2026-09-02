@@ -67,6 +67,13 @@ import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 import com.Hrshd1eux.filemanager.feature.browser.model.BreadcrumbItem
 
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileBrowserScreen(
@@ -78,6 +85,7 @@ fun FileBrowserScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -211,6 +219,9 @@ fun FileBrowserScreen(
                                             val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                             viewModel.navigateInto(node, hasPermission)
                                         }
+                                    },
+                                    onInfoClick = {
+                                        selectedNodeForProperties = node
                                     }
                                 )
                             }
@@ -219,6 +230,14 @@ fun FileBrowserScreen(
                 }
             }
         }
+    }
+
+    val inspectedNode = selectedNodeForProperties
+    if (inspectedNode != null) {
+        FilePropertiesSheet(
+            node = inspectedNode,
+            onDismiss = { selectedNodeForProperties = null }
+        )
     }
 }
 
@@ -278,6 +297,7 @@ private fun BreadcrumbBar(
 private fun StorageNodeItem(
     node: StorageNode,
     onClick: () -> Unit,
+    onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -292,7 +312,7 @@ private fun StorageNodeItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -324,10 +344,29 @@ private fun StorageNodeItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                val metadataText = if (node.isDirectory) {
+                    FileFormatter.formatDateTime(node.lastModified)
+                } else {
+                    "${FileFormatter.formatFileSize(node.size)} • ${FileFormatter.formatDateTime(node.lastModified)}"
+                }
+
                 Text(
-                    text = if (node.isDirectory) "Folder" else node.extension.uppercase().ifEmpty { "File" },
+                    text = metadataText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                )
+            }
+
+            IconButton(
+                onClick = onInfoClick,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Properties",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
