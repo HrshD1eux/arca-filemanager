@@ -76,11 +76,13 @@ import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 
@@ -101,6 +103,7 @@ fun FileBrowserScreen(
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToCopy by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToMove by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var activeOperationTitle by remember { mutableStateOf("Processing Files") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -249,6 +252,9 @@ fun FileBrowserScreen(
                                     onMoveClick = {
                                         nodeToMove = node
                                     },
+                                    onDeleteClick = {
+                                        nodeToDelete = node
+                                    },
                                     onInfoClick = {
                                         selectedNodeForProperties = node
                                     }
@@ -302,6 +308,24 @@ fun FileBrowserScreen(
                 )
             },
             onDismiss = { nodeToMove = null }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    val targetToDelete = nodeToDelete
+    if (targetToDelete != null) {
+        DeleteConfirmationDialog(
+            node = targetToDelete,
+            onConfirmDelete = {
+                nodeToDelete = null
+                activeOperationTitle = "Deleting Files"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.startDelete(
+                    targets = listOf(targetToDelete),
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { nodeToDelete = null }
         )
     }
 
@@ -383,6 +407,7 @@ private fun StorageNodeItem(
     onClick: () -> Unit,
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -481,6 +506,16 @@ private fun StorageNodeItem(
                         onClick = {
                             showMenu = false
                             onMoveClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        },
+                        onClick = {
+                            showMenu = false
+                            onDeleteClick()
                         }
                     )
                     DropdownMenuItem(

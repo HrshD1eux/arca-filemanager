@@ -139,6 +139,47 @@ class FileBrowserViewModel(
         }
     }
 
+    fun startDelete(
+        targets: List<StorageNode>,
+        hasPermission: Boolean
+    ) {
+        if (!hasPermission) {
+            _uiState.value = BrowserUiState.PermissionRequired()
+            return
+        }
+
+        activeJob = viewModelScope.launch {
+            _activeProgress.value = OperationProgress(totalFiles = targets.size)
+
+            val result = operationEngine.delete(
+                targets = targets,
+                onProgress = { progress ->
+                    _activeProgress.value = progress
+                }
+            )
+
+            _activeProgress.value = null
+
+            result.onSuccess { opResult ->
+                when (opResult) {
+                    is OperationResult.Success -> {
+                        _userMessage.emit("Deleted ${opResult.filesProcessed} items.")
+                        refresh(hasPermission)
+                    }
+                    is OperationResult.Cancelled -> {
+                        _userMessage.emit("Delete cancelled.")
+                        refresh(hasPermission)
+                    }
+                    is OperationResult.Failure -> {
+                        _userMessage.emit("Delete failed: ${opResult.error.message}")
+                    }
+                }
+            }.onFailure { error ->
+                _userMessage.emit("Delete error: ${error.localizedMessage}")
+            }
+        }
+    }
+
     fun cancelActiveOperation() {
         activeJob?.cancel()
         activeJob = null
