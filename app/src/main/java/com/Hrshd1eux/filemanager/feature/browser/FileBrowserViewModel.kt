@@ -2,6 +2,10 @@ package com.Hrshd1eux.filemanager.feature.browser
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.display.model.SortOrder
+import com.Hrshd1eux.filemanager.core.display.model.ViewMode
+import com.Hrshd1eux.filemanager.core.display.preferences.DisplayPreferencesRepository
+import com.Hrshd1eux.filemanager.core.display.util.NodeSorter
 import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
@@ -29,7 +33,8 @@ import java.io.File
 class FileBrowserViewModel(
     val storageProvider: StorageProvider = LocalFileSystemProvider(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher)
+    private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher),
+    private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
@@ -41,11 +46,38 @@ class FileBrowserViewModel(
     private val _selectedNodeIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedNodeIds: StateFlow<Set<String>> = _selectedNodeIds.asStateFlow()
 
+    val sortOrder: StateFlow<SortOrder> = displayPreferencesRepository.sortOrder
+    val viewMode: StateFlow<ViewMode> = displayPreferencesRepository.viewMode
+
     private val _userMessage = MutableSharedFlow<String>()
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
 
     private var activeJob: Job? = null
     private val rootNode: StorageNode = storageProvider.getRootNode()
+
+    fun setSortOrder(newOrder: SortOrder, hasPermission: Boolean) {
+        displayPreferencesRepository.updateSortOrder(newOrder)
+        val currentState = _uiState.value
+        if (currentState is BrowserUiState.Success) {
+            val sorted = NodeSorter.sort(currentState.items, newOrder)
+            _uiState.value = currentState.copy(items = sorted)
+        } else {
+            refresh(hasPermission)
+        }
+    }
+
+    fun setViewMode(newMode: ViewMode) {
+        displayPreferencesRepository.updateViewMode(newMode)
+    }
+
+    fun cycleViewMode() {
+        val nextMode = when (viewMode.value) {
+            ViewMode.LIST -> ViewMode.COMPACT
+            ViewMode.COMPACT -> ViewMode.GRID
+            ViewMode.GRID -> ViewMode.LIST
+        }
+        setViewMode(nextMode)
+    }
 
     fun toggleSelection(nodeId: String) {
         val current = _selectedNodeIds.value
@@ -276,10 +308,7 @@ class FileBrowserViewModel(
 
             val result = storageProvider.listChildren(path)
             result.onSuccess { children ->
-                val sorted = children.sortedWith(
-                    compareByDescending<StorageNode> { it.isDirectory }
-                        .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name }
-                )
+                val sorted = NodeSorter.sort(children, displayPreferencesRepository.sortOrder.value)
 
                 val breadcrumbs = buildBreadcrumbs(
                     currentPath = path,

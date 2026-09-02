@@ -100,6 +100,18 @@ import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDia
 import com.Hrshd1eux.filemanager.feature.browser.components.RenameDialog
 import com.Hrshd1eux.filemanager.feature.properties.BulkPropertiesSheet
 
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.DensityMedium
+import androidx.compose.material.icons.filled.GridView
+import com.Hrshd1eux.filemanager.core.display.model.ViewMode
+import com.Hrshd1eux.filemanager.feature.browser.components.SortBottomSheet
+import com.Hrshd1eux.filemanager.feature.browser.components.StorageNodeCompactItem
+import com.Hrshd1eux.filemanager.feature.browser.components.StorageNodeGridItem
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileBrowserScreen(
@@ -114,6 +126,8 @@ fun FileBrowserScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeProgress by viewModel.activeProgress.collectAsStateWithLifecycle()
     val selectedNodeIds by viewModel.selectedNodeIds.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
@@ -123,6 +137,7 @@ fun FileBrowserScreen(
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
+    var showSortBottomSheet by remember { mutableStateOf(false) }
 
     var bulkNodesToCopy by remember { mutableStateOf<List<StorageNode>?>(null) }
     var bulkNodesToMove by remember { mutableStateOf<List<StorageNode>?>(null) }
@@ -240,6 +255,23 @@ fun FileBrowserScreen(
                                 contentDescription = "Search"
                             )
                         }
+                        IconButton(onClick = { showSortBottomSheet = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Sort,
+                                contentDescription = "Sort"
+                            )
+                        }
+                        IconButton(onClick = { viewModel.cycleViewMode() }) {
+                            val icon = when (viewMode) {
+                                ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
+                                ViewMode.COMPACT -> Icons.Default.DensityMedium
+                                ViewMode.GRID -> Icons.Default.GridView
+                            }
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = "View mode: ${viewMode.displayName}"
+                            )
+                        }
                         IconButton(onClick = {
                             val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                             viewModel.refresh(hasPermission)
@@ -307,44 +339,118 @@ fun FileBrowserScreen(
                     if (state.items.isEmpty()) {
                         EmptyFolderView()
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(state.items, key = { it.id }) { node ->
-                                StorageNodeItem(
-                                    node = node,
-                                    isSelected = selectedNodeIds.contains(node.id),
-                                    isSelectionMode = selectedNodeIds.isNotEmpty(),
-                                    onClick = {
-                                        if (node.isDirectory) {
-                                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
-                                            viewModel.navigateInto(node, hasPermission)
-                                        }
-                                    },
-                                    onToggleSelection = {
-                                        viewModel.toggleSelection(node.id)
-                                    },
-                                    onCopyClick = {
-                                        nodeToCopy = node
-                                    },
-                                    onMoveClick = {
-                                        nodeToMove = node
-                                    },
-                                    onRenameClick = {
-                                        nodeToRename = node
-                                    },
-                                    onDeleteClick = {
-                                        nodeToDelete = node
-                                    },
-                                    onShareClick = {
-                                        FileShareHelper.shareNodes(context, listOf(node))
-                                    },
-                                    onInfoClick = {
-                                        selectedNodeForProperties = node
+                        when (viewMode) {
+                            ViewMode.GRID -> {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(3),
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(state.items, key = { it.id }) { node ->
+                                        StorageNodeGridItem(
+                                            node = node,
+                                            isSelected = selectedNodeIds.contains(node.id),
+                                            isSelectionMode = selectedNodeIds.isNotEmpty(),
+                                            onClick = {
+                                                if (node.isDirectory) {
+                                                    val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                                                    viewModel.navigateInto(node, hasPermission)
+                                                }
+                                            },
+                                            onToggleSelection = {
+                                                viewModel.toggleSelection(node.id)
+                                            }
+                                        )
                                     }
-                                )
+                                }
+                            }
+
+                            ViewMode.COMPACT -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    items(state.items, key = { it.id }) { node ->
+                                        StorageNodeCompactItem(
+                                            node = node,
+                                            isSelected = selectedNodeIds.contains(node.id),
+                                            isSelectionMode = selectedNodeIds.isNotEmpty(),
+                                            onClick = {
+                                                if (node.isDirectory) {
+                                                    val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                                                    viewModel.navigateInto(node, hasPermission)
+                                                }
+                                            },
+                                            onToggleSelection = {
+                                                viewModel.toggleSelection(node.id)
+                                            },
+                                            onCopyClick = {
+                                                nodeToCopy = node
+                                            },
+                                            onMoveClick = {
+                                                nodeToMove = node
+                                            },
+                                            onRenameClick = {
+                                                nodeToRename = node
+                                            },
+                                            onDeleteClick = {
+                                                nodeToDelete = node
+                                            },
+                                            onShareClick = {
+                                                FileShareHelper.shareNodes(context, listOf(node))
+                                            },
+                                            onInfoClick = {
+                                                selectedNodeForProperties = node
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            ViewMode.LIST -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(state.items, key = { it.id }) { node ->
+                                        StorageNodeItem(
+                                            node = node,
+                                            isSelected = selectedNodeIds.contains(node.id),
+                                            isSelectionMode = selectedNodeIds.isNotEmpty(),
+                                            onClick = {
+                                                if (node.isDirectory) {
+                                                    val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                                                    viewModel.navigateInto(node, hasPermission)
+                                                }
+                                            },
+                                            onToggleSelection = {
+                                                viewModel.toggleSelection(node.id)
+                                            },
+                                            onCopyClick = {
+                                                nodeToCopy = node
+                                            },
+                                            onMoveClick = {
+                                                nodeToMove = node
+                                            },
+                                            onRenameClick = {
+                                                nodeToRename = node
+                                            },
+                                            onDeleteClick = {
+                                                nodeToDelete = node
+                                            },
+                                            onShareClick = {
+                                                FileShareHelper.shareNodes(context, listOf(node))
+                                            },
+                                            onInfoClick = {
+                                                selectedNodeForProperties = node
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -540,6 +646,18 @@ fun FileBrowserScreen(
         BulkPropertiesSheet(
             nodes = bulkInspectedNodes,
             onDismiss = { bulkNodesForProperties = null }
+        )
+    }
+
+    // Sort Bottom Sheet
+    if (showSortBottomSheet) {
+        SortBottomSheet(
+            currentOrder = sortOrder,
+            onSortOrderChange = { newOrder ->
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.setSortOrder(newOrder, hasPermission)
+            },
+            onDismiss = { showSortBottomSheet = false }
         )
     }
 }
