@@ -29,5 +29,6 @@ data class SearchCriteria(
     val rootPath: String = "",
     val category: CategoryFilter = CategoryFilter.ALL,
     val sizeFilter: SizeFilter = SizeFilter.ANY,
-    val dateFilter: DateFilter = DateFilter.ANY
+    val dateFilter: DateFilter = DateFilter.ANY,
+    val includeHidden: Boolean = false
 )

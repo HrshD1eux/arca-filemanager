@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,6 +47,7 @@ fun StorageNodeGridItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .alpha(if (node.name.startsWith(".")) 0.65f else 1.0f)
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) {

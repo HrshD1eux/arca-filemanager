@@ -70,6 +70,10 @@ class FileSearchEngine(
         criteria: SearchCriteria,
         dateThreshold: Long
     ): Boolean {
+        if (!criteria.includeHidden && file.name.startsWith(".")) {
+            return false
+        }
+
         val fileName = file.name.lowercase()
 
         // Name / Substring / Extension matching

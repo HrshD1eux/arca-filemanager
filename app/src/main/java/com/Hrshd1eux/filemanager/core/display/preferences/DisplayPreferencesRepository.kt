@@ -20,6 +20,9 @@ class DisplayPreferencesRepository(context: Context? = null) {
     private val _viewMode = MutableStateFlow(loadViewMode())
     val viewMode: StateFlow<ViewMode> = _viewMode.asStateFlow()
 
+    private val _showHiddenFiles = MutableStateFlow(loadShowHiddenFiles())
+    val showHiddenFiles: StateFlow<Boolean> = _showHiddenFiles.asStateFlow()
+
     fun updateSortOrder(newOrder: SortOrder) {
         _sortOrder.value = newOrder
         prefs?.edit()?.apply {
@@ -34,6 +37,14 @@ class DisplayPreferencesRepository(context: Context? = null) {
         _viewMode.value = newMode
         prefs?.edit()?.apply {
             putString(KEY_VIEW_MODE, newMode.name)
+            apply()
+        }
+    }
+
+    fun updateShowHiddenFiles(show: Boolean) {
+        _showHiddenFiles.value = show
+        prefs?.edit()?.apply {
+            putBoolean(KEY_SHOW_HIDDEN_FILES, show)
             apply()
         }
     }
@@ -58,10 +69,16 @@ class DisplayPreferencesRepository(context: Context? = null) {
         return runCatching { ViewMode.valueOf(modeName) }.getOrDefault(ViewMode.LIST)
     }
 
+    private fun loadShowHiddenFiles(): Boolean {
+        if (prefs == null) return false
+        return prefs.getBoolean(KEY_SHOW_HIDDEN_FILES, false)
+    }
+
     companion object {
         private const val KEY_SORT_FIELD = "sort_field"
         private const val KEY_SORT_DIRECTION = "sort_direction"
         private const val KEY_FOLDERS_FIRST = "folders_first"
         private const val KEY_VIEW_MODE = "view_mode"
+        private const val KEY_SHOW_HIDDEN_FILES = "show_hidden_files"
     }
 }

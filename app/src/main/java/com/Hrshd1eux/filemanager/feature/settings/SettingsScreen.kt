@@ -48,14 +48,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.R
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAbout: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: SettingsViewModel = viewModel()
 ) {
-    var showHiddenFiles by remember { mutableStateOf(false) }
+    val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(true) }
 
     Scaffold(
@@ -118,7 +122,7 @@ fun SettingsScreen(
                         subtitle = "Display files starting with a dot (.)",
                         icon = Icons.Default.Visibility,
                         checked = showHiddenFiles,
-                        onCheckedChange = { showHiddenFiles = it }
+                        onCheckedChange = { viewModel.setShowHiddenFiles(it) }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsToggleRow(

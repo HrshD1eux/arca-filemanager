@@ -53,6 +53,7 @@ class FileBrowserViewModel(
 
     val sortOrder: StateFlow<SortOrder> = displayPreferencesRepository.sortOrder
     val viewMode: StateFlow<ViewMode> = displayPreferencesRepository.viewMode
+    val showHiddenFiles: StateFlow<Boolean> = displayPreferencesRepository.showHiddenFiles
     val favorites: StateFlow<List<FavoriteItem>> = favoritesRepository.favorites
 
     private val _userMessage = MutableSharedFlow<String>()
@@ -60,6 +61,12 @@ class FileBrowserViewModel(
 
     private var activeJob: Job? = null
     private val rootNode: StorageNode = storageProvider.getRootNode()
+
+    fun toggleShowHiddenFiles(hasPermission: Boolean) {
+        val current = displayPreferencesRepository.showHiddenFiles.value
+        displayPreferencesRepository.updateShowHiddenFiles(!current)
+        refresh(hasPermission)
+    }
 
     fun isFavorite(path: String): Boolean {
         return favoritesRepository.isFavorite(path)
@@ -344,7 +351,12 @@ class FileBrowserViewModel(
 
             val result = storageProvider.listChildren(path)
             result.onSuccess { children ->
-                val sorted = NodeSorter.sort(children, displayPreferencesRepository.sortOrder.value)
+                val filtered = if (displayPreferencesRepository.showHiddenFiles.value) {
+                    children
+                } else {
+                    children.filter { !it.name.startsWith(".") }
+                }
+                val sorted = NodeSorter.sort(filtered, displayPreferencesRepository.sortOrder.value)
 
                 val breadcrumbs = buildBreadcrumbs(
                     currentPath = path,

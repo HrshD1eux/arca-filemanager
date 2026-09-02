@@ -34,6 +34,8 @@ import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 fun SortBottomSheet(
     currentOrder: SortOrder,
     onSortOrderChange: (SortOrder) -> Unit,
+    showHiddenFiles: Boolean = false,
+    onShowHiddenFilesChange: ((Boolean) -> Unit)? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -146,6 +148,37 @@ fun SortBottomSheet(
                     checked = currentOrder.foldersFirst,
                     onCheckedChange = { onSortOrderChange(currentOrder.copy(foldersFirst = it)) }
                 )
+            }
+
+            // Show Hidden Files Switch
+            if (onShowHiddenFilesChange != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onShowHiddenFilesChange(!showHiddenFiles) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "Show hidden files",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Display items starting with a dot (.)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = showHiddenFiles,
+                        onCheckedChange = onShowHiddenFilesChange
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

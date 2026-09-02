@@ -52,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -130,6 +131,7 @@ fun FileBrowserScreen(
     val selectedNodeIds by viewModel.selectedNodeIds.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
+    val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
@@ -675,6 +677,11 @@ fun FileBrowserScreen(
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 viewModel.setSortOrder(newOrder, hasPermission)
             },
+            showHiddenFiles = showHiddenFiles,
+            onShowHiddenFilesChange = {
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.toggleShowHiddenFiles(hasPermission)
+            },
             onDismiss = { showSortBottomSheet = false }
         )
     }
@@ -755,6 +762,7 @@ private fun StorageNodeItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .alpha(if (node.name.startsWith(".")) 0.65f else 1.0f)
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) {
