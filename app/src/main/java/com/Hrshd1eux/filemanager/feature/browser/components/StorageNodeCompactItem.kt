@@ -43,14 +43,20 @@ import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.ui.graphics.Color
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StorageNodeCompactItem(
     node: StorageNode,
     isSelected: Boolean,
     isSelectionMode: Boolean,
+    isFavorite: Boolean,
     onClick: () -> Unit,
     onToggleSelection: () -> Unit,
+    onToggleFavorite: () -> Unit,
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
     onRenameClick: () -> Unit,
@@ -193,6 +199,21 @@ fun StorageNodeCompactItem(
                             onClick = {
                                 showMenu = false
                                 onDeleteClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (isFavorite) "Remove from Favorites" else "Add to Favorites") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                                    contentDescription = null,
+                                    tint = if (isFavorite) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onToggleFavorite()
                             }
                         )
                         DropdownMenuItem(

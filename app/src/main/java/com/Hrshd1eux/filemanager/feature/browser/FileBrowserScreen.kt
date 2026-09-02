@@ -107,6 +107,8 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
 import com.Hrshd1eux.filemanager.feature.browser.components.SortBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.StorageNodeCompactItem
@@ -246,6 +248,14 @@ fun FileBrowserScreen(
                         }
                     },
                     actions = {
+                        val isCurrentFavorite = (uiState as? BrowserUiState.Success)?.let { viewModel.isFavorite(it.currentPath) } ?: false
+                        IconButton(onClick = { viewModel.toggleCurrentFolderFavorite() }) {
+                            Icon(
+                                imageVector = if (isCurrentFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = if (isCurrentFavorite) "Remove Bookmark" else "Bookmark Folder",
+                                tint = if (isCurrentFavorite) Color(0xFFFFB300) else MaterialTheme.colorScheme.onBackground
+                            )
+                        }
                         IconButton(onClick = {
                             val currentPath = (uiState as? BrowserUiState.Success)?.breadcrumbs?.lastOrNull()?.path ?: initialPath
                             onNavigateToSearch(currentPath)
@@ -378,6 +388,7 @@ fun FileBrowserScreen(
                                             node = node,
                                             isSelected = selectedNodeIds.contains(node.id),
                                             isSelectionMode = selectedNodeIds.isNotEmpty(),
+                                            isFavorite = viewModel.isFavorite(node.path),
                                             onClick = {
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -386,6 +397,9 @@ fun FileBrowserScreen(
                                             },
                                             onToggleSelection = {
                                                 viewModel.toggleSelection(node.id)
+                                            },
+                                            onToggleFavorite = {
+                                                viewModel.toggleFavorite(node)
                                             },
                                             onCopyClick = {
                                                 nodeToCopy = node
@@ -421,6 +435,7 @@ fun FileBrowserScreen(
                                             node = node,
                                             isSelected = selectedNodeIds.contains(node.id),
                                             isSelectionMode = selectedNodeIds.isNotEmpty(),
+                                            isFavorite = viewModel.isFavorite(node.path),
                                             onClick = {
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -429,6 +444,9 @@ fun FileBrowserScreen(
                                             },
                                             onToggleSelection = {
                                                 viewModel.toggleSelection(node.id)
+                                            },
+                                            onToggleFavorite = {
+                                                viewModel.toggleFavorite(node)
                                             },
                                             onCopyClick = {
                                                 nodeToCopy = node
@@ -720,8 +738,10 @@ private fun StorageNodeItem(
     node: StorageNode,
     isSelected: Boolean,
     isSelectionMode: Boolean,
+    isFavorite: Boolean,
     onClick: () -> Unit,
     onToggleSelection: () -> Unit,
+    onToggleFavorite: () -> Unit,
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
     onRenameClick: () -> Unit,
@@ -879,6 +899,21 @@ private fun StorageNodeItem(
                             onClick = {
                                 showMenu = false
                                 onDeleteClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (isFavorite) "Remove from Favorites" else "Add to Favorites") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                                    contentDescription = null,
+                                    tint = if (isFavorite) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onToggleFavorite()
                             }
                         )
                         DropdownMenuItem(

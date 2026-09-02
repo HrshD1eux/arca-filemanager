@@ -6,6 +6,8 @@ import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
 import com.Hrshd1eux.filemanager.core.display.preferences.DisplayPreferencesRepository
 import com.Hrshd1eux.filemanager.core.display.util.NodeSorter
+import com.Hrshd1eux.filemanager.core.favorites.model.FavoriteItem
+import com.Hrshd1eux.filemanager.core.favorites.repository.FavoritesRepository
 import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
@@ -34,7 +36,8 @@ class FileBrowserViewModel(
     val storageProvider: StorageProvider = LocalFileSystemProvider(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher),
-    private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository()
+    private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
+    private val favoritesRepository: FavoritesRepository = FavoritesRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
@@ -48,12 +51,43 @@ class FileBrowserViewModel(
 
     val sortOrder: StateFlow<SortOrder> = displayPreferencesRepository.sortOrder
     val viewMode: StateFlow<ViewMode> = displayPreferencesRepository.viewMode
+    val favorites: StateFlow<List<FavoriteItem>> = favoritesRepository.favorites
 
     private val _userMessage = MutableSharedFlow<String>()
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
 
     private var activeJob: Job? = null
     private val rootNode: StorageNode = storageProvider.getRootNode()
+
+    fun isFavorite(path: String): Boolean {
+        return favoritesRepository.isFavorite(path)
+    }
+
+    fun toggleFavorite(node: StorageNode) {
+        val wasAdded = favoritesRepository.toggleFavorite(node)
+        viewModelScope.launch {
+            if (wasAdded) {
+                _userMessage.emit("Added to Favorites")
+            } else {
+                _userMessage.emit("Removed from Favorites")
+            }
+        }
+    }
+
+    fun toggleCurrentFolderFavorite() {
+        val currentState = _uiState.value
+        if (currentState is BrowserUiState.Success) {
+            val currentNode = StorageNode(
+                id = currentState.currentPath,
+                name = currentState.currentTitle,
+                path = currentState.currentPath,
+                isDirectory = true,
+                size = 0L,
+                lastModified = System.currentTimeMillis()
+            )
+            toggleFavorite(currentNode)
+        }
+    }
 
     fun setSortOrder(newOrder: SortOrder, hasPermission: Boolean) {
         displayPreferencesRepository.updateSortOrder(newOrder)
