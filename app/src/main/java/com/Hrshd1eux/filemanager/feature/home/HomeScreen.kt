@@ -56,6 +56,7 @@ import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import android.os.Environment
 import androidx.compose.material.icons.filled.BookmarkRemove
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,6 +79,7 @@ fun HomeScreen(
     onNavigateToBrowser: (initialPath: String?, title: String) -> Unit,
     onNavigateToSearch: (rootPath: String?) -> Unit,
     onNavigateToCategorySearch: (CategoryFilter) -> Unit = {},
+    onNavigateToLargeFiles: (rootPath: String?) -> Unit = {},
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -278,6 +280,25 @@ fun HomeScreen(
                         val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).absolutePath
                         onNavigateToBrowser(path, "Music")
                     }
+                )
+            }
+
+            item {
+                Text(
+                    text = "Storage Tools",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+
+            item {
+                FolderItem(
+                    name = "Large Files",
+                    path = "Review & delete files > 100 MB",
+                    icon = Icons.Default.CleaningServices,
+                    iconTint = MaterialTheme.colorScheme.error,
+                    onClick = { onNavigateToLargeFiles(null) }
                 )
             }
 

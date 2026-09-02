@@ -26,4 +26,9 @@ sealed interface Screen {
         val rootPath: String? = null,
         val categoryName: String? = null
     ) : Screen
+
+    @Serializable
+    data class LargeFiles(
+        val rootPath: String? = null
+    ) : Screen
 }

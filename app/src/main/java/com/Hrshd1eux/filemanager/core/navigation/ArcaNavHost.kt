@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
+import com.Hrshd1eux.filemanager.feature.cleaner.largefiles.LargeFilesScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
 import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
@@ -41,6 +42,9 @@ fun ArcaNavHost(
                 },
                 onNavigateToCategorySearch = { category ->
                     navController.navigate(Screen.Search(rootPath = null, categoryName = category.name))
+                },
+                onNavigateToLargeFiles = { rootPath ->
+                    navController.navigate(Screen.LargeFiles(rootPath = rootPath))
                 },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) }
@@ -78,6 +82,19 @@ fun ArcaNavHost(
                 onNavigateToDirectory = { path ->
                     navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))
                 }
+            )
+        }
+
+        composable<Screen.LargeFiles>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.LargeFiles>()
+            LargeFilesScreen(
+                rootPath = route.rootPath,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
