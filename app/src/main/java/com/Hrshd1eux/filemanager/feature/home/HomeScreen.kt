@@ -68,13 +68,16 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import com.Hrshd1eux.filemanager.core.recents.model.RecentItem
+import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.feature.home.components.StorageBreakdownCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToBrowser: (initialPath: String?, title: String) -> Unit,
     onNavigateToSearch: (rootPath: String?) -> Unit,
+    onNavigateToCategorySearch: (CategoryFilter) -> Unit = {},
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -84,6 +87,7 @@ fun HomeScreen(
     var showClearRecentsDialog by remember { mutableStateOf(false) }
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
+    val storageBreakdown by viewModel.storageBreakdown.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -153,8 +157,11 @@ fun HomeScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                StorageOverviewCard(
-                    onClick = { onNavigateToBrowser(null, "Internal Storage") }
+                StorageBreakdownCard(
+                    breakdown = storageBreakdown,
+                    title = "Internal Storage",
+                    onCardClick = { onNavigateToBrowser(null, "Internal Storage") },
+                    onCategoryClick = onNavigateToCategorySearch
                 )
             }
 
@@ -303,59 +310,6 @@ fun HomeScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun StorageOverviewCard(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Storage,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = "Internal Storage",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Tap to browse local filesystem",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
     }
 }
 

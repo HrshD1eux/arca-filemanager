@@ -39,6 +39,9 @@ fun ArcaNavHost(
                 onNavigateToSearch = { rootPath ->
                     navController.navigate(Screen.Search(rootPath = rootPath))
                 },
+                onNavigateToCategorySearch = { category ->
+                    navController.navigate(Screen.Search(rootPath = null, categoryName = category.name))
+                },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) }
             )
@@ -70,6 +73,7 @@ fun ArcaNavHost(
             val route = backStackEntry.toRoute<Screen.Search>()
             FileSearchScreen(
                 rootPath = route.rootPath,
+                initialCategory = route.categoryName,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDirectory = { path ->
                     navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))

@@ -70,6 +70,7 @@ import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 @Composable
 fun FileSearchScreen(
     rootPath: String?,
+    initialCategory: String? = null,
     onNavigateBack: () -> Unit,
     onNavigateToDirectory: (path: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -84,8 +85,14 @@ fun FileSearchScreen(
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
     val focusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(rootPath) {
+    LaunchedEffect(rootPath, initialCategory) {
         viewModel.setRootPath(rootPath)
+        if (initialCategory != null) {
+            val matchedCategory = runCatching { CategoryFilter.valueOf(initialCategory) }.getOrNull()
+            if (matchedCategory != null) {
+                viewModel.onCategorySelect(matchedCategory)
+            }
+        }
         focusRequester.requestFocus()
     }
 
