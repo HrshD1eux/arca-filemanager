@@ -14,4 +14,10 @@ sealed interface Screen {
 
     @Serializable
     data object About : Screen
+
+    @Serializable
+    data class Browser(
+        val initialPath: String? = null,
+        val title: String = "Internal Storage"
+    ) : Screen
 }

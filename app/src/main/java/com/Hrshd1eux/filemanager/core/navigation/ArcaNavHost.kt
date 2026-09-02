@@ -10,7 +10,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
+import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
 
@@ -29,8 +31,25 @@ fun ArcaNavHost(
             exitTransition = { fadeOut() }
         ) {
             HomeScreen(
+                onNavigateToBrowser = { initialPath, title ->
+                    navController.navigate(Screen.Browser(initialPath = initialPath, title = title))
+                },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) }
+            )
+        }
+
+        composable<Screen.Browser>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.Browser>()
+            FileBrowserScreen(
+                initialPath = route.initialPath,
+                title = route.title,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

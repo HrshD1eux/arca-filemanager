@@ -5,6 +5,7 @@ import android.os.StatFs
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.model.StorageStats
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -16,7 +17,8 @@ import java.io.IOException
  */
 class LocalFileSystemProvider(
     private val rootDirectory: File = Environment.getExternalStorageDirectory(),
-    override val displayName: String = "Internal Storage"
+    override val displayName: String = "Internal Storage",
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : StorageProvider {
 
     override val providerId: String = "local_fs"
@@ -25,7 +27,7 @@ class LocalFileSystemProvider(
         return rootDirectory.toStorageNode()
     }
 
-    override suspend fun listChildren(targetId: String): Result<List<StorageNode>> = withContext(Dispatchers.IO) {
+    override suspend fun listChildren(targetId: String): Result<List<StorageNode>> = withContext(ioDispatcher) {
         runCatching {
             val targetFile = File(targetId)
             if (!targetFile.exists()) {
@@ -44,7 +46,7 @@ class LocalFileSystemProvider(
         }
     }
 
-    override suspend fun getNode(targetId: String): Result<StorageNode> = withContext(Dispatchers.IO) {
+    override suspend fun getNode(targetId: String): Result<StorageNode> = withContext(ioDispatcher) {
         runCatching {
             val targetFile = File(targetId)
             if (!targetFile.exists()) {
@@ -54,7 +56,7 @@ class LocalFileSystemProvider(
         }
     }
 
-    override suspend fun getStorageStats(): Result<StorageStats> = withContext(Dispatchers.IO) {
+    override suspend fun getStorageStats(): Result<StorageStats> = withContext(ioDispatcher) {
         runCatching {
             val statFs = StatFs(rootDirectory.absolutePath)
             StorageStats(
@@ -64,7 +66,7 @@ class LocalFileSystemProvider(
         }
     }
 
-    override suspend fun exists(targetId: String): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun exists(targetId: String): Boolean = withContext(ioDispatcher) {
         File(targetId).exists()
     }
 

@@ -55,9 +55,12 @@ import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 
+import android.os.Environment
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onNavigateToBrowser: (initialPath: String?, title: String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier
@@ -132,7 +135,9 @@ fun HomeScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                StorageOverviewCard()
+                StorageOverviewCard(
+                    onClick = { onNavigateToBrowser(null, "Internal Storage") }
+                )
             }
 
             item {
@@ -150,7 +155,10 @@ fun HomeScreen(
                     path = "/storage/emulated/0/Download",
                     icon = Icons.Default.Download,
                     iconTint = MaterialTheme.colorScheme.primary,
-                    onClick = { /* Navigation in 1.1.3 */ }
+                    onClick = {
+                        val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
+                        onNavigateToBrowser(path, "Download")
+                    }
                 )
             }
 
@@ -160,7 +168,10 @@ fun HomeScreen(
                     path = "/storage/emulated/0/Documents",
                     icon = Icons.Default.Description,
                     iconTint = MaterialTheme.colorScheme.primary,
-                    onClick = { /* Navigation in 1.1.3 */ }
+                    onClick = {
+                        val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).absolutePath
+                        onNavigateToBrowser(path, "Documents")
+                    }
                 )
             }
 
@@ -170,7 +181,10 @@ fun HomeScreen(
                     path = "/storage/emulated/0/Pictures",
                     icon = Icons.Default.Image,
                     iconTint = MaterialTheme.colorScheme.primary,
-                    onClick = { /* Navigation in 1.1.3 */ }
+                    onClick = {
+                        val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).absolutePath
+                        onNavigateToBrowser(path, "Pictures")
+                    }
                 )
             }
 
@@ -180,7 +194,10 @@ fun HomeScreen(
                     path = "/storage/emulated/0/Music",
                     icon = Icons.Default.MusicNote,
                     iconTint = MaterialTheme.colorScheme.primary,
-                    onClick = { /* Navigation in 1.1.3 */ }
+                    onClick = {
+                        val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).absolutePath
+                        onNavigateToBrowser(path, "Music")
+                    }
                 )
             }
 
@@ -195,10 +212,13 @@ fun HomeScreen(
 
 @Composable
 private fun StorageOverviewCard(
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -233,7 +253,7 @@ private fun StorageOverviewCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Storage Provider Abstraction (1.1.2 Ready)",
+                        text = "Tap to browse local filesystem",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
