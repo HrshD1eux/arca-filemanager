@@ -80,11 +80,16 @@ import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.ContextualActionBar
 import com.Hrshd1eux.filemanager.feature.browser.components.CreateFolderDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
@@ -103,6 +108,7 @@ fun FileBrowserScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeProgress by viewModel.activeProgress.collectAsStateWithLifecycle()
+    val selectedNodeIds by viewModel.selectedNodeIds.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
@@ -111,6 +117,11 @@ fun FileBrowserScreen(
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
+
+    var bulkNodesToCopy by remember { mutableStateOf<List<StorageNode>?>(null) }
+    var bulkNodesToMove by remember { mutableStateOf<List<StorageNode>?>(null) }
+    var bulkNodesToDelete by remember { mutableStateOf<List<StorageNode>?>(null) }
+
     var activeOperationTitle by remember { mutableStateOf("Processing Files") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -132,10 +143,14 @@ fun FileBrowserScreen(
     }
 
     BackHandler {
-        val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
-        val handled = viewModel.navigateUp(hasPermission)
-        if (!handled) {
-            onNavigateBack()
+        if (selectedNodeIds.isNotEmpty()) {
+            viewModel.clearSelection()
+        } else {
+            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+            val handled = viewModel.navigateUp(hasPermission)
+            if (!handled) {
+                onNavigateBack()
+            }
         }
     }
 
@@ -148,7 +163,7 @@ fun FileBrowserScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            if (uiState is BrowserUiState.Success) {
+            if (uiState is BrowserUiState.Success && selectedNodeIds.isEmpty()) {
                 FloatingActionButton(
                     onClick = { showCreateFolderDialog = true },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -162,46 +177,61 @@ fun FileBrowserScreen(
             }
         },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = currentTitle,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
-                        val handled = viewModel.navigateUp(hasPermission)
-                        if (!handled) {
-                            onNavigateBack()
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
-                        viewModel.refresh(hasPermission)
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+            if (selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
+                val allItems = (uiState as BrowserUiState.Success).items
+                val selectedItems = allItems.filter { selectedNodeIds.contains(it.id) }
+
+                ContextualActionBar(
+                    selectedCount = selectedNodeIds.size,
+                    totalCount = allItems.size,
+                    onCloseSelection = { viewModel.clearSelection() },
+                    onSelectAllToggle = { viewModel.selectAll(allItems) },
+                    onBulkCopy = { bulkNodesToCopy = selectedItems },
+                    onBulkMove = { bulkNodesToMove = selectedItems },
+                    onBulkDelete = { bulkNodesToDelete = selectedItems }
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = currentTitle,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            val handled = viewModel.navigateUp(hasPermission)
+                            if (!handled) {
+                                onNavigateBack()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            viewModel.refresh(hasPermission)
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            }
         }
     ) { innerPadding ->
         Column(
@@ -261,11 +291,16 @@ fun FileBrowserScreen(
                             items(state.items, key = { it.id }) { node ->
                                 StorageNodeItem(
                                     node = node,
+                                    isSelected = selectedNodeIds.contains(node.id),
+                                    isSelectionMode = selectedNodeIds.isNotEmpty(),
                                     onClick = {
                                         if (node.isDirectory) {
                                             val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                             viewModel.navigateInto(node, hasPermission)
                                         }
+                                    },
+                                    onToggleSelection = {
+                                        viewModel.toggleSelection(node.id)
                                     },
                                     onCopyClick = {
                                         nodeToCopy = node
@@ -291,7 +326,7 @@ fun FileBrowserScreen(
         }
     }
 
-    // Copy Destination Picker
+    // Single Copy Destination Picker
     val targetToCopy = nodeToCopy
     if (targetToCopy != null) {
         DestinationPickerDialog(
@@ -313,7 +348,29 @@ fun FileBrowserScreen(
         )
     }
 
-    // Move Destination Picker
+    // Bulk Copy Destination Picker
+    val targetBulkCopy = bulkNodesToCopy
+    if (targetBulkCopy != null) {
+        DestinationPickerDialog(
+            storageProvider = viewModel.storageProvider,
+            title = "Copy ${targetBulkCopy.size} Items to...",
+            confirmButtonText = "Copy Here",
+            excludedPaths = targetBulkCopy.filter { it.isDirectory }.map { it.path }.toSet(),
+            onDestinationSelected = { destination ->
+                bulkNodesToCopy = null
+                activeOperationTitle = "Copying ${targetBulkCopy.size} Items"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.startCopy(
+                    sources = targetBulkCopy,
+                    destination = destination,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { bulkNodesToCopy = null }
+        )
+    }
+
+    // Single Move Destination Picker
     val targetToMove = nodeToMove
     if (targetToMove != null) {
         DestinationPickerDialog(
@@ -332,6 +389,28 @@ fun FileBrowserScreen(
                 )
             },
             onDismiss = { nodeToMove = null }
+        )
+    }
+
+    // Bulk Move Destination Picker
+    val targetBulkMove = bulkNodesToMove
+    if (targetBulkMove != null) {
+        DestinationPickerDialog(
+            storageProvider = viewModel.storageProvider,
+            title = "Move ${targetBulkMove.size} Items to...",
+            confirmButtonText = "Move Here",
+            excludedPaths = targetBulkMove.filter { it.isDirectory }.map { it.path }.toSet(),
+            onDestinationSelected = { destination ->
+                bulkNodesToMove = null
+                activeOperationTitle = "Moving ${targetBulkMove.size} Items"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.startMove(
+                    sources = targetBulkMove,
+                    destination = destination,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { bulkNodesToMove = null }
         )
     }
 
@@ -373,7 +452,7 @@ fun FileBrowserScreen(
         )
     }
 
-    // Delete Confirmation Dialog
+    // Single Delete Confirmation Dialog
     val targetToDelete = nodeToDelete
     if (targetToDelete != null) {
         DeleteConfirmationDialog(
@@ -388,6 +467,24 @@ fun FileBrowserScreen(
                 )
             },
             onDismiss = { nodeToDelete = null }
+        )
+    }
+
+    // Bulk Delete Confirmation Dialog
+    val targetBulkDelete = bulkNodesToDelete
+    if (targetBulkDelete != null) {
+        BulkDeleteConfirmationDialog(
+            selectedNodes = targetBulkDelete,
+            onConfirmDelete = {
+                bulkNodesToDelete = null
+                activeOperationTitle = "Deleting ${targetBulkDelete.size} Items"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.startDelete(
+                    targets = targetBulkDelete,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { bulkNodesToDelete = null }
         )
     }
 
@@ -463,10 +560,14 @@ private fun BreadcrumbBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StorageNodeItem(
     node: StorageNode,
+    isSelected: Boolean,
+    isSelectionMode: Boolean,
     onClick: () -> Unit,
+    onToggleSelection: () -> Unit,
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
     onRenameClick: () -> Unit,
@@ -479,10 +580,23 @@ private fun StorageNodeItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = {
+                    if (isSelectionMode) {
+                        onToggleSelection()
+                    } else {
+                        onClick()
+                    }
+                },
+                onLongClick = onToggleSelection
+            ),
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
         )
     ) {
         Row(
@@ -491,6 +605,14 @@ private fun StorageNodeItem(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onToggleSelection() },
+                    modifier = Modifier.padding(end = 6.dp)
+                )
+            }
+
             Box(
                 modifier = Modifier
                     .size(38.dp)
@@ -534,73 +656,75 @@ private fun StorageNodeItem(
                 )
             }
 
-            Box {
-                IconButton(
-                    onClick = { showMenu = !showMenu },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More actions",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+            if (!isSelectionMode) {
+                Box {
+                    IconButton(
+                        onClick = { showMenu = !showMenu },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More actions",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
 
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Copy to...") },
-                        leadingIcon = {
-                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                        },
-                        onClick = {
-                            showMenu = false
-                            onCopyClick()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Move to...") },
-                        leadingIcon = {
-                            Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null, modifier = Modifier.size(18.dp))
-                        },
-                        onClick = {
-                            showMenu = false
-                            onMoveClick()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Rename") },
-                        leadingIcon = {
-                            Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
-                        },
-                        onClick = {
-                            showMenu = false
-                            onRenameClick()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                        leadingIcon = {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
-                        },
-                        onClick = {
-                            showMenu = false
-                            onDeleteClick()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Properties") },
-                        leadingIcon = {
-                            Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(18.dp))
-                        },
-                        onClick = {
-                            showMenu = false
-                            onInfoClick()
-                        }
-                    )
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Copy to...") },
+                            leadingIcon = {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onCopyClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Move to...") },
+                            leadingIcon = {
+                                Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onMoveClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Rename") },
+                            leadingIcon = {
+                                Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onRenameClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onDeleteClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Properties") },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onInfoClick()
+                            }
+                        )
+                    }
                 }
             }
         }

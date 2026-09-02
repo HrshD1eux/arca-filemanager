@@ -38,11 +38,36 @@ class FileBrowserViewModel(
     private val _activeProgress = MutableStateFlow<OperationProgress?>(null)
     val activeProgress: StateFlow<OperationProgress?> = _activeProgress.asStateFlow()
 
+    private val _selectedNodeIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedNodeIds: StateFlow<Set<String>> = _selectedNodeIds.asStateFlow()
+
     private val _userMessage = MutableSharedFlow<String>()
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
 
     private var activeJob: Job? = null
     private val rootNode: StorageNode = storageProvider.getRootNode()
+
+    fun toggleSelection(nodeId: String) {
+        val current = _selectedNodeIds.value
+        _selectedNodeIds.value = if (current.contains(nodeId)) {
+            current - nodeId
+        } else {
+            current + nodeId
+        }
+    }
+
+    fun selectAll(items: List<StorageNode>) {
+        val allIds = items.map { it.id }.toSet()
+        _selectedNodeIds.value = if (_selectedNodeIds.value.size == allIds.size) {
+            emptySet()
+        } else {
+            allIds
+        }
+    }
+
+    fun clearSelection() {
+        _selectedNodeIds.value = emptySet()
+    }
 
     fun initialize(initialPath: String?, hasPermission: Boolean) {
         val targetPath = initialPath ?: rootNode.path
@@ -60,6 +85,7 @@ class FileBrowserViewModel(
             return
         }
 
+        clearSelection()
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = sources.size)
 
@@ -105,6 +131,7 @@ class FileBrowserViewModel(
             return
         }
 
+        clearSelection()
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = sources.size)
 
@@ -148,6 +175,7 @@ class FileBrowserViewModel(
             return
         }
 
+        clearSelection()
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = targets.size)
 
@@ -190,6 +218,7 @@ class FileBrowserViewModel(
             return
         }
 
+        clearSelection()
         viewModelScope.launch {
             val result = operationEngine.rename(target = target, newName = newName)
             result.onSuccess { renamedNode ->
@@ -211,6 +240,7 @@ class FileBrowserViewModel(
             return
         }
 
+        clearSelection()
         viewModelScope.launch {
             val parentNode = StorageNode(
                 id = parentPath,
@@ -240,6 +270,7 @@ class FileBrowserViewModel(
             return
         }
 
+        clearSelection()
         viewModelScope.launch {
             _uiState.value = BrowserUiState.Loading
 
