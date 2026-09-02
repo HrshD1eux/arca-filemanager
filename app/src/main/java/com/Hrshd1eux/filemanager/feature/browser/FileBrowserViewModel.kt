@@ -2,12 +2,23 @@ package com.Hrshd1eux.filemanager.feature.browser
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
+import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
+import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.operations.model.OperationResult
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.provider.StorageProvider
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.browser.model.BreadcrumbItem
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
@@ -16,17 +27,77 @@ import java.io.File
  * ViewModel managing directory traversal, breadcrumb hierarchy, and browser state.
  */
 class FileBrowserViewModel(
-    private val storageProvider: StorageProvider = LocalFileSystemProvider()
+    val storageProvider: StorageProvider = LocalFileSystemProvider(),
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
     val uiState: StateFlow<BrowserUiState> = _uiState.asStateFlow()
 
+    private val _activeProgress = MutableStateFlow<OperationProgress?>(null)
+    val activeProgress: StateFlow<OperationProgress?> = _activeProgress.asStateFlow()
+
+    private val _userMessage = MutableSharedFlow<String>()
+    val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
+
+    private var activeJob: Job? = null
     private val rootNode: StorageNode = storageProvider.getRootNode()
 
     fun initialize(initialPath: String?, hasPermission: Boolean) {
         val targetPath = initialPath ?: rootNode.path
         loadDirectory(targetPath, hasPermission)
+    }
+
+    fun startCopy(
+        sources: List<StorageNode>,
+        destination: StorageNode,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        hasPermission: Boolean
+    ) {
+        if (!hasPermission) {
+            _uiState.value = BrowserUiState.PermissionRequired()
+            return
+        }
+
+        activeJob = viewModelScope.launch {
+            _activeProgress.value = OperationProgress(totalFiles = sources.size)
+
+            val result = operationEngine.copy(
+                sources = sources,
+                destinationDir = destination,
+                conflictResolution = conflictResolution,
+                onProgress = { progress ->
+                    _activeProgress.value = progress
+                }
+            )
+
+            _activeProgress.value = null
+
+            result.onSuccess { opResult ->
+                when (opResult) {
+                    is OperationResult.Success -> {
+                        _userMessage.emit("Copied ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
+                        refresh(hasPermission)
+                    }
+                    is OperationResult.Cancelled -> {
+                        _userMessage.emit("Copy cancelled.")
+                        refresh(hasPermission)
+                    }
+                    is OperationResult.Failure -> {
+                        _userMessage.emit("Copy failed: ${opResult.error.message}")
+                    }
+                }
+            }.onFailure { error ->
+                _userMessage.emit("Copy error: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun cancelActiveOperation() {
+        activeJob?.cancel()
+        activeJob = null
+        _activeProgress.value = null
     }
 
     fun loadDirectory(path: String, hasPermission: Boolean) {

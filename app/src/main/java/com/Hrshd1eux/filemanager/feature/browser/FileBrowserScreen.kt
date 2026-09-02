@@ -74,6 +74,15 @@ import androidx.compose.runtime.setValue
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileBrowserScreen(
@@ -85,7 +94,11 @@ fun FileBrowserScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val activeProgress by viewModel.activeProgress.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeToCopy by remember { mutableStateOf<StorageNode?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -97,6 +110,12 @@ fun FileBrowserScreen(
     LaunchedEffect(initialPath) {
         val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
         viewModel.initialize(initialPath, hasPermission)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.userMessage.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
     }
 
     BackHandler {
@@ -114,6 +133,7 @@ fun FileBrowserScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -220,6 +240,9 @@ fun FileBrowserScreen(
                                             viewModel.navigateInto(node, hasPermission)
                                         }
                                     },
+                                    onCopyClick = {
+                                        nodeToCopy = node
+                                    },
                                     onInfoClick = {
                                         selectedNodeForProperties = node
                                     }
@@ -232,6 +255,36 @@ fun FileBrowserScreen(
         }
     }
 
+    // Copy Destination Picker
+    val targetToCopy = nodeToCopy
+    if (targetToCopy != null) {
+        DestinationPickerDialog(
+            storageProvider = viewModel.storageProvider,
+            excludedPaths = if (targetToCopy.isDirectory) setOf(targetToCopy.path) else emptySet(),
+            onDestinationSelected = { destination ->
+                nodeToCopy = null
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.startCopy(
+                    sources = listOf(targetToCopy),
+                    destination = destination,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { nodeToCopy = null }
+        )
+    }
+
+    // Active Operation Progress Dialog
+    val currentProgress = activeProgress
+    if (currentProgress != null) {
+        OperationProgressDialog(
+            progress = currentProgress,
+            title = "Copying Files",
+            onCancel = { viewModel.cancelActiveOperation() }
+        )
+    }
+
+    // Properties Bottom Sheet
     val inspectedNode = selectedNodeForProperties
     if (inspectedNode != null) {
         FilePropertiesSheet(
@@ -297,9 +350,12 @@ private fun BreadcrumbBar(
 private fun StorageNodeItem(
     node: StorageNode,
     onClick: () -> Unit,
+    onCopyClick: () -> Unit,
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -358,16 +414,44 @@ private fun StorageNodeItem(
                 )
             }
 
-            IconButton(
-                onClick = onInfoClick,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = "Properties",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.size(18.dp)
-                )
+            Box {
+                IconButton(
+                    onClick = { showMenu = !showMenu },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "More actions",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Copy to...") },
+                        leadingIcon = {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        onClick = {
+                            showMenu = false
+                            onCopyClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Properties") },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        onClick = {
+                            showMenu = false
+                            onInfoClick()
+                        }
+                    )
+                }
             }
         }
     }
