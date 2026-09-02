@@ -5,7 +5,10 @@ import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,13 +30,16 @@ fun ContextualActionBar(
     onBulkCopy: () -> Unit,
     onBulkMove: () -> Unit,
     onBulkDelete: () -> Unit,
+    onShare: () -> Unit,
+    onRename: () -> Unit,
+    onProperties: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
         title = {
             Text(
                 text = "$selectedCount selected",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         },
@@ -46,29 +52,62 @@ fun ContextualActionBar(
             }
         },
         actions = {
+            // Select All Toggle
             IconButton(onClick = onSelectAllToggle) {
                 Icon(
                     imageVector = Icons.Default.SelectAll,
                     contentDescription = if (selectedCount == totalCount) "Deselect All" else "Select All"
                 )
             }
+
+            // Share Action
+            IconButton(onClick = onShare, enabled = selectedCount > 0) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share"
+                )
+            }
+
+            // Rename (active when exactly 1 item selected)
+            if (selectedCount == 1) {
+                IconButton(onClick = onRename) {
+                    Icon(
+                        imageVector = Icons.Default.DriveFileRenameOutline,
+                        contentDescription = "Rename"
+                    )
+                }
+            }
+
+            // Copy
             IconButton(onClick = onBulkCopy, enabled = selectedCount > 0) {
                 Icon(
                     imageVector = Icons.Default.ContentCopy,
-                    contentDescription = "Bulk Copy"
+                    contentDescription = "Copy"
                 )
             }
+
+            // Move
             IconButton(onClick = onBulkMove, enabled = selectedCount > 0) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
-                    contentDescription = "Bulk Move"
+                    contentDescription = "Move"
                 )
             }
+
+            // Delete
             IconButton(onClick = onBulkDelete, enabled = selectedCount > 0) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     tint = if (selectedCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    contentDescription = "Bulk Delete"
+                    contentDescription = "Delete"
+                )
+            }
+
+            // Properties / Info
+            IconButton(onClick = onProperties, enabled = selectedCount > 0) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Properties"
                 )
             }
         },

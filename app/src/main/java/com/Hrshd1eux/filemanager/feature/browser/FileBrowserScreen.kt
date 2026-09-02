@@ -80,6 +80,7 @@ import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.Checkbox
@@ -88,6 +89,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.Hrshd1eux.filemanager.core.storage.util.FileShareHelper
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.ContextualActionBar
 import com.Hrshd1eux.filemanager.feature.browser.components.CreateFolderDialog
@@ -95,6 +97,7 @@ import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDi
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.RenameDialog
+import com.Hrshd1eux.filemanager.feature.properties.BulkPropertiesSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,6 +115,7 @@ fun FileBrowserScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
+    var bulkNodesForProperties by remember { mutableStateOf<List<StorageNode>?>(null) }
     var nodeToCopy by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToMove by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
@@ -188,7 +192,16 @@ fun FileBrowserScreen(
                     onSelectAllToggle = { viewModel.selectAll(allItems) },
                     onBulkCopy = { bulkNodesToCopy = selectedItems },
                     onBulkMove = { bulkNodesToMove = selectedItems },
-                    onBulkDelete = { bulkNodesToDelete = selectedItems }
+                    onBulkDelete = { bulkNodesToDelete = selectedItems },
+                    onShare = { FileShareHelper.shareNodes(context, selectedItems) },
+                    onRename = { nodeToRename = selectedItems.firstOrNull() },
+                    onProperties = {
+                        if (selectedItems.size == 1) {
+                            selectedNodeForProperties = selectedItems.first()
+                        } else {
+                            bulkNodesForProperties = selectedItems
+                        }
+                    }
                 )
             } else {
                 TopAppBar(
@@ -313,6 +326,9 @@ fun FileBrowserScreen(
                                     },
                                     onDeleteClick = {
                                         nodeToDelete = node
+                                    },
+                                    onShareClick = {
+                                        FileShareHelper.shareNodes(context, listOf(node))
                                     },
                                     onInfoClick = {
                                         selectedNodeForProperties = node
@@ -498,12 +514,21 @@ fun FileBrowserScreen(
         )
     }
 
-    // Properties Bottom Sheet
+    // Properties Bottom Sheet (Single Node)
     val inspectedNode = selectedNodeForProperties
     if (inspectedNode != null) {
         FilePropertiesSheet(
             node = inspectedNode,
             onDismiss = { selectedNodeForProperties = null }
+        )
+    }
+
+    // Bulk Properties Bottom Sheet (Multiple Nodes)
+    val bulkInspectedNodes = bulkNodesForProperties
+    if (bulkInspectedNodes != null) {
+        BulkPropertiesSheet(
+            nodes = bulkInspectedNodes,
+            onDismiss = { bulkNodesForProperties = null }
         )
     }
 }
@@ -572,6 +597,7 @@ private fun StorageNodeItem(
     onMoveClick: () -> Unit,
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    onShareClick: () -> Unit,
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -704,6 +730,18 @@ private fun StorageNodeItem(
                                 onRenameClick()
                             }
                         )
+                        if (!node.isDirectory) {
+                            DropdownMenuItem(
+                                text = { Text("Share") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onShareClick()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                             leadingIcon = {
