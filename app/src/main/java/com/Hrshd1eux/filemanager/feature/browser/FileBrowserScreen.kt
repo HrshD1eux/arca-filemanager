@@ -74,6 +74,7 @@ import androidx.compose.runtime.setValue
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -99,6 +100,8 @@ fun FileBrowserScreen(
 
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToCopy by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeToMove by remember { mutableStateOf<StorageNode?>(null) }
+    var activeOperationTitle by remember { mutableStateOf("Processing Files") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -243,6 +246,9 @@ fun FileBrowserScreen(
                                     onCopyClick = {
                                         nodeToCopy = node
                                     },
+                                    onMoveClick = {
+                                        nodeToMove = node
+                                    },
                                     onInfoClick = {
                                         selectedNodeForProperties = node
                                     }
@@ -260,9 +266,12 @@ fun FileBrowserScreen(
     if (targetToCopy != null) {
         DestinationPickerDialog(
             storageProvider = viewModel.storageProvider,
+            title = "Copy to...",
+            confirmButtonText = "Copy Here",
             excludedPaths = if (targetToCopy.isDirectory) setOf(targetToCopy.path) else emptySet(),
             onDestinationSelected = { destination ->
                 nodeToCopy = null
+                activeOperationTitle = "Copying Files"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 viewModel.startCopy(
                     sources = listOf(targetToCopy),
@@ -274,12 +283,34 @@ fun FileBrowserScreen(
         )
     }
 
+    // Move Destination Picker
+    val targetToMove = nodeToMove
+    if (targetToMove != null) {
+        DestinationPickerDialog(
+            storageProvider = viewModel.storageProvider,
+            title = "Move to...",
+            confirmButtonText = "Move Here",
+            excludedPaths = if (targetToMove.isDirectory) setOf(targetToMove.path) else emptySet(),
+            onDestinationSelected = { destination ->
+                nodeToMove = null
+                activeOperationTitle = "Moving Files"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.startMove(
+                    sources = listOf(targetToMove),
+                    destination = destination,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { nodeToMove = null }
+        )
+    }
+
     // Active Operation Progress Dialog
     val currentProgress = activeProgress
     if (currentProgress != null) {
         OperationProgressDialog(
             progress = currentProgress,
-            title = "Copying Files",
+            title = activeOperationTitle,
             onCancel = { viewModel.cancelActiveOperation() }
         )
     }
@@ -351,6 +382,7 @@ private fun StorageNodeItem(
     node: StorageNode,
     onClick: () -> Unit,
     onCopyClick: () -> Unit,
+    onMoveClick: () -> Unit,
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -439,6 +471,16 @@ private fun StorageNodeItem(
                         onClick = {
                             showMenu = false
                             onCopyClick()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Move to...") },
+                        leadingIcon = {
+                            Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        onClick = {
+                            showMenu = false
+                            onMoveClick()
                         }
                     )
                     DropdownMenuItem(

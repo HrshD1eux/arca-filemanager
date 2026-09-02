@@ -55,6 +55,8 @@ import com.Hrshd1eux.filemanager.feature.browser.model.BreadcrumbItem
 @Composable
 fun DestinationPickerDialog(
     storageProvider: StorageProvider,
+    title: String = "Select Destination",
+    confirmButtonText: String = "Copy Here",
     excludedPaths: Set<String> = emptySet(),
     onDestinationSelected: (StorageNode) -> Unit,
     onDismiss: () -> Unit,
@@ -89,7 +91,7 @@ fun DestinationPickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Select Destination",
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -218,7 +220,7 @@ fun DestinationPickerDialog(
                 onClick = { onDestinationSelected(currentDir) },
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Copy Here")
+                Text(confirmButtonText)
             }
         },
         dismissButton = {

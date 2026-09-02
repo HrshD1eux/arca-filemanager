@@ -94,6 +94,51 @@ class FileBrowserViewModel(
         }
     }
 
+    fun startMove(
+        sources: List<StorageNode>,
+        destination: StorageNode,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        hasPermission: Boolean
+    ) {
+        if (!hasPermission) {
+            _uiState.value = BrowserUiState.PermissionRequired()
+            return
+        }
+
+        activeJob = viewModelScope.launch {
+            _activeProgress.value = OperationProgress(totalFiles = sources.size)
+
+            val result = operationEngine.move(
+                sources = sources,
+                destinationDir = destination,
+                conflictResolution = conflictResolution,
+                onProgress = { progress ->
+                    _activeProgress.value = progress
+                }
+            )
+
+            _activeProgress.value = null
+
+            result.onSuccess { opResult ->
+                when (opResult) {
+                    is OperationResult.Success -> {
+                        _userMessage.emit("Moved ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
+                        refresh(hasPermission)
+                    }
+                    is OperationResult.Cancelled -> {
+                        _userMessage.emit("Move cancelled.")
+                        refresh(hasPermission)
+                    }
+                    is OperationResult.Failure -> {
+                        _userMessage.emit("Move failed: ${opResult.error.message}")
+                    }
+                }
+            }.onFailure { error ->
+                _userMessage.emit("Move error: ${error.localizedMessage}")
+            }
+        }
+    }
+
     fun cancelActiveOperation() {
         activeJob?.cancel()
         activeJob = null
