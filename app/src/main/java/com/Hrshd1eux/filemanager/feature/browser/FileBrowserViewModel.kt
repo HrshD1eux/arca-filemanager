@@ -12,6 +12,7 @@ import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.operations.model.OperationResult
+import com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.provider.StorageProvider
@@ -37,7 +38,8 @@ class FileBrowserViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
-    private val favoritesRepository: FavoritesRepository = FavoritesRepository()
+    private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
+    private val recentsRepository: RecentsRepository = RecentsRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
@@ -364,12 +366,27 @@ class FileBrowserViewModel(
                     items = sorted,
                     stats = stats
                 )
+
+                recentsRepository.recordAccess(
+                    StorageNode(
+                        id = path,
+                        name = currentTitle,
+                        path = path,
+                        isDirectory = true,
+                        size = 0L,
+                        lastModified = System.currentTimeMillis()
+                    )
+                )
             }.onFailure { error ->
                 _uiState.value = BrowserUiState.Error(
                     message = error.localizedMessage ?: "Failed to read directory."
                 )
             }
         }
+    }
+
+    fun recordFileAccess(node: StorageNode) {
+        recentsRepository.recordAccess(node)
     }
 
     fun navigateInto(node: StorageNode, hasPermission: Boolean) {

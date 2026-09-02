@@ -62,6 +62,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.favorites.model.FavoriteItem
 
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import com.Hrshd1eux.filemanager.core.recents.model.RecentItem
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -73,7 +81,9 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showClearRecentsDialog by remember { mutableStateOf(false) }
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val recents by viewModel.recents.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -146,6 +156,40 @@ fun HomeScreen(
                 StorageOverviewCard(
                     onClick = { onNavigateToBrowser(null, "Internal Storage") }
                 )
+            }
+
+            // Recent Section
+            if (recents.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Recent",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        TextButton(onClick = { showClearRecentsDialog = true }) {
+                            Text(
+                                text = "Clear",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                items(recents.size, key = { recents[it].path }) { index ->
+                    val recent = recents[index]
+                    RecentItemRow(
+                        item = recent,
+                        onClick = { onNavigateToBrowser(recent.path, recent.displayName) },
+                        onRemove = { viewModel.removeRecent(recent.path) }
+                    )
+                }
             }
 
             // Favorites / Bookmarks Section
@@ -236,6 +280,29 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    if (showClearRecentsDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearRecentsDialog = false },
+            title = { Text("Clear Recent History?") },
+            text = { Text("All items will be removed from your recent access history. Your files will not be deleted.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.clearRecents()
+                        showClearRecentsDialog = false
+                    }
+                ) {
+                    Text("Clear", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearRecentsDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -463,5 +530,104 @@ private fun FavoriteItemRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun RecentItemRow(
+    item: RecentItem,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (item.isDirectory) FolderYellow.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (item.isDirectory) Icons.Default.Folder else Icons.Default.Description,
+                    contentDescription = null,
+                    tint = if (item.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+
+                val meta = if (item.isDirectory) {
+                    formatRelativeTime(item.accessedAt)
+                } else {
+                    "${FileFormatter.formatFileSize(item.size)} • ${formatRelativeTime(item.accessedAt)}"
+                }
+
+                Text(
+                    text = meta,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = "Remove Recent Item",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun formatRelativeTime(timestamp: Long): String {
+    val diff = System.currentTimeMillis() - timestamp
+    val seconds = diff / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
+
+    return when {
+        minutes < 1 -> "Just now"
+        minutes < 60 -> "${minutes}m ago"
+        hours < 24 -> "${hours}h ago"
+        days == 1L -> "Yesterday"
+        days < 7 -> "${days}d ago"
+        else -> FileFormatter.formatDateTime(timestamp)
     }
 }
