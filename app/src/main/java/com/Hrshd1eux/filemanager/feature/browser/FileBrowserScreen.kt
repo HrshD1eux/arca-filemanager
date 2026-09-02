@@ -80,6 +80,7 @@ import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -105,6 +106,7 @@ fun FileBrowserScreen(
     initialPath: String?,
     title: String,
     onNavigateBack: () -> Unit,
+    onNavigateToSearch: (rootPath: String?) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: FileBrowserViewModel = viewModel()
 ) {
@@ -229,6 +231,15 @@ fun FileBrowserScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = {
+                            val currentPath = (uiState as? BrowserUiState.Success)?.breadcrumbs?.lastOrNull()?.path ?: initialPath
+                            onNavigateToSearch(currentPath)
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search"
+                            )
+                        }
                         IconButton(onClick = {
                             val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                             viewModel.refresh(hasPermission)

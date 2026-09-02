@@ -20,4 +20,9 @@ sealed interface Screen {
         val initialPath: String? = null,
         val title: String = "Internal Storage"
     ) : Screen
+
+    @Serializable
+    data class Search(
+        val rootPath: String? = null
+    ) : Screen
 }

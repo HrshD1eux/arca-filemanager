@@ -61,6 +61,7 @@ import android.os.Environment
 @Composable
 fun HomeScreen(
     onNavigateToBrowser: (initialPath: String?, title: String) -> Unit,
+    onNavigateToSearch: (rootPath: String?) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier
@@ -79,7 +80,7 @@ fun HomeScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = { /* Search stub for 1.1.11 */ }) {
+                    IconButton(onClick = { onNavigateToSearch(null) }) {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search"

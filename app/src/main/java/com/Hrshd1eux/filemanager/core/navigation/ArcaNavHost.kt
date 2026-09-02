@@ -14,7 +14,9 @@ import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
+import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
+import java.io.File
 
 @Composable
 fun ArcaNavHost(
@@ -34,6 +36,9 @@ fun ArcaNavHost(
                 onNavigateToBrowser = { initialPath, title ->
                     navController.navigate(Screen.Browser(initialPath = initialPath, title = title))
                 },
+                onNavigateToSearch = { rootPath ->
+                    navController.navigate(Screen.Search(rootPath = rootPath))
+                },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) }
             )
@@ -49,7 +54,26 @@ fun ArcaNavHost(
             FileBrowserScreen(
                 initialPath = route.initialPath,
                 title = route.title,
+                onNavigateToSearch = { rootPath ->
+                    navController.navigate(Screen.Search(rootPath = rootPath))
+                },
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.Search>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.Search>()
+            FileSearchScreen(
+                rootPath = route.rootPath,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDirectory = { path ->
+                    navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))
+                }
             )
         }
 
