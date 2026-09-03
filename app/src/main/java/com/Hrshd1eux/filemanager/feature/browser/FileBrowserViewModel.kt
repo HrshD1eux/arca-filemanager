@@ -339,6 +339,7 @@ class FileBrowserViewModel(
         sources: List<StorageNode>,
         archiveName: String,
         compressionLevel: Int = java.util.zip.Deflater.DEFAULT_COMPRESSION,
+        password: CharArray? = null,
         hasPermission: Boolean
     ) {
         val currentState = _uiState.value as? BrowserUiState.Success ?: return
@@ -350,35 +351,43 @@ class FileBrowserViewModel(
             title = "Compressing $archiveName",
             type = OperationType.COMPRESS
         ) { onProgress ->
-            val sourceFiles = sources.map { File(it.path) }
-            val lowerName = archiveName.lowercase()
-            val size = when {
-                lowerName.endsWith(".7z") -> {
-                    sevenZEngine.create7z(
-                        sources = sourceFiles,
-                        destination7z = destFile,
-                        onProgress = onProgress
-                    ).getOrThrow()
+            try {
+                val sourceFiles = sources.map { File(it.path) }
+                val lowerName = archiveName.lowercase()
+                val size = when {
+                    lowerName.endsWith(".7z") -> {
+                        sevenZEngine.create7z(
+                            sources = sourceFiles,
+                            destination7z = destFile,
+                            password = password,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
+                    lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
+                    lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
+                    lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                        tarEngine.createTar(
+                            sources = sourceFiles,
+                            destinationTar = destFile,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
+                    else -> {
+                        zipEngine.createZip(
+                            sources = sourceFiles,
+                            destinationZip = destFile,
+                            compressionLevel = compressionLevel,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
                 }
-                lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
-                lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
-                lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
-                    tarEngine.createTar(
-                        sources = sourceFiles,
-                        destinationTar = destFile,
-                        onProgress = onProgress
-                    ).getOrThrow()
-                }
-                else -> {
-                    zipEngine.createZip(
-                        sources = sourceFiles,
-                        destinationZip = destFile,
-                        compressionLevel = compressionLevel,
-                        onProgress = onProgress
-                    ).getOrThrow()
+                val encSuffix = if (password != null && password.isNotEmpty()) " (Encrypted 🔒)" else ""
+                _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})$encSuffix")
+            } finally {
+                if (password != null) {
+                    java.util.Arrays.fill(password, '\u0000')
                 }
             }
-            _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})")
         }
     }
 
@@ -386,6 +395,7 @@ class FileBrowserViewModel(
         archiveNode: StorageNode,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        password: CharArray? = null,
         verifyIntegrity: Boolean = false,
         hasPermission: Boolean
     ) {
@@ -399,41 +409,48 @@ class FileBrowserViewModel(
             title = "Extracting ${archiveNode.name}",
             type = OperationType.EXTRACT
         ) { onProgress ->
-            val archiveFile = File(archiveNode.path)
-            val lowerName = archiveFile.name.lowercase()
-            val count = when {
-                lowerName.endsWith(".7z") -> {
-                    sevenZEngine.extractAll(
-                        sevenZFile = archiveFile,
-                        destinationDir = destinationDir,
-                        conflictResolution = conflictResolution,
-                        verifyIntegrity = verifyIntegrity,
-                        onProgress = onProgress
-                    ).getOrThrow()
+            try {
+                val archiveFile = File(archiveNode.path)
+                val lowerName = archiveFile.name.lowercase()
+                val count = when {
+                    lowerName.endsWith(".7z") -> {
+                        sevenZEngine.extractAll(
+                            sevenZFile = archiveFile,
+                            destinationDir = destinationDir,
+                            conflictResolution = conflictResolution,
+                            password = password,
+                            verifyIntegrity = verifyIntegrity,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
+                    lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
+                    lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
+                    lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                        tarEngine.extractAll(
+                            tarFile = archiveFile,
+                            destinationDir = destinationDir,
+                            conflictResolution = conflictResolution,
+                            verifyIntegrity = verifyIntegrity,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
+                    else -> {
+                        zipEngine.extractAll(
+                            zipFile = archiveFile,
+                            destinationDir = destinationDir,
+                            conflictResolution = conflictResolution,
+                            verifyIntegrity = verifyIntegrity,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
                 }
-                lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
-                lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
-                lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
-                    tarEngine.extractAll(
-                        tarFile = archiveFile,
-                        destinationDir = destinationDir,
-                        conflictResolution = conflictResolution,
-                        verifyIntegrity = verifyIntegrity,
-                        onProgress = onProgress
-                    ).getOrThrow()
-                }
-                else -> {
-                    zipEngine.extractAll(
-                        zipFile = archiveFile,
-                        destinationDir = destinationDir,
-                        conflictResolution = conflictResolution,
-                        verifyIntegrity = verifyIntegrity,
-                        onProgress = onProgress
-                    ).getOrThrow()
+                val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
+                _userMessage.emit("Extracted $count items to ${destinationDir.name}$verifiedSuffix")
+            } finally {
+                if (password != null) {
+                    java.util.Arrays.fill(password, '\u0000')
                 }
             }
-            val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
-            _userMessage.emit("Extracted $count items to ${destinationDir.name}$verifiedSuffix")
         }
     }
 

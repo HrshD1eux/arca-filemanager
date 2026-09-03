@@ -76,7 +76,7 @@ class ArchiveViewerViewModel(
                 name.endsWith(".tar.bz2") || name.endsWith(".tbz2")
     }
 
-    fun loadArchive(path: String) {
+    fun loadArchive(path: String, password: CharArray? = null) {
         val file = File(path)
         archiveFile = file
         if (!file.exists() || !file.isFile) {
@@ -88,7 +88,7 @@ class ArchiveViewerViewModel(
             _uiState.value = ArchiveViewerUiState.Loading
             try {
                 allEntries = when {
-                    is7z(file) -> sevenZEngine.listEntries(file)
+                    is7z(file) -> sevenZEngine.listEntries(file, password)
                     isTar(file) -> tarEngine.listEntries(file)
                     else -> zipEngine.listEntries(file)
                 }
@@ -151,6 +151,7 @@ class ArchiveViewerViewModel(
     fun extractAll(
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        password: CharArray? = null,
         verifyIntegrity: Boolean = false,
         onComplete: () -> Unit = {}
     ) {
@@ -162,6 +163,7 @@ class ArchiveViewerViewModel(
                     sevenZFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    password = password,
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -197,6 +199,7 @@ class ArchiveViewerViewModel(
     fun extractSelected(
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        password: CharArray? = null,
         verifyIntegrity: Boolean = false,
         onComplete: () -> Unit = {}
     ) {
@@ -212,6 +215,7 @@ class ArchiveViewerViewModel(
                     entryPaths = selected,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    password = password,
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -247,13 +251,14 @@ class ArchiveViewerViewModel(
         }
     }
 
-    fun testArchive() {
+    fun testArchive(password: CharArray? = null) {
         val file = archiveFile ?: return
         viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
             val result = when {
                 is7z(file) -> sevenZEngine.testArchive(
                     sevenZFile = file,
+                    password = password,
                     onProgress = { _activeProgress.value = it }
                 )
                 isTar(file) -> tarEngine.testArchive(

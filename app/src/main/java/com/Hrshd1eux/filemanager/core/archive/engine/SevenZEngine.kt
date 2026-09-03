@@ -32,12 +32,16 @@ class SevenZEngine(
     /**
      * Lists all entries inside a .7z archive with path sanitization and safety checks.
      */
-    suspend fun listEntries(sevenZFile: File): List<ArchiveEntry> = withContext(ioDispatcher) {
+    suspend fun listEntries(sevenZFile: File, password: CharArray? = null): List<ArchiveEntry> = withContext(ioDispatcher) {
         if (!sevenZFile.exists() || !sevenZFile.isFile) return@withContext emptyList()
 
         val entries = mutableListOf<ArchiveEntry>()
         runCatching {
-            SevenZFile.builder().setFile(sevenZFile).get().use { szf ->
+            val builder = SevenZFile.builder().setFile(sevenZFile)
+            if (password != null && password.isNotEmpty()) {
+                builder.setPassword(password)
+            }
+            builder.get().use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
                 while (entry != null) {
                     val rawName = entry.name.removeSuffix("/").replace('\\', '/')
@@ -74,6 +78,7 @@ class SevenZEngine(
         sevenZFile: File,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        password: CharArray? = null,
         verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
@@ -86,7 +91,11 @@ class SevenZEngine(
             var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
-            SevenZFile.builder().setFile(sevenZFile).get().use { szf ->
+            val builder = SevenZFile.builder().setFile(sevenZFile)
+            if (password != null && password.isNotEmpty()) {
+                builder.setPassword(password)
+            }
+            builder.get().use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
 
                 while (entry != null) {
@@ -161,6 +170,7 @@ class SevenZEngine(
         entryPaths: Set<String>,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        password: CharArray? = null,
         verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
@@ -173,7 +183,11 @@ class SevenZEngine(
             var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
-            SevenZFile.builder().setFile(sevenZFile).get().use { szf ->
+            val builder = SevenZFile.builder().setFile(sevenZFile)
+            if (password != null && password.isNotEmpty()) {
+                builder.setPassword(password)
+            }
+            builder.get().use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
 
                 while (entry != null) {
@@ -248,11 +262,13 @@ class SevenZEngine(
 
     /**
      * Compresses files/folders into a high-performance .7z archive using LZMA2 / LZMA compression.
+     * Optionally encrypts with AES-256 using standard 7z password protection.
      */
     suspend fun create7z(
         sources: List<File>,
         destination7z: File,
         method: SevenZMethod = SevenZMethod.LZMA2,
+        password: CharArray? = null,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Long> = withContext(ioDispatcher) {
         runCatching {
@@ -279,7 +295,13 @@ class SevenZEngine(
             val buffer = ByteArray(BUFFER_SIZE)
 
             try {
-                SevenZOutputFile(destination7z).use { out ->
+                val out = if (password != null && password.isNotEmpty()) {
+                    SevenZOutputFile(destination7z, password)
+                } else {
+                    SevenZOutputFile(destination7z)
+                }
+
+                out.use {
                     out.setContentMethods(listOf(SevenZMethodConfiguration(method)))
 
                     for (source in sources) {
@@ -358,6 +380,7 @@ class SevenZEngine(
      */
     suspend fun testArchive(
         sevenZFile: File,
+        password: CharArray? = null,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<ArchiveIntegrityReport> = withContext(ioDispatcher) {
         runCatching {
@@ -367,7 +390,11 @@ class SevenZEngine(
             var totalEntries = 0
             val buffer = ByteArray(BUFFER_SIZE)
 
-            SevenZFile.builder().setFile(sevenZFile).get().use { szf ->
+            val builder = SevenZFile.builder().setFile(sevenZFile)
+            if (password != null && password.isNotEmpty()) {
+                builder.setPassword(password)
+            }
+            builder.get().use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
 
                 while (entry != null) {

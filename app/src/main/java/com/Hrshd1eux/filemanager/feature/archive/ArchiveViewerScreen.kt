@@ -413,15 +413,27 @@ fun ArchiveViewerScreen(
                 showExtractOptionsSheet = false
                 val parentDir = File(archivePath).parentFile ?: File("/storage/emulated/0")
                 val targetDir = File(parentDir, File(archivePath).nameWithoutExtension)
-                viewModel.extractAll(targetDir, resolution, verifyIntegrity)
+                viewModel.extractAll(
+                    destinationDir = targetDir,
+                    conflictResolution = resolution,
+                    verifyIntegrity = verifyIntegrity
+                )
             },
             onExtractHere = { resolution, verifyIntegrity ->
                 showExtractOptionsSheet = false
                 val parentDir = File(archivePath).parentFile ?: File("/storage/emulated/0")
                 if (isSelective) {
-                    viewModel.extractSelected(parentDir, resolution, verifyIntegrity)
+                    viewModel.extractSelected(
+                        destinationDir = parentDir,
+                        conflictResolution = resolution,
+                        verifyIntegrity = verifyIntegrity
+                    )
                 } else {
-                    viewModel.extractAll(parentDir, resolution, verifyIntegrity)
+                    viewModel.extractAll(
+                        destinationDir = parentDir,
+                        conflictResolution = resolution,
+                        verifyIntegrity = verifyIntegrity
+                    )
                 }
             },
             onExtractToCustom = { resolution, verifyIntegrity ->
@@ -445,10 +457,18 @@ fun ArchiveViewerScreen(
                 showExtractCustomPicker = false
                 if (isSelective) {
                     val extractTargetDir = File(destNode.path)
-                    viewModel.extractSelected(extractTargetDir, activeConflictResolution, activeExtractVerify)
+                    viewModel.extractSelected(
+                        destinationDir = extractTargetDir,
+                        conflictResolution = activeConflictResolution,
+                        verifyIntegrity = activeExtractVerify
+                    )
                 } else {
                     val extractTargetDir = File(destNode.path, File(archivePath).nameWithoutExtension)
-                    viewModel.extractAll(extractTargetDir, activeConflictResolution, activeExtractVerify)
+                    viewModel.extractAll(
+                        destinationDir = extractTargetDir,
+                        conflictResolution = activeConflictResolution,
+                        verifyIntegrity = activeExtractVerify
+                    )
                 }
             },
             onDismiss = { showExtractCustomPicker = false }

@@ -21,11 +21,15 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -47,8 +51,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionLevelPreset
@@ -63,7 +71,7 @@ import java.util.zip.Deflater
 fun CompressDialog(
     sources: List<StorageNode>,
     defaultName: String,
-    onConfirmCreate: (archiveName: String, compressionLevel: Int) -> Unit,
+    onConfirmCreate: (archiveName: String, compressionLevel: Int, password: CharArray?) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -75,6 +83,12 @@ fun CompressDialog(
     var isSolid by remember { mutableStateOf(true) }
     var dictionarySizeMb by remember { mutableIntStateOf(32) }
     var showAdvanced by remember { mutableStateOf(false) }
+
+    // Encryption & Password States
+    var isEncryptEnabled by remember { mutableStateOf(false) }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
 
     var rawName by remember {
         val baseName = defaultName
@@ -196,6 +210,9 @@ fun CompressDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                val isPasswordValid = !isEncryptEnabled || (password.isNotEmpty() && password == confirmPassword)
+                val canCreate = isNameValid && isPasswordValid
+
                 // Archive Name Input Field
                 OutlinedTextField(
                     value = rawName,
@@ -219,15 +236,123 @@ fun CompressDialog(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
                         onDone = {
-                            if (isNameValid) {
+                            if (canCreate) {
                                 val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
-                                onConfirmCreate(finalName, customLevel)
+                                val passChars = if (isEncryptEnabled && password.isNotEmpty()) password.toCharArray() else null
+                                password = ""
+                                confirmPassword = ""
+                                onConfirmCreate(finalName, customLevel, passChars)
                             }
                         }
                     ),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Encryption & Password Section Card
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isEncryptEnabled = !isEncryptEnabled },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Encrypt Archive",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Switch(
+                                checked = isEncryptEnabled,
+                                onCheckedChange = { isEncryptEnabled = it }
+                            )
+                        }
+
+                        AnimatedVisibility(visible = isEncryptEnabled) {
+                            Column(modifier = Modifier.padding(top = 10.dp)) {
+                                HorizontalDivider()
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                OutlinedTextField(
+                                    value = password,
+                                    onValueChange = { password = it },
+                                    label = { Text("Password") },
+                                    placeholder = { Text("••••••••••") },
+                                    singleLine = true,
+                                    isError = isEncryptEnabled && password.isEmpty() && confirmPassword.isNotEmpty(),
+                                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Password,
+                                        imeAction = ImeAction.Next
+                                    ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                val passwordsMismatch = isEncryptEnabled && confirmPassword.isNotEmpty() && password != confirmPassword
+                                OutlinedTextField(
+                                    value = confirmPassword,
+                                    onValueChange = { confirmPassword = it },
+                                    label = { Text("Confirm") },
+                                    placeholder = { Text("••••••••••") },
+                                    singleLine = true,
+                                    isError = passwordsMismatch,
+                                    supportingText = if (passwordsMismatch) {
+                                        { Text("Passwords do not match") }
+                                    } else null,
+                                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Password,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable { showPassword = !showPassword }
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = showPassword,
+                                        onCheckedChange = { showPassword = it }
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Show password",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -281,12 +406,13 @@ fun CompressDialog(
                                     value = customLevel.toFloat(),
                                     onValueChange = { customLevel = it.toInt() },
                                     valueRange = 0f..9f,
-                                    steps = 8
+                                    steps = 8,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                // Method Selector
+                                // Compression Method
                                 Text(
                                     text = "Method",
                                     style = MaterialTheme.typography.labelMedium
@@ -294,15 +420,15 @@ fun CompressDialog(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     MethodChip(CompressionMethodOption.DEFAULT, selectedMethod) { selectedMethod = it }
                                     MethodChip(CompressionMethodOption.DEFLATE, selectedMethod) { selectedMethod = it }
                                     MethodChip(CompressionMethodOption.LZMA2, selectedMethod) { selectedMethod = it }
-                                    MethodChip(CompressionMethodOption.BZIP2, selectedMethod) { selectedMethod = it }
+                                    MethodChip(CompressionMethodOption.COPY, selectedMethod) { selectedMethod = it }
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
 
                                 // Threads Selector
                                 Text(
@@ -320,9 +446,9 @@ fun CompressDialog(
                                     ThreadChip("4", 4, selectedThreads) { selectedThreads = it }
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
 
-                                // Solid Archive Switch
+                                // Solid Archive Toggle
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -330,30 +456,12 @@ fun CompressDialog(
                                 ) {
                                     Text(
                                         text = "Solid Archive",
-                                        style = MaterialTheme.typography.labelMedium
+                                        style = MaterialTheme.typography.bodyMedium
                                     )
                                     Switch(
                                         checked = isSolid,
                                         onCheckedChange = { isSolid = it }
                                     )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Dictionary Size Selector
-                                Text(
-                                    text = "Dictionary",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    DictChip("16 MB", 16, dictionarySizeMb) { dictionarySizeMb = it }
-                                    DictChip("32 MB", 32, dictionarySizeMb) { dictionarySizeMb = it }
-                                    DictChip("64 MB", 64, dictionarySizeMb) { dictionarySizeMb = it }
-                                    DictChip("128 MB", 128, dictionarySizeMb) { dictionarySizeMb = it }
                                 }
                             }
                         }
@@ -362,14 +470,20 @@ fun CompressDialog(
             }
         },
         confirmButton = {
+            val isPasswordValid = !isEncryptEnabled || (password.isNotEmpty() && password == confirmPassword)
+            val canCreate = isNameValid && isPasswordValid
+
             Button(
                 onClick = {
-                    if (isNameValid) {
+                    if (canCreate) {
                         val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
-                        onConfirmCreate(finalName, customLevel)
+                        val passChars = if (isEncryptEnabled && password.isNotEmpty()) password.toCharArray() else null
+                        password = ""
+                        confirmPassword = ""
+                        onConfirmCreate(finalName, customLevel, passChars)
                     }
                 },
-                enabled = isNameValid,
+                enabled = canCreate,
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text("Create")
@@ -377,7 +491,11 @@ fun CompressDialog(
         },
         dismissButton = {
             TextButton(
-                onClick = onDismiss,
+                onClick = {
+                    password = ""
+                    confirmPassword = ""
+                    onDismiss()
+                },
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text("Cancel")

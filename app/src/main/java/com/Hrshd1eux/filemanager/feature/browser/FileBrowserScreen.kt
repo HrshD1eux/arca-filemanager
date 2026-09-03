@@ -751,7 +751,7 @@ fun FileBrowserScreen(
         CompressDialog(
             sources = listOf(targetToCompress),
             defaultName = "${targetToCompress.name}.zip",
-            onConfirmCreate = { archiveName, level ->
+            onConfirmCreate = { archiveName, level, password ->
                 nodeToCompress = null
                 activeOperationTitle = "Compressing to $archiveName"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -759,6 +759,7 @@ fun FileBrowserScreen(
                     sources = listOf(targetToCompress),
                     archiveName = archiveName,
                     compressionLevel = level,
+                    password = password,
                     hasPermission = hasPermission
                 )
             },
@@ -777,7 +778,7 @@ fun FileBrowserScreen(
         CompressDialog(
             sources = targetBulkCompress,
             defaultName = defaultZipName,
-            onConfirmCreate = { archiveName, level ->
+            onConfirmCreate = { archiveName, level, password ->
                 bulkNodesToCompress = null
                 activeOperationTitle = "Compressing ${targetBulkCompress.size} Items"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -785,6 +786,7 @@ fun FileBrowserScreen(
                     sources = targetBulkCompress,
                     archiveName = archiveName,
                     compressionLevel = level,
+                    password = password,
                     hasPermission = hasPermission
                 )
             },
@@ -804,14 +806,26 @@ fun FileBrowserScreen(
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val parentDir = File(targetToExtract.path).parentFile ?: File("/storage/emulated/0")
                 val targetDir = File(parentDir, File(targetToExtract.path).nameWithoutExtension)
-                viewModel.extractArchive(targetToExtract, targetDir, resolution, verifyIntegrity, hasPermission)
+                viewModel.extractArchive(
+                    archiveNode = targetToExtract,
+                    destinationDir = targetDir,
+                    conflictResolution = resolution,
+                    verifyIntegrity = verifyIntegrity,
+                    hasPermission = hasPermission
+                )
             },
             onExtractHere = { resolution, verifyIntegrity ->
                 nodeToExtract = null
                 activeOperationTitle = "Extracting Archive"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val parentDir = File(targetToExtract.path).parentFile ?: File("/storage/emulated/0")
-                viewModel.extractArchive(targetToExtract, parentDir, resolution, verifyIntegrity, hasPermission)
+                viewModel.extractArchive(
+                    archiveNode = targetToExtract,
+                    destinationDir = parentDir,
+                    conflictResolution = resolution,
+                    verifyIntegrity = verifyIntegrity,
+                    hasPermission = hasPermission
+                )
             },
             onExtractToCustom = { resolution, verifyIntegrity ->
                 val node = targetToExtract
@@ -837,7 +851,13 @@ fun FileBrowserScreen(
                 activeOperationTitle = "Extracting Archive"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val targetDir = File(dest.path, File(currentExtractTarget.path).nameWithoutExtension)
-                viewModel.extractArchive(currentExtractTarget, targetDir, customExtractResolution, customExtractVerify, hasPermission)
+                viewModel.extractArchive(
+                    archiveNode = currentExtractTarget,
+                    destinationDir = targetDir,
+                    conflictResolution = customExtractResolution,
+                    verifyIntegrity = customExtractVerify,
+                    hasPermission = hasPermission
+                )
                 nodeForCustomExtract = null
             },
             onDismiss = {
