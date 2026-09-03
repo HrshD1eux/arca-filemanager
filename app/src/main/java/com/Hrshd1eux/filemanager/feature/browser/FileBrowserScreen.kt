@@ -94,13 +94,16 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher
+import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.TaskAlt
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
+import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveTestDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.CompressDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
 import com.Hrshd1eux.filemanager.feature.operations.components.OperationsQueueSheet
@@ -145,6 +148,10 @@ fun FileBrowserScreen(
     val activeOperation by viewModel.activeOperation.collectAsStateWithLifecycle()
     val waitingQueue by viewModel.waitingQueue.collectAsStateWithLifecycle()
     val completedHistory by viewModel.completedHistory.collectAsStateWithLifecycle()
+    val testReport by viewModel.testReport.collectAsStateWithLifecycle()
+    val isTestingArchive by viewModel.isTestingArchive.collectAsStateWithLifecycle()
+    val testProgress by viewModel.testProgress.collectAsStateWithLifecycle()
+    val testingArchiveName by viewModel.testingArchiveName.collectAsStateWithLifecycle()
     val selectedNodeIds by viewModel.selectedNodeIds.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
@@ -442,7 +449,7 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
-                                                } else if (node.extension.equals("zip", ignoreCase = true)) {
+                                                } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
                                                     FileIntentDispatcher.view(context, node)
@@ -465,6 +472,9 @@ fun FileBrowserScreen(
                                             },
                                             onExtractClick = {
                                                 nodeToExtract = node
+                                            },
+                                            onTestArchiveClick = {
+                                                viewModel.testArchive(node)
                                             },
                                             onRenameClick = {
                                                 nodeToRename = node
@@ -505,7 +515,7 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
-                                                } else if (node.extension.equals("zip", ignoreCase = true)) {
+                                                } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
                                                     FileIntentDispatcher.view(context, node)
@@ -528,6 +538,9 @@ fun FileBrowserScreen(
                                             },
                                             onExtractClick = {
                                                 nodeToExtract = node
+                                            },
+                                            onTestArchiveClick = {
+                                                viewModel.testArchive(node)
                                             },
                                             onRenameClick = {
                                                 nodeToRename = node
@@ -834,6 +847,18 @@ fun FileBrowserScreen(
         )
     }
 
+    // Archive Integrity Test Dialog
+    if (isTestingArchive || testReport != null) {
+        ArchiveTestDialog(
+            archiveName = testingArchiveName,
+            isTesting = isTestingArchive,
+            progress = testProgress,
+            report = testReport,
+            onCancel = { viewModel.cancelArchiveTest() },
+            onDismiss = { viewModel.dismissArchiveTest() }
+        )
+    }
+
     // Active Operation Progress Dialog (Fallback popup if queue sheet closed)
     val currentProgress = activeProgress
     if (currentProgress != null && !showOperationsQueueSheet) {
@@ -946,6 +971,7 @@ private fun StorageNodeItem(
     onMoveClick: () -> Unit,
     onCompressClick: () -> Unit = {},
     onExtractClick: () -> Unit = {},
+    onTestArchiveClick: () -> Unit = {},
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -1084,7 +1110,7 @@ private fun StorageNodeItem(
                                 onCompressClick()
                             }
                         )
-                        if (node.name.endsWith(".zip", ignoreCase = true)) {
+                        if (FileTypeResolver.isArchive(node.name)) {
                             DropdownMenuItem(
                                 text = { Text("Extract...") },
                                 leadingIcon = {
@@ -1093,6 +1119,16 @@ private fun StorageNodeItem(
                                 onClick = {
                                     showMenu = false
                                     onExtractClick()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Test Archive") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onTestArchiveClick()
                                 }
                             )
                         }

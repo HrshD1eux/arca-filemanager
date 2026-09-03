@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.TarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
+import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionProfile
 import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
@@ -27,6 +28,7 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.browser.model.BreadcrumbItem
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -65,6 +67,20 @@ class FileBrowserViewModel(
     val activeProgress: StateFlow<OperationProgress?> = operationManager.activeOperation
         .map { it?.progress }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _testReport = MutableStateFlow<ArchiveIntegrityReport?>(null)
+    val testReport: StateFlow<ArchiveIntegrityReport?> = _testReport.asStateFlow()
+
+    private val _isTestingArchive = MutableStateFlow(false)
+    val isTestingArchive: StateFlow<Boolean> = _isTestingArchive.asStateFlow()
+
+    private val _testProgress = MutableStateFlow<OperationProgress?>(null)
+    val testProgress: StateFlow<OperationProgress?> = _testProgress.asStateFlow()
+
+    private val _testingArchiveName = MutableStateFlow("")
+    val testingArchiveName: StateFlow<String> = _testingArchiveName.asStateFlow()
+
+    private var archiveTestJob: Job? = null
 
     private val _selectedNodeIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedNodeIds: StateFlow<Set<String>> = _selectedNodeIds.asStateFlow()
@@ -427,6 +443,53 @@ class FileBrowserViewModel(
 
     fun clearCompletedOperations() {
         operationManager.clearCompleted()
+    }
+
+    fun testArchive(node: StorageNode) {
+        val file = File(node.path)
+        if (!file.exists() || !file.isFile) return
+
+        _testingArchiveName.value = node.name
+        _isTestingArchive.value = true
+        _testProgress.value = OperationProgress(totalFiles = 0)
+        _testReport.value = null
+
+        archiveTestJob = viewModelScope.launch {
+            val lowerName = file.name.lowercase()
+            val result = when {
+                lowerName.endsWith(".7z") -> {
+                    sevenZEngine.testArchive(file) { _testProgress.value = it }
+                }
+                lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
+                lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
+                lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                    tarEngine.testArchive(file) { _testProgress.value = it }
+                }
+                else -> {
+                    zipEngine.testArchive(file) { _testProgress.value = it }
+                }
+            }
+            _isTestingArchive.value = false
+            _testProgress.value = null
+            result.onSuccess { report ->
+                _testReport.value = report
+            }.onFailure { error ->
+                _userMessage.emit("Integrity test failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun cancelArchiveTest() {
+        archiveTestJob?.cancel()
+        archiveTestJob = null
+        _isTestingArchive.value = false
+        _testProgress.value = null
+    }
+
+    fun dismissArchiveTest() {
+        _testReport.value = null
+        _isTestingArchive.value = false
+        _testProgress.value = null
     }
 
     fun loadDirectory(path: String, hasPermission: Boolean) {

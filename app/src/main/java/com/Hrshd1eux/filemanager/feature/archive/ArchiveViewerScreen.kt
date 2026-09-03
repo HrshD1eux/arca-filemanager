@@ -469,7 +469,11 @@ fun ArchiveViewerScreen(
     val currentTestReport = testReport
     if (currentTestReport != null) {
         ArchiveTestDialog(
+            archiveName = File(archivePath).name,
+            isTesting = false,
+            progress = null,
             report = currentTestReport,
+            onCancel = {},
             onDismiss = { viewModel.dismissTestReport() }
         )
     }

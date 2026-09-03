@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -66,6 +68,7 @@ fun StorageNodeCompactItem(
     onMoveClick: () -> Unit,
     onCompressClick: () -> Unit = {},
     onExtractClick: () -> Unit = {},
+    onTestArchiveClick: () -> Unit = {},
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -189,7 +192,7 @@ fun StorageNodeCompactItem(
                                 onCompressClick()
                             }
                         )
-                        if (node.name.endsWith(".zip", ignoreCase = true)) {
+                        if (FileTypeResolver.isArchive(node.name)) {
                             DropdownMenuItem(
                                 text = { Text("Extract...") },
                                 leadingIcon = {
@@ -198,6 +201,16 @@ fun StorageNodeCompactItem(
                                 onClick = {
                                     showMenu = false
                                     onExtractClick()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Test Archive") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onTestArchiveClick()
                                 }
                             )
                         }
