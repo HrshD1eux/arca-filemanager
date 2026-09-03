@@ -338,6 +338,7 @@ class FileBrowserViewModel(
     fun compressFiles(
         sources: List<StorageNode>,
         archiveName: String,
+        compressionLevel: Int = java.util.zip.Deflater.DEFAULT_COMPRESSION,
         hasPermission: Boolean
     ) {
         val currentState = _uiState.value as? BrowserUiState.Success ?: return
@@ -351,6 +352,7 @@ class FileBrowserViewModel(
             val result = zipEngine.createZip(
                 sources = sourceFiles,
                 destinationZip = destZip,
+                compressionLevel = compressionLevel,
                 onProgress = { _activeProgress.value = it }
             )
             _activeProgress.value = null

@@ -246,6 +246,7 @@ class ZipEngine(
     suspend fun createZip(
         sources: List<File>,
         destinationZip: File,
+        compressionLevel: Int = java.util.zip.Deflater.DEFAULT_COMPRESSION,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Long> = withContext(ioDispatcher) {
         runCatching {
@@ -271,31 +272,56 @@ class ZipEngine(
             var filesProcessed = 0
             val buffer = ByteArray(BUFFER_SIZE)
 
-            ZipOutputStream(FileOutputStream(destinationZip).buffered()).use { zos ->
-                for (source in sources) {
-                    coroutineContext.ensureActive()
-                    if (source.isDirectory) {
-                        val baseDir = source.parentFile ?: source
-                        source.walkTopDown().forEach { file ->
-                            coroutineContext.ensureActive()
-                            val relativePath = file.relativeTo(baseDir).path.replace('\\', '/')
-                            if (file.isDirectory) {
-                                val entryName = if (relativePath.endsWith("/")) relativePath else "$relativePath/"
-                                zos.putNextEntry(ZipEntry(entryName).apply { time = file.lastModified() })
-                                zos.closeEntry()
-                            } else {
-                                zos.putNextEntry(ZipEntry(relativePath).apply { time = file.lastModified() })
-                                FileInputStream(file).use { fis ->
-                                    var len: Int
-                                    while (fis.read(buffer).also { len = it } != -1) {
-                                        coroutineContext.ensureActive()
-                                        zos.write(buffer, 0, len)
-                                        bytesProcessed += len
+            try {
+                ZipOutputStream(FileOutputStream(destinationZip).buffered()).use { zos ->
+                    zos.setLevel(compressionLevel)
+                    for (source in sources) {
+                        coroutineContext.ensureActive()
+                        if (source.isDirectory) {
+                            val baseDir = source.parentFile ?: source
+                            source.walkTopDown().forEach { file ->
+                                coroutineContext.ensureActive()
+                                val relativePath = file.relativeTo(baseDir).path.replace('\\', '/')
+                                if (file.isDirectory) {
+                                    val entryName = if (relativePath.endsWith("/")) relativePath else "$relativePath/"
+                                    zos.putNextEntry(ZipEntry(entryName).apply { time = file.lastModified() })
+                                    zos.closeEntry()
+                                } else {
+                                    zos.putNextEntry(ZipEntry(relativePath).apply { time = file.lastModified() })
+                                    FileInputStream(file).use { fis ->
+                                        var len: Int
+                                        while (fis.read(buffer).also { len = it } != -1) {
+                                            coroutineContext.ensureActive()
+                                            zos.write(buffer, 0, len)
+                                            bytesProcessed += len
+                                        }
                                     }
+                                    zos.closeEntry()
+                                    filesProcessed++
                                 }
-                                zos.closeEntry()
-                                filesProcessed++
+
+                                onProgress?.invoke(
+                                    OperationProgress(
+                                        bytesProcessed = bytesProcessed,
+                                        totalBytes = totalBytes,
+                                        filesProcessed = filesProcessed,
+                                        totalFiles = totalFiles,
+                                        currentFileName = file.name
+                                    )
+                                )
                             }
+                        } else if (source.isFile) {
+                            zos.putNextEntry(ZipEntry(source.name).apply { time = source.lastModified() })
+                            FileInputStream(source).use { fis ->
+                                var len: Int
+                                while (fis.read(buffer).also { len = it } != -1) {
+                                    coroutineContext.ensureActive()
+                                    zos.write(buffer, 0, len)
+                                    bytesProcessed += len
+                                }
+                            }
+                            zos.closeEntry()
+                            filesProcessed++
 
                             onProgress?.invoke(
                                 OperationProgress(
@@ -303,35 +329,19 @@ class ZipEngine(
                                     totalBytes = totalBytes,
                                     filesProcessed = filesProcessed,
                                     totalFiles = totalFiles,
-                                    currentFileName = file.name
+                                    currentFileName = source.name
                                 )
                             )
                         }
-                    } else if (source.isFile) {
-                        zos.putNextEntry(ZipEntry(source.name).apply { time = source.lastModified() })
-                        FileInputStream(source).use { fis ->
-                            var len: Int
-                            while (fis.read(buffer).also { len = it } != -1) {
-                                coroutineContext.ensureActive()
-                                zos.write(buffer, 0, len)
-                                bytesProcessed += len
-                            }
-                        }
-                        zos.closeEntry()
-                        filesProcessed++
-
-                        onProgress?.invoke(
-                            OperationProgress(
-                                bytesProcessed = bytesProcessed,
-                                totalBytes = totalBytes,
-                                filesProcessed = filesProcessed,
-                                totalFiles = totalFiles,
-                                currentFileName = source.name
-                            )
-                        )
                     }
                 }
+            } catch (e: CancellationException) {
+                if (destinationZip.exists()) {
+                    destinationZip.delete()
+                }
+                throw e
             }
+
             destinationZip.length()
         }
     }

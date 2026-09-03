@@ -13,6 +13,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.FileOutputStream
+import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -59,6 +60,22 @@ class ZipEngineTest {
         val entries = zipEngine.listEntries(destZip)
         assertTrue(entries.any { it.name == "README.md" })
         assertTrue(entries.any { it.name == "Main.kt" && it.parentPath == "project/src" || it.parentPath == "src" })
+    }
+
+    @Test
+    fun createZip_withCompressionLevels_createsValidArchives() = runTest {
+        val bigText = "A".repeat(50_000)
+        val file1 = tempFolder.newFile("large.txt").apply { writeText(bigText) }
+
+        val storeZip = File(tempFolder.root, "store.zip")
+        val maxZip = File(tempFolder.root, "max.zip")
+
+        val storeResult = zipEngine.createZip(listOf(file1), storeZip, compressionLevel = Deflater.NO_COMPRESSION)
+        val maxResult = zipEngine.createZip(listOf(file1), maxZip, compressionLevel = Deflater.BEST_COMPRESSION)
+
+        assertTrue(storeResult.isSuccess)
+        assertTrue(maxResult.isSuccess)
+        assertTrue("Maximum compression must result in smaller file size than Store", maxZip.length() < storeZip.length())
     }
 
     @Test

@@ -99,7 +99,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import com.Hrshd1eux.filemanager.core.storage.util.FileShareHelper
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
-import com.Hrshd1eux.filemanager.feature.archive.components.CreateZipDialog
+import com.Hrshd1eux.filemanager.feature.archive.components.CompressDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.ContextualActionBar
@@ -698,15 +698,17 @@ fun FileBrowserScreen(
     // Single Compress Dialog
     val targetToCompress = nodeToCompress
     if (targetToCompress != null) {
-        CreateZipDialog(
+        CompressDialog(
+            sources = listOf(targetToCompress),
             defaultName = "${targetToCompress.name}.zip",
-            onConfirmCreate = { archiveName ->
+            onConfirmCreate = { archiveName, level ->
                 nodeToCompress = null
                 activeOperationTitle = "Compressing to $archiveName"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 viewModel.compressFiles(
                     sources = listOf(targetToCompress),
                     archiveName = archiveName,
+                    compressionLevel = level,
                     hasPermission = hasPermission
                 )
             },
@@ -722,15 +724,17 @@ fun FileBrowserScreen(
         } else {
             "archive.zip"
         }
-        CreateZipDialog(
+        CompressDialog(
+            sources = targetBulkCompress,
             defaultName = defaultZipName,
-            onConfirmCreate = { archiveName ->
+            onConfirmCreate = { archiveName, level ->
                 bulkNodesToCompress = null
                 activeOperationTitle = "Compressing ${targetBulkCompress.size} Items"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 viewModel.compressFiles(
                     sources = targetBulkCompress,
                     archiveName = archiveName,
+                    compressionLevel = level,
                     hasPermission = hasPermission
                 )
             },
