@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.feature.archive
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
+import com.Hrshd1eux.filemanager.core.archive.engine.TarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
@@ -38,7 +39,8 @@ sealed interface ArchiveViewerUiState {
 class ArchiveViewerViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
-    private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher)
+    private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher),
+    private val tarEngine: TarEngine = TarEngine(ioDispatcher)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArchiveViewerUiState>(ArchiveViewerUiState.Loading)
@@ -67,6 +69,13 @@ class ArchiveViewerViewModel(
         return file?.extension?.equals("7z", ignoreCase = true) == true
     }
 
+    private fun isTar(file: File?): Boolean {
+        val name = file?.name?.lowercase() ?: return false
+        return name.endsWith(".tar") || name.endsWith(".tar.gz") || name.endsWith(".tgz") ||
+                name.endsWith(".tar.xz") || name.endsWith(".txz") ||
+                name.endsWith(".tar.bz2") || name.endsWith(".tbz2")
+    }
+
     fun loadArchive(path: String) {
         val file = File(path)
         archiveFile = file
@@ -78,10 +87,10 @@ class ArchiveViewerViewModel(
         viewModelScope.launch {
             _uiState.value = ArchiveViewerUiState.Loading
             try {
-                allEntries = if (is7z(file)) {
-                    sevenZEngine.listEntries(file)
-                } else {
-                    zipEngine.listEntries(file)
+                allEntries = when {
+                    is7z(file) -> sevenZEngine.listEntries(file)
+                    isTar(file) -> tarEngine.listEntries(file)
+                    else -> zipEngine.listEntries(file)
                 }
                 currentVirtualPath = ""
                 updateVisibleState()
@@ -147,15 +156,20 @@ class ArchiveViewerViewModel(
         val file = archiveFile ?: return
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
-            val result = if (is7z(file)) {
-                sevenZEngine.extractAll(
+            val result = when {
+                is7z(file) -> sevenZEngine.extractAll(
                     sevenZFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
                     onProgress = { _activeProgress.value = it }
                 )
-            } else {
-                zipEngine.extractAll(
+                isTar(file) -> tarEngine.extractAll(
+                    tarFile = file,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = { _activeProgress.value = it }
+                )
+                else -> zipEngine.extractAll(
                     zipFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
@@ -186,16 +200,22 @@ class ArchiveViewerViewModel(
 
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = selected.size)
-            val result = if (is7z(file)) {
-                sevenZEngine.extractEntries(
+            val result = when {
+                is7z(file) -> sevenZEngine.extractEntries(
                     sevenZFile = file,
                     entryPaths = selected,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
                     onProgress = { _activeProgress.value = it }
                 )
-            } else {
-                zipEngine.extractEntries(
+                isTar(file) -> tarEngine.extractEntries(
+                    tarFile = file,
+                    entryPaths = selected,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = { _activeProgress.value = it }
+                )
+                else -> zipEngine.extractEntries(
                     zipFile = file,
                     entryPaths = selected,
                     destinationDir = destinationDir,
@@ -221,13 +241,16 @@ class ArchiveViewerViewModel(
         val file = archiveFile ?: return
         viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
-            val result = if (is7z(file)) {
-                sevenZEngine.testArchive(
+            val result = when {
+                is7z(file) -> sevenZEngine.testArchive(
                     sevenZFile = file,
                     onProgress = { _activeProgress.value = it }
                 )
-            } else {
-                zipEngine.testArchive(
+                isTar(file) -> tarEngine.testArchive(
+                    tarFile = file,
+                    onProgress = { _activeProgress.value = it }
+                )
+                else -> zipEngine.testArchive(
                     zipFile = file,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -248,10 +271,10 @@ class ArchiveViewerViewModel(
     fun loadArchiveProperties() {
         val file = archiveFile ?: return
         viewModelScope.launch {
-            _archiveProperties.value = if (is7z(file)) {
-                sevenZEngine.getArchiveProperties(file)
-            } else {
-                zipEngine.getArchiveProperties(file)
+            _archiveProperties.value = when {
+                is7z(file) -> sevenZEngine.getArchiveProperties(file)
+                isTar(file) -> tarEngine.getArchiveProperties(file)
+                else -> zipEngine.getArchiveProperties(file)
             }
         }
     }
@@ -264,9 +287,9 @@ class ArchiveViewerViewModel(
         val file = archiveFile ?: return
         if (sources.isEmpty()) return
 
-        if (is7z(file)) {
+        if (is7z(file) || isTar(file)) {
             viewModelScope.launch {
-                _userMessage.emit("Appending to existing .7z archives is not supported. Please recreate the archive.")
+                _userMessage.emit("Appending to existing archives is only supported for ZIP files. Please recreate the archive.")
             }
             return
         }

@@ -3,7 +3,9 @@ package com.Hrshd1eux.filemanager.feature.browser
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
+import com.Hrshd1eux.filemanager.core.archive.engine.TarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
+import com.Hrshd1eux.filemanager.core.archive.model.CompressionProfile
 import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
 import com.Hrshd1eux.filemanager.core.display.preferences.DisplayPreferencesRepository
@@ -46,6 +48,7 @@ class FileBrowserViewModel(
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher),
     private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
     private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher),
+    private val tarEngine: TarEngine = TarEngine(ioDispatcher),
     private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
@@ -329,21 +332,32 @@ class FileBrowserViewModel(
             type = OperationType.COMPRESS
         ) { onProgress ->
             val sourceFiles = sources.map { File(it.path) }
-            val size = if (archiveName.endsWith(".7z", ignoreCase = true)) {
-                val result = sevenZEngine.create7z(
-                    sources = sourceFiles,
-                    destination7z = destFile,
-                    onProgress = onProgress
-                )
-                result.getOrThrow()
-            } else {
-                val result = zipEngine.createZip(
-                    sources = sourceFiles,
-                    destinationZip = destFile,
-                    compressionLevel = compressionLevel,
-                    onProgress = onProgress
-                )
-                result.getOrThrow()
+            val lowerName = archiveName.lowercase()
+            val size = when {
+                lowerName.endsWith(".7z") -> {
+                    sevenZEngine.create7z(
+                        sources = sourceFiles,
+                        destination7z = destFile,
+                        onProgress = onProgress
+                    ).getOrThrow()
+                }
+                lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
+                lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
+                lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                    tarEngine.createTar(
+                        sources = sourceFiles,
+                        destinationTar = destFile,
+                        onProgress = onProgress
+                    ).getOrThrow()
+                }
+                else -> {
+                    zipEngine.createZip(
+                        sources = sourceFiles,
+                        destinationZip = destFile,
+                        compressionLevel = compressionLevel,
+                        onProgress = onProgress
+                    ).getOrThrow()
+                }
             }
             _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})")
         }
@@ -366,22 +380,34 @@ class FileBrowserViewModel(
             type = OperationType.EXTRACT
         ) { onProgress ->
             val archiveFile = File(archiveNode.path)
-            val count = if (archiveFile.extension.equals("7z", ignoreCase = true)) {
-                val result = sevenZEngine.extractAll(
-                    sevenZFile = archiveFile,
-                    destinationDir = destinationDir,
-                    conflictResolution = conflictResolution,
-                    onProgress = onProgress
-                )
-                result.getOrThrow()
-            } else {
-                val result = zipEngine.extractAll(
-                    zipFile = archiveFile,
-                    destinationDir = destinationDir,
-                    conflictResolution = conflictResolution,
-                    onProgress = onProgress
-                )
-                result.getOrThrow()
+            val lowerName = archiveFile.name.lowercase()
+            val count = when {
+                lowerName.endsWith(".7z") -> {
+                    sevenZEngine.extractAll(
+                        sevenZFile = archiveFile,
+                        destinationDir = destinationDir,
+                        conflictResolution = conflictResolution,
+                        onProgress = onProgress
+                    ).getOrThrow()
+                }
+                lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
+                lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
+                lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                    tarEngine.extractAll(
+                        tarFile = archiveFile,
+                        destinationDir = destinationDir,
+                        conflictResolution = conflictResolution,
+                        onProgress = onProgress
+                    ).getOrThrow()
+                }
+                else -> {
+                    zipEngine.extractAll(
+                        zipFile = archiveFile,
+                        destinationDir = destinationDir,
+                        conflictResolution = conflictResolution,
+                        onProgress = onProgress
+                    ).getOrThrow()
+                }
             }
             _userMessage.emit("Extracted $count items to ${destinationDir.name}")
         }
