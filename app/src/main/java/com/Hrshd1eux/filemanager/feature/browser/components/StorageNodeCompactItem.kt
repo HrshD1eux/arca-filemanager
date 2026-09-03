@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -74,6 +75,7 @@ fun StorageNodeCompactItem(
     onShareClick: () -> Unit,
     onOpenWithClick: () -> Unit = {},
     onSendToClick: () -> Unit = {},
+    onChecksumClick: () -> Unit = {},
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -253,6 +255,16 @@ fun StorageNodeCompactItem(
                                 onClick = {
                                     showMenu = false
                                     onSendToClick()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Checksums") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onChecksumClick()
                                 }
                             )
                         }

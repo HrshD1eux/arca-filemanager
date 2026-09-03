@@ -100,11 +100,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.TaskAlt
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveTestDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.CompressDialog
+import com.Hrshd1eux.filemanager.feature.checksum.components.ChecksumDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
 import com.Hrshd1eux.filemanager.feature.operations.components.OperationsQueueSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
@@ -171,6 +173,7 @@ fun FileBrowserScreen(
     var nodeForCustomExtract by remember { mutableStateOf<StorageNode?>(null) }
     var customExtractResolution by remember { mutableStateOf(ConflictResolution.RENAME_AUTO) }
     var showCustomExtractPicker by remember { mutableStateOf(false) }
+    var nodeForChecksums by remember { mutableStateOf<StorageNode?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showSortBottomSheet by remember { mutableStateOf(false) }
 
@@ -491,6 +494,9 @@ fun FileBrowserScreen(
                                             onSendToClick = {
                                                 FileIntentDispatcher.sendTo(context, node)
                                             },
+                                            onChecksumClick = {
+                                                nodeForChecksums = node
+                                            },
                                             onInfoClick = {
                                                 selectedNodeForProperties = node
                                             }
@@ -556,6 +562,9 @@ fun FileBrowserScreen(
                                             },
                                             onSendToClick = {
                                                 FileIntentDispatcher.sendTo(context, node)
+                                            },
+                                            onChecksumClick = {
+                                                nodeForChecksums = node
                                             },
                                             onInfoClick = {
                                                 selectedNodeForProperties = node
@@ -859,6 +868,15 @@ fun FileBrowserScreen(
         )
     }
 
+    // Checksum Dialog
+    val checksumTargetNode = nodeForChecksums
+    if (checksumTargetNode != null) {
+        ChecksumDialog(
+            node = checksumTargetNode,
+            onDismiss = { nodeForChecksums = null }
+        )
+    }
+
     // Active Operation Progress Dialog (Fallback popup if queue sheet closed)
     val currentProgress = activeProgress
     if (currentProgress != null && !showOperationsQueueSheet) {
@@ -977,6 +995,7 @@ private fun StorageNodeItem(
     onShareClick: () -> Unit,
     onOpenWithClick: () -> Unit = {},
     onSendToClick: () -> Unit = {},
+    onChecksumClick: () -> Unit = {},
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -1171,6 +1190,16 @@ private fun StorageNodeItem(
                                 onClick = {
                                     showMenu = false
                                     onSendToClick()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Checksums") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onChecksumClick()
                                 }
                             )
                         }
