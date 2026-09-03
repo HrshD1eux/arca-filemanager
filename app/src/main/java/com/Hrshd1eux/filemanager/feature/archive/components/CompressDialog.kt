@@ -101,7 +101,7 @@ fun CompressDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Format Selector (ZIP active, extensible)
+                // Format Selector (ZIP, 7Z)
                 Text(
                     text = "Archive Format",
                     style = MaterialTheme.typography.labelMedium,
@@ -122,10 +122,13 @@ fun CompressDialog(
                         )
                     )
                     FilterChip(
-                        selected = false,
-                        onClick = { /* Future format */ },
-                        enabled = false,
-                        label = { Text("7Z") }
+                        selected = selectedFormat == "7Z",
+                        onClick = { selectedFormat = "7Z" },
+                        label = { Text("7Z") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     )
                     FilterChip(
                         selected = false,
@@ -137,12 +140,14 @@ fun CompressDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                val ext = if (selectedFormat == "7Z") ".7z" else ".zip"
+
                 // Name Input Field
                 OutlinedTextField(
                     value = rawName,
                     onValueChange = { rawName = it },
                     label = { Text("Archive Name") },
-                    suffix = { Text(".zip", color = ZipOrange) },
+                    suffix = { Text(ext, color = if (selectedFormat == "7Z") MaterialTheme.colorScheme.primary else ZipOrange) },
                     singleLine = true,
                     isError = !isNameValid && rawName.isNotBlank(),
                     supportingText = {
@@ -161,7 +166,7 @@ fun CompressDialog(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             if (isNameValid) {
-                                val finalName = if (rawName.endsWith(".zip", ignoreCase = true)) rawName else "$rawName.zip"
+                                val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
                                 onConfirmCreate(finalName, selectedLevel)
                             }
                         }
@@ -214,7 +219,8 @@ fun CompressDialog(
             Button(
                 onClick = {
                     if (isNameValid) {
-                        val finalName = if (rawName.endsWith(".zip", ignoreCase = true)) rawName else "$rawName.zip"
+                        val ext = if (selectedFormat == "7Z") ".7z" else ".zip"
+                        val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
                         onConfirmCreate(finalName, selectedLevel)
                     }
                 },

@@ -2,6 +2,7 @@ package com.Hrshd1eux.filemanager.feature.browser
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
@@ -44,6 +45,7 @@ class FileBrowserViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher),
     private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
+    private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher),
     private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
@@ -319,7 +321,7 @@ class FileBrowserViewModel(
     ) {
         val currentState = _uiState.value as? BrowserUiState.Success ?: return
         val destDir = File(currentState.currentPath)
-        val destZip = File(destDir, archiveName)
+        val destFile = File(destDir, archiveName)
 
         clearSelection()
         operationManager.enqueue(
@@ -327,13 +329,22 @@ class FileBrowserViewModel(
             type = OperationType.COMPRESS
         ) { onProgress ->
             val sourceFiles = sources.map { File(it.path) }
-            val result = zipEngine.createZip(
-                sources = sourceFiles,
-                destinationZip = destZip,
-                compressionLevel = compressionLevel,
-                onProgress = onProgress
-            )
-            val size = result.getOrThrow()
+            val size = if (archiveName.endsWith(".7z", ignoreCase = true)) {
+                val result = sevenZEngine.create7z(
+                    sources = sourceFiles,
+                    destination7z = destFile,
+                    onProgress = onProgress
+                )
+                result.getOrThrow()
+            } else {
+                val result = zipEngine.createZip(
+                    sources = sourceFiles,
+                    destinationZip = destFile,
+                    compressionLevel = compressionLevel,
+                    onProgress = onProgress
+                )
+                result.getOrThrow()
+            }
             _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})")
         }
     }
@@ -355,13 +366,23 @@ class FileBrowserViewModel(
             type = OperationType.EXTRACT
         ) { onProgress ->
             val archiveFile = File(archiveNode.path)
-            val result = zipEngine.extractAll(
-                zipFile = archiveFile,
-                destinationDir = destinationDir,
-                conflictResolution = conflictResolution,
-                onProgress = onProgress
-            )
-            val count = result.getOrThrow()
+            val count = if (archiveFile.extension.equals("7z", ignoreCase = true)) {
+                val result = sevenZEngine.extractAll(
+                    sevenZFile = archiveFile,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = onProgress
+                )
+                result.getOrThrow()
+            } else {
+                val result = zipEngine.extractAll(
+                    zipFile = archiveFile,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = onProgress
+                )
+                result.getOrThrow()
+            }
             _userMessage.emit("Extracted $count items to ${destinationDir.name}")
         }
     }

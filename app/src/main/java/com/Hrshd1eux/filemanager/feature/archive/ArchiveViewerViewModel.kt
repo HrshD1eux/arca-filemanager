@@ -2,6 +2,7 @@ package com.Hrshd1eux.filemanager.feature.archive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
@@ -36,7 +37,8 @@ sealed interface ArchiveViewerUiState {
 
 class ArchiveViewerViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val zipEngine: ZipEngine = ZipEngine(ioDispatcher)
+    private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
+    private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArchiveViewerUiState>(ArchiveViewerUiState.Loading)
@@ -61,6 +63,10 @@ class ArchiveViewerViewModel(
     private var allEntries: List<ArchiveEntry> = emptyList()
     private var currentVirtualPath: String = ""
 
+    private fun is7z(file: File?): Boolean {
+        return file?.extension?.equals("7z", ignoreCase = true) == true
+    }
+
     fun loadArchive(path: String) {
         val file = File(path)
         archiveFile = file
@@ -72,7 +78,11 @@ class ArchiveViewerViewModel(
         viewModelScope.launch {
             _uiState.value = ArchiveViewerUiState.Loading
             try {
-                allEntries = zipEngine.listEntries(file)
+                allEntries = if (is7z(file)) {
+                    sevenZEngine.listEntries(file)
+                } else {
+                    zipEngine.listEntries(file)
+                }
                 currentVirtualPath = ""
                 updateVisibleState()
             } catch (e: Exception) {
@@ -137,12 +147,21 @@ class ArchiveViewerViewModel(
         val file = archiveFile ?: return
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
-            val result = zipEngine.extractAll(
-                zipFile = file,
-                destinationDir = destinationDir,
-                conflictResolution = conflictResolution,
-                onProgress = { _activeProgress.value = it }
-            )
+            val result = if (is7z(file)) {
+                sevenZEngine.extractAll(
+                    sevenZFile = file,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = { _activeProgress.value = it }
+                )
+            } else {
+                zipEngine.extractAll(
+                    zipFile = file,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = { _activeProgress.value = it }
+                )
+            }
             _activeProgress.value = null
             activeJob = null
             result.onSuccess { count ->
@@ -167,13 +186,23 @@ class ArchiveViewerViewModel(
 
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = selected.size)
-            val result = zipEngine.extractEntries(
-                zipFile = file,
-                entryPaths = selected,
-                destinationDir = destinationDir,
-                conflictResolution = conflictResolution,
-                onProgress = { _activeProgress.value = it }
-            )
+            val result = if (is7z(file)) {
+                sevenZEngine.extractEntries(
+                    sevenZFile = file,
+                    entryPaths = selected,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = { _activeProgress.value = it }
+                )
+            } else {
+                zipEngine.extractEntries(
+                    zipFile = file,
+                    entryPaths = selected,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = { _activeProgress.value = it }
+                )
+            }
             _activeProgress.value = null
             activeJob = null
             result.onSuccess { count ->
@@ -192,10 +221,17 @@ class ArchiveViewerViewModel(
         val file = archiveFile ?: return
         viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
-            val result = zipEngine.testArchive(
-                zipFile = file,
-                onProgress = { _activeProgress.value = it }
-            )
+            val result = if (is7z(file)) {
+                sevenZEngine.testArchive(
+                    sevenZFile = file,
+                    onProgress = { _activeProgress.value = it }
+                )
+            } else {
+                zipEngine.testArchive(
+                    zipFile = file,
+                    onProgress = { _activeProgress.value = it }
+                )
+            }
             _activeProgress.value = null
             result.onSuccess { report ->
                 _testReport.value = report
@@ -212,7 +248,11 @@ class ArchiveViewerViewModel(
     fun loadArchiveProperties() {
         val file = archiveFile ?: return
         viewModelScope.launch {
-            _archiveProperties.value = zipEngine.getArchiveProperties(file)
+            _archiveProperties.value = if (is7z(file)) {
+                sevenZEngine.getArchiveProperties(file)
+            } else {
+                zipEngine.getArchiveProperties(file)
+            }
         }
     }
 
@@ -223,6 +263,13 @@ class ArchiveViewerViewModel(
     fun addFiles(sources: List<File>) {
         val file = archiveFile ?: return
         if (sources.isEmpty()) return
+
+        if (is7z(file)) {
+            viewModelScope.launch {
+                _userMessage.emit("Appending to existing .7z archives is not supported. Please recreate the archive.")
+            }
+            return
+        }
 
         viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = sources.size)

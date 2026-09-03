@@ -85,6 +85,13 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
 
+    // Archive & Compression Engines (7z, Tar, XZ, etc.)
+    implementation(libs.apache.commons.compress)
+    implementation(libs.tukaani.xz)
+
+    // Background WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
