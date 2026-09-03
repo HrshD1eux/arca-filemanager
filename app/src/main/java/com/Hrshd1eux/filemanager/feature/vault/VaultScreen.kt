@@ -1,9 +1,11 @@
 package com.Hrshd1eux.filemanager.feature.vault
 
 import android.os.Environment
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,16 +19,28 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -35,11 +49,13 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -56,6 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
@@ -66,6 +83,8 @@ import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDia
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.CreateVaultSetup
 import com.Hrshd1eux.filemanager.feature.vault.components.UnlockVaultView
+import com.Hrshd1eux.filemanager.feature.vault.components.VaultMoveDialog
+import com.Hrshd1eux.filemanager.feature.vault.components.VaultPreviewDialog
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,8 +99,29 @@ fun VaultScreen(
     val localProvider = remember { LocalFileSystemProvider() }
 
     var showImportPicker by remember { mutableStateOf(false) }
-    var entryToExport by remember { mutableStateOf<VaultFileEntry?>(null) }
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
+    var entryToRename by remember { mutableStateOf<VaultFileEntry?>(null) }
+    var entryToMove by remember { mutableStateOf<VaultFileEntry?>(null) }
+    var showBatchMoveDialog by remember { mutableStateOf(false) }
     var entryToDelete by remember { mutableStateOf<VaultFileEntry?>(null) }
+    var showBatchDeleteDialog by remember { mutableStateOf(false) }
+    var entryToExport by remember { mutableStateOf<VaultFileEntry?>(null) }
+    var showBatchExportPicker by remember { mutableStateOf(false) }
+    var previewEntry by remember { mutableStateOf<VaultFileEntry?>(null) }
+
+    val isUnlocked = uiState is VaultUiState.Unlocked
+    val unlockedState = uiState as? VaultUiState.Unlocked
+    val isSelectionMode = (unlockedState?.selectedIds?.size ?: 0) > 0
+
+    BackHandler {
+        if (isSelectionMode) {
+            viewModel.clearSelection()
+        } else if (unlockedState != null && unlockedState.currentVirtualPath.isNotEmpty()) {
+            viewModel.navigateUp()
+        } else {
+            onNavigateBack()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.userMessage.collect { message ->
@@ -93,56 +133,104 @@ fun VaultScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = VaultEmerald,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+            if (isSelectionMode && unlockedState != null) {
+                TopAppBar(
+                    title = {
                         Text(
-                            text = "Private Vault",
-                            style = MaterialTheme.typography.titleLarge,
+                            text = "${unlockedState.selectedIds.size} selected",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Navigate Back"
-                        )
-                    }
-                },
-                actions = {
-                    if (uiState is VaultUiState.Unlocked) {
-                        IconButton(onClick = { viewModel.lockVault() }) {
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear Selection")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.selectAll() }) {
+                            Icon(Icons.Default.SelectAll, contentDescription = "Select All")
+                        }
+                        IconButton(onClick = { showBatchMoveDialog = true }) {
+                            Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = "Move Selected", tint = VaultEmerald)
+                        }
+                        IconButton(onClick = { showBatchExportPicker = true }) {
+                            Icon(Icons.Default.FileDownload, contentDescription = "Export Selected")
+                        }
+                        IconButton(onClick = { showBatchDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            } else {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Lock,
-                                contentDescription = "Lock Vault",
-                                tint = VaultEmerald
+                                contentDescription = null,
+                                tint = VaultEmerald,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Private Vault",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
                             )
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (unlockedState != null && unlockedState.currentVirtualPath.isNotEmpty()) {
+                                viewModel.navigateUp()
+                            } else {
+                                onNavigateBack()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Navigate Back"
+                            )
+                        }
+                    },
+                    actions = {
+                        if (isUnlocked) {
+                            IconButton(onClick = { showCreateFolderDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.CreateNewFolder,
+                                    contentDescription = "New Folder",
+                                    tint = VaultEmerald
+                                )
+                            }
+                            IconButton(onClick = { viewModel.lockVault() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "Lock Vault",
+                                    tint = VaultEmerald
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
-            )
+            }
         },
         floatingActionButton = {
-            if (uiState is VaultUiState.Unlocked) {
+            if (isUnlocked && !isSelectionMode) {
                 FloatingActionButton(
                     onClick = { showImportPicker = true },
                     containerColor = VaultEmerald,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Import File")
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "Import Files")
                 }
             }
         }
@@ -174,61 +262,88 @@ fun VaultScreen(
                     )
                 }
                 is VaultUiState.Unlocked -> {
-                    if (state.files.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.FolderOpen,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Private Vault is Empty",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "Tap '+' below to import and encrypt confidential files.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "${state.files.size} Encrypted Files (${FileFormatter.formatFileSize(state.totalSize)})",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                            }
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Virtual Breadcrumbs
+                        VaultBreadcrumbsBar(
+                            currentPath = state.currentVirtualPath,
+                            onNavigateToRoot = { viewModel.navigateToBreadcrumb(-1) },
+                            onNavigateToSegment = { index -> viewModel.navigateToBreadcrumb(index) }
+                        )
 
-                            items(state.files, key = { it.id }) { entry ->
-                                VaultFileItemRow(
-                                    entry = entry,
-                                    onExport = { entryToExport = entry },
-                                    onDelete = { viewModel.deleteFile(entry) }
-                                )
+                        if (state.currentEntries.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.FolderOpen,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = if (state.currentVirtualPath.isEmpty()) "Private Vault is Empty" else "This folder is empty",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "Tap '+' to import files or '📁' to create a folder.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                item {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${state.currentEntries.size} items in folder (${FileFormatter.formatFileSize(state.totalSize)} total in Vault)",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                }
 
-                            item {
-                                Spacer(modifier = Modifier.height(80.dp))
+                                items(state.currentEntries, key = { it.id }) { entry ->
+                                    val isSelected = state.selectedIds.contains(entry.id)
+                                    VaultEntryRow(
+                                        entry = entry,
+                                        isSelected = isSelected,
+                                        isSelectionMode = isSelectionMode,
+                                        onItemClick = {
+                                            if (isSelectionMode) {
+                                                viewModel.toggleSelection(entry.id)
+                                            } else if (entry.isDirectory) {
+                                                viewModel.navigateInto(entry)
+                                            } else {
+                                                previewEntry = entry
+                                            }
+                                        },
+                                        onItemLongClick = {
+                                            viewModel.toggleSelection(entry.id)
+                                        },
+                                        onPreview = { previewEntry = entry },
+                                        onExport = { entryToExport = entry },
+                                        onMove = { entryToMove = entry },
+                                        onRename = { entryToRename = entry },
+                                        onDelete = { entryToDelete = entry }
+                                    )
+                                }
+
+                                item {
+                                    Spacer(modifier = Modifier.height(80.dp))
+                                }
                             }
                         }
                     }
@@ -246,42 +361,295 @@ fun VaultScreen(
         }
     }
 
+    // In-Memory Secure Preview Dialog
+    previewEntry?.let { entry ->
+        VaultPreviewDialog(
+            entry = entry,
+            vaultManager = viewModel.vaultManager,
+            onExport = {
+                val target = entry
+                previewEntry = null
+                entryToExport = target
+            },
+            onDismiss = { previewEntry = null }
+        )
+    }
+
     // Import Items Source Picker Dialog
     if (showImportPicker) {
         ArchiveAddItemsDialog(
             storageProvider = localProvider,
             onItemsSelected = { sourceFiles ->
                 showImportPicker = false
-                sourceFiles.forEach { file ->
-                    viewModel.importFile(file)
-                }
+                viewModel.importFiles(sourceFiles)
             },
             onDismiss = { showImportPicker = false }
         )
     }
 
-    // Export Destination Picker Dialog
-    val targetExport = entryToExport
-    if (targetExport != null) {
+    // Create Virtual Folder Dialog
+    if (showCreateFolderDialog) {
+        var folderName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreateFolderDialog = false },
+            title = { Text("New Folder in Vault") },
+            text = {
+                OutlinedTextField(
+                    value = folderName,
+                    onValueChange = { folderName = it },
+                    label = { Text("Folder Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val name = folderName.trim()
+                        if (name.isNotEmpty()) {
+                            showCreateFolderDialog = false
+                            viewModel.createFolder(name)
+                        }
+                    }
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateFolderDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Rename Dialog
+    entryToRename?.let { entry ->
+        var newName by remember { mutableStateOf(entry.originalName) }
+        AlertDialog(
+            onDismissRequest = { entryToRename = null },
+            title = { Text("Rename in Vault") },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val name = newName.trim()
+                        if (name.isNotEmpty() && name != entry.originalName) {
+                            entryToRename = null
+                            viewModel.renameEntry(entry.id, name)
+                        } else {
+                            entryToRename = null
+                        }
+                    }
+                ) {
+                    Text("Rename")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { entryToRename = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Move Single Entry Dialog
+    entryToMove?.let { entry ->
+        VaultMoveDialog(
+            vaultManager = viewModel.vaultManager,
+            count = 1,
+            onConfirmMove = { targetPath ->
+                entryToMove = null
+                viewModel.moveEntry(entry.id, targetPath)
+            },
+            onDismiss = { entryToMove = null }
+        )
+    }
+
+    // Batch Move Dialog
+    if (showBatchMoveDialog && unlockedState != null) {
+        VaultMoveDialog(
+            vaultManager = viewModel.vaultManager,
+            count = unlockedState.selectedIds.size,
+            onConfirmMove = { targetPath ->
+                showBatchMoveDialog = false
+                viewModel.moveSelected(targetPath)
+            },
+            onDismiss = { showBatchMoveDialog = false }
+        )
+    }
+
+    // Single Delete Confirmation Dialog
+    entryToDelete?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { entryToDelete = null },
+            title = { Text("Delete permanently?") },
+            text = {
+                Text(
+                    text = "Are you sure you want to permanently delete '${entry.originalName}'? The encrypted data will be wiped immediately."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        entryToDelete = null
+                        viewModel.deleteEntry(entry)
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { entryToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Batch Delete Confirmation Dialog
+    if (showBatchDeleteDialog && unlockedState != null) {
+        val count = unlockedState.selectedIds.size
+        AlertDialog(
+            onDismissRequest = { showBatchDeleteDialog = false },
+            title = { Text("Delete $count items?") },
+            text = {
+                Text("Are you sure you want to permanently delete these $count items from the encrypted vault?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBatchDeleteDialog = false
+                        viewModel.deleteSelected()
+                    }
+                ) {
+                    Text("Delete All", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatchDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Export Single Entry Dialog
+    entryToExport?.let { entry ->
         val defaultDownloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         DestinationPickerDialog(
             storageProvider = localProvider,
-            title = "Export '${targetExport.originalName}' to...",
+            title = "Export '${entry.originalName}' to...",
             confirmButtonText = "Export Here",
             onDestinationSelected = { destNode, _ ->
                 entryToExport = null
-                viewModel.exportFile(targetExport, File(destNode.path))
+                viewModel.exportSingle(entry, File(destNode.path))
             },
             onDismiss = { entryToExport = null }
         )
+    }
+
+    // Batch Export Dialog
+    if (showBatchExportPicker && unlockedState != null) {
+        val count = unlockedState.selectedIds.size
+        DestinationPickerDialog(
+            storageProvider = localProvider,
+            title = "Export $count items to...",
+            confirmButtonText = "Export Here",
+            onDestinationSelected = { destNode, _ ->
+                showBatchExportPicker = false
+                viewModel.exportSelected(File(destNode.path))
+            },
+            onDismiss = { showBatchExportPicker = false }
+        )
+    }
+}
+
+@Composable
+private fun VaultBreadcrumbsBar(
+    currentPath: String,
+    onNavigateToRoot: () -> Unit,
+    onNavigateToSegment: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val segments = remember(currentPath) { currentPath.split("/").filter { it.isNotEmpty() } }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (segments.isEmpty()) VaultEmerald.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            onClick = onNavigateToRoot
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = VaultEmerald,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Vault Root",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (segments.isEmpty()) FontWeight.Bold else FontWeight.Normal,
+                    color = if (segments.isEmpty()) VaultEmerald else MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        segments.forEachIndexed { index, segment ->
+            Text(
+                text = " / ",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val isLast = index == segments.size - 1
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = if (isLast) VaultEmerald.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                onClick = { onNavigateToSegment(index) }
+            ) {
+                Text(
+                    text = segment,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (isLast) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isLast) VaultEmerald else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+        }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun VaultFileItemRow(
+private fun VaultEntryRow(
     entry: VaultFileEntry,
+    isSelected: Boolean,
+    isSelectionMode: Boolean,
+    onItemClick: () -> Unit,
+    onItemLongClick: () -> Unit,
+    onPreview: () -> Unit,
     onExport: () -> Unit,
+    onMove: () -> Unit,
+    onRename: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -289,30 +657,42 @@ private fun VaultFileItemRow(
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        color = if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        },
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    onClick = onExport,
-                    onLongClick = { showMenu = true }
+                    onClick = onItemClick,
+                    onLongClick = onItemLongClick
                 )
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onItemClick() }
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+
             Box(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(VaultEmerald.copy(alpha = 0.15f)),
+                    .background(if (entry.isDirectory) FolderYellow.copy(alpha = 0.15f) else VaultEmerald.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+                    imageVector = if (entry.isDirectory) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
                     contentDescription = null,
-                    tint = VaultEmerald,
+                    tint = if (entry.isDirectory) FolderYellow else VaultEmerald,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -329,17 +709,25 @@ private fun VaultFileItemRow(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = FileFormatter.formatFileSize(entry.size),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = " • AES-256",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = VaultEmerald,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    if (entry.isDirectory) {
+                        Text(
+                            text = "Encrypted Folder",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = FileFormatter.formatFileSize(entry.size),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = " • AES-256",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = VaultEmerald,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
 
@@ -355,6 +743,18 @@ private fun VaultFileItemRow(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
+                    if (!entry.isDirectory) {
+                        DropdownMenuItem(
+                            text = { Text("Preview in memory") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Visibility, contentDescription = null, tint = VaultEmerald)
+                            },
+                            onClick = {
+                                showMenu = false
+                                onPreview()
+                            }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("Export to Storage") },
                         leadingIcon = {
@@ -363,6 +763,26 @@ private fun VaultFileItemRow(
                         onClick = {
                             showMenu = false
                             onExport()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Move to...") },
+                        leadingIcon = {
+                            Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null)
+                        },
+                        onClick = {
+                            showMenu = false
+                            onMove()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Rename") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                        },
+                        onClick = {
+                            showMenu = false
+                            onRename()
                         }
                     )
                     DropdownMenuItem(

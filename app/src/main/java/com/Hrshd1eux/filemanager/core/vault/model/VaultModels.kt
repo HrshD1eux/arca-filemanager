@@ -21,10 +21,13 @@ data class VaultMetadata(
 data class VaultFileEntry(
     val id: String,
     val originalName: String,
-    val encryptedFileName: String,
-    val size: Long,
-    val mimeType: String,
-    val addedDate: Long
+    val encryptedFileName: String = "",
+    val parentVirtualPath: String = "",
+    val isDirectory: Boolean = false,
+    val size: Long = 0L,
+    val mimeType: String = "*/*",
+    val addedDate: Long = System.currentTimeMillis(),
+    val lastModified: Long = addedDate
 )
 
 @Serializable
@@ -37,8 +40,11 @@ sealed interface VaultUiState {
     data object Unconfigured : VaultUiState
     data class Locked(val error: String? = null) : VaultUiState
     data class Unlocked(
-        val files: List<VaultFileEntry>,
-        val totalSize: Long,
+        val currentVirtualPath: String = "",
+        val currentEntries: List<VaultFileEntry> = emptyList(),
+        val totalFilesCount: Int = 0,
+        val totalSize: Long = 0L,
+        val selectedIds: Set<String> = emptySet(),
         val activeProgress: OperationProgress? = null
     ) : VaultUiState
 }

@@ -29,6 +29,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     private val _userMessage = MutableSharedFlow<String>()
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
 
+    private var currentPath: String = ""
+    private var selectedIds = mutableSetOf<String>()
+
     init {
         refreshState()
     }
@@ -39,23 +42,30 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         } else if (!vaultManager.isUnlocked()) {
             _uiState.value = VaultUiState.Locked()
         } else {
-            val files = vaultManager.getFiles()
-            _uiState.value = VaultUiState.Unlocked(
-                files = files,
-                totalSize = files.sumOf { it.size }
-            )
+            publishUnlockedState()
         }
+    }
+
+    private fun publishUnlockedState(activeProgress: OperationProgress? = null) {
+        val allFiles = vaultManager.getAllFiles()
+        val entriesInPath = vaultManager.getEntriesInPath(currentPath)
+        _uiState.value = VaultUiState.Unlocked(
+            currentVirtualPath = currentPath,
+            currentEntries = entriesInPath,
+            totalFilesCount = allFiles.size,
+            totalSize = allFiles.filterNot { it.isDirectory }.sumOf { it.size },
+            selectedIds = selectedIds.toSet(),
+            activeProgress = activeProgress
+        )
     }
 
     fun createVault(password: CharArray) {
         viewModelScope.launch {
             _uiState.value = VaultUiState.Loading
             vaultManager.createVault(password).onSuccess {
-                val files = vaultManager.getFiles()
-                _uiState.value = VaultUiState.Unlocked(
-                    files = files,
-                    totalSize = files.sumOf { it.size }
-                )
+                currentPath = ""
+                selectedIds.clear()
+                publishUnlockedState()
                 _userMessage.emit("Private Vault created successfully 🔐")
             }.onFailure { error ->
                 _uiState.value = VaultUiState.Unconfigured
@@ -67,11 +77,10 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     fun unlockVault(password: CharArray) {
         viewModelScope.launch {
             _uiState.value = VaultUiState.Loading
-            vaultManager.unlock(password).onSuccess { files ->
-                _uiState.value = VaultUiState.Unlocked(
-                    files = files,
-                    totalSize = files.sumOf { it.size }
-                )
+            vaultManager.unlock(password).onSuccess {
+                currentPath = ""
+                selectedIds.clear()
+                publishUnlockedState()
                 _userMessage.emit("Vault unlocked")
             }.onFailure { error ->
                 _uiState.value = VaultUiState.Locked(
@@ -83,96 +92,208 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     fun lockVault() {
         vaultManager.lock()
+        currentPath = ""
+        selectedIds.clear()
         _uiState.value = VaultUiState.Locked()
     }
 
-    fun importFile(sourceFile: File, deleteOriginal: Boolean = false) {
+    fun navigateInto(folder: VaultFileEntry) {
+        if (!folder.isDirectory) return
+        currentPath = if (currentPath.isEmpty()) folder.originalName else "$currentPath/${folder.originalName}"
+        selectedIds.clear()
+        publishUnlockedState()
+    }
+
+    fun navigateUp(): Boolean {
+        if (currentPath.isEmpty()) return false
+        val segments = currentPath.split("/").filter { it.isNotEmpty() }
+        currentPath = if (segments.size <= 1) "" else segments.dropLast(1).joinToString("/")
+        selectedIds.clear()
+        publishUnlockedState()
+        return true
+    }
+
+    fun navigateToBreadcrumb(index: Int) {
+        val segments = currentPath.split("/").filter { it.isNotEmpty() }
+        currentPath = if (index < 0 || index >= segments.size) "" else segments.take(index + 1).joinToString("/")
+        selectedIds.clear()
+        publishUnlockedState()
+    }
+
+    fun toggleSelection(id: String) {
+        if (selectedIds.contains(id)) {
+            selectedIds.remove(id)
+        } else {
+            selectedIds.add(id)
+        }
+        publishUnlockedState()
+    }
+
+    fun selectAll() {
+        val currentEntries = vaultManager.getEntriesInPath(currentPath)
+        selectedIds.clear()
+        selectedIds.addAll(currentEntries.map { it.id })
+        publishUnlockedState()
+    }
+
+    fun clearSelection() {
+        selectedIds.clear()
+        publishUnlockedState()
+    }
+
+    fun createFolder(folderName: String) {
         viewModelScope.launch {
-            val current = _uiState.value as? VaultUiState.Unlocked ?: return@launch
-            _uiState.value = current.copy(
-                activeProgress = OperationProgress(totalFiles = 1, currentFileName = sourceFile.name)
+            vaultManager.createFolder(folderName, currentPath).onSuccess { folder ->
+                publishUnlockedState()
+                _userMessage.emit("Created folder '${folder.originalName}'")
+            }.onFailure { error ->
+                _userMessage.emit("Failed to create folder: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun renameEntry(entryId: String, newName: String) {
+        viewModelScope.launch {
+            vaultManager.renameEntry(entryId, newName).onSuccess { entry ->
+                publishUnlockedState()
+                _userMessage.emit("Renamed to '${entry.originalName}'")
+            }.onFailure { error ->
+                _userMessage.emit("Rename failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun moveSelected(targetVirtualPath: String) {
+        viewModelScope.launch {
+            val ids = selectedIds.toSet()
+            vaultManager.moveEntries(ids, targetVirtualPath).onSuccess {
+                selectedIds.clear()
+                publishUnlockedState()
+                _userMessage.emit("Moved ${ids.size} item(s)")
+            }.onFailure { error ->
+                _userMessage.emit("Move failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun moveEntry(entryId: String, targetVirtualPath: String) {
+        viewModelScope.launch {
+            vaultManager.moveEntries(setOf(entryId), targetVirtualPath).onSuccess {
+                publishUnlockedState()
+                _userMessage.emit("Moved item")
+            }.onFailure { error ->
+                _userMessage.emit("Move failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun deleteSelected() {
+        viewModelScope.launch {
+            val ids = selectedIds.toSet()
+            vaultManager.deleteEntries(ids).onSuccess {
+                selectedIds.clear()
+                publishUnlockedState()
+                _userMessage.emit("Deleted ${ids.size} item(s) permanently")
+            }.onFailure { error ->
+                _userMessage.emit("Delete failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun deleteEntry(entry: VaultFileEntry) {
+        viewModelScope.launch {
+            vaultManager.deleteEntries(setOf(entry.id)).onSuccess {
+                publishUnlockedState()
+                _userMessage.emit("Deleted '${entry.originalName}' permanently")
+            }.onFailure { error ->
+                _userMessage.emit("Delete failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun importFiles(sources: List<File>, deleteOriginals: Boolean = false) {
+        viewModelScope.launch {
+            publishUnlockedState(
+                activeProgress = OperationProgress(totalFiles = sources.size, currentFileName = sources.firstOrNull()?.name ?: "")
             )
 
-            vaultManager.importFile(
-                sourceFile = sourceFile,
-                deleteOriginal = deleteOriginal,
+            vaultManager.importFiles(
+                sources = sources,
+                targetVirtualPath = currentPath,
+                deleteOriginals = deleteOriginals,
                 onProgress = { bytesRead ->
-                    _uiState.value = current.copy(
+                    publishUnlockedState(
                         activeProgress = OperationProgress(
                             bytesProcessed = bytesRead,
-                            totalBytes = sourceFile.length(),
-                            totalFiles = 1,
-                            currentFileName = sourceFile.name
+                            totalFiles = sources.size,
+                            currentFileName = "Encrypting files into Vault..."
                         )
                     )
                 }
-            ).onSuccess { entry ->
-                val files = vaultManager.getFiles()
-                _uiState.value = VaultUiState.Unlocked(
-                    files = files,
-                    totalSize = files.sumOf { it.size }
-                )
-                _userMessage.emit("Imported '${entry.originalName}' into Vault")
+            ).onSuccess { imported ->
+                publishUnlockedState()
+                _userMessage.emit("Imported ${imported.size} file(s) into Vault")
             }.onFailure { error ->
-                val files = vaultManager.getFiles()
-                _uiState.value = VaultUiState.Unlocked(
-                    files = files,
-                    totalSize = files.sumOf { it.size }
-                )
+                publishUnlockedState()
                 _userMessage.emit("Import failed: ${error.localizedMessage}")
             }
         }
     }
 
-    fun exportFile(entry: VaultFileEntry, destinationDir: File) {
+    fun exportSelected(destinationDir: File) {
         viewModelScope.launch {
-            val current = _uiState.value as? VaultUiState.Unlocked ?: return@launch
-            _uiState.value = current.copy(
-                activeProgress = OperationProgress(totalFiles = 1, currentFileName = entry.originalName)
+            val ids = selectedIds.toSet()
+            publishUnlockedState(
+                activeProgress = OperationProgress(totalFiles = ids.size, currentFileName = "Exporting...")
             )
 
-            vaultManager.exportFile(
-                entry = entry,
+            vaultManager.exportEntries(
+                entryIds = ids,
                 destinationDir = destinationDir,
                 onProgress = { bytesWritten ->
-                    _uiState.value = current.copy(
+                    publishUnlockedState(
                         activeProgress = OperationProgress(
                             bytesProcessed = bytesWritten,
-                            totalBytes = entry.size,
-                            totalFiles = 1,
-                            currentFileName = entry.originalName
+                            totalFiles = ids.size,
+                            currentFileName = "Decrypting files to storage..."
                         )
                     )
                 }
-            ).onSuccess { exportedFile ->
-                val files = vaultManager.getFiles()
-                _uiState.value = VaultUiState.Unlocked(
-                    files = files,
-                    totalSize = files.sumOf { it.size }
-                )
-                _userMessage.emit("Exported '${exportedFile.name}' to ${destinationDir.name}")
+            ).onSuccess { count ->
+                selectedIds.clear()
+                publishUnlockedState()
+                _userMessage.emit("Exported $count file(s) to ${destinationDir.name}")
             }.onFailure { error ->
-                val files = vaultManager.getFiles()
-                _uiState.value = VaultUiState.Unlocked(
-                    files = files,
-                    totalSize = files.sumOf { it.size }
-                )
+                publishUnlockedState()
                 _userMessage.emit("Export failed: ${error.localizedMessage}")
             }
         }
     }
 
-    fun deleteFile(entry: VaultFileEntry) {
+    fun exportSingle(entry: VaultFileEntry, destinationDir: File) {
         viewModelScope.launch {
-            vaultManager.deleteFile(entry).onSuccess {
-                val files = vaultManager.getFiles()
-                _uiState.value = VaultUiState.Unlocked(
-                    files = files,
-                    totalSize = files.sumOf { it.size }
-                )
-                _userMessage.emit("Deleted '${entry.originalName}' from Vault")
+            publishUnlockedState(
+                activeProgress = OperationProgress(totalFiles = 1, currentFileName = entry.originalName)
+            )
+
+            vaultManager.exportEntries(
+                entryIds = setOf(entry.id),
+                destinationDir = destinationDir,
+                onProgress = { bytesWritten ->
+                    publishUnlockedState(
+                        activeProgress = OperationProgress(
+                            bytesProcessed = bytesWritten,
+                            totalFiles = 1,
+                            currentFileName = entry.originalName
+                        )
+                    )
+                }
+            ).onSuccess {
+                publishUnlockedState()
+                _userMessage.emit("Exported '${entry.originalName}' to ${destinationDir.name}")
             }.onFailure { error ->
-                _userMessage.emit("Delete failed: ${error.localizedMessage}")
+                publishUnlockedState()
+                _userMessage.emit("Export failed: ${error.localizedMessage}")
             }
         }
     }

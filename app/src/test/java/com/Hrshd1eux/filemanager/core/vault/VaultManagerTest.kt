@@ -73,23 +73,73 @@ class VaultManagerTest {
         val exportDir = tempFolder.newFolder("exported_files")
 
         // 1. Import file
-        val importResult = vaultManager.importFile(originalFile, deleteOriginal = false)
+        val importResult = vaultManager.importFiles(listOf(originalFile), targetVirtualPath = "", deleteOriginals = false)
         assertTrue(importResult.isSuccess)
-        val entry = importResult.getOrNull()!!
+        val imported = importResult.getOrNull()!!
+        assertEquals(1, imported.size)
+        val entry = imported.first()
         assertEquals("financials.pdf", entry.originalName)
-        assertEquals(1, vaultManager.getFiles().size)
+        assertEquals(1, vaultManager.getAllFiles().size)
 
-        // 2. Export file
-        val exportResult = vaultManager.exportFile(entry, exportDir)
+        // 2. In-Memory Preview Decryption
+        val previewResult = vaultManager.decryptToMemory(entry)
+        assertTrue(previewResult.isSuccess)
+        val previewBytes = previewResult.getOrNull()!!
+        assertEquals(sampleContent, String(previewBytes, Charsets.UTF_8))
+
+        // 3. Export file
+        val exportResult = vaultManager.exportEntries(setOf(entry.id), exportDir)
         assertTrue(exportResult.isSuccess)
-        val exportedFile = exportResult.getOrNull()!!
+        assertEquals(1, exportResult.getOrNull()!!)
+        val exportedFile = File(exportDir, "financials.pdf")
         assertTrue(exportedFile.exists())
-        assertEquals("financials.pdf", exportedFile.name)
         assertEquals(sampleContent, exportedFile.readText())
 
-        // 3. Delete file
-        val deleteResult = vaultManager.deleteFile(entry)
+        // 4. Delete file
+        val deleteResult = vaultManager.deleteEntries(setOf(entry.id))
         assertTrue(deleteResult.isSuccess)
-        assertEquals(0, vaultManager.getFiles().size)
+        assertEquals(0, vaultManager.getAllFiles().size)
+    }
+
+    @Test
+    fun vaultOrganization_foldersMoveAndRename() = runTest {
+        val password = "SecureOrganizationPassword!".toCharArray()
+        vaultManager.createVault(password)
+
+        // 1. Create Folders
+        val folderResult = vaultManager.createFolder("Work", parentVirtualPath = "")
+        assertTrue(folderResult.isSuccess)
+        val workFolder = folderResult.getOrNull()!!
+        assertTrue(workFolder.isDirectory)
+
+        val subFolderResult = vaultManager.createFolder("Contracts", parentVirtualPath = "Work")
+        assertTrue(subFolderResult.isSuccess)
+        val contractsFolder = subFolderResult.getOrNull()!!
+        assertEquals("Work", contractsFolder.parentVirtualPath)
+
+        // 2. Import file into root
+        val file1 = tempFolder.newFile("agreement.txt").apply { writeText("Agreement terms") }
+        val importResult = vaultManager.importFiles(listOf(file1), targetVirtualPath = "")
+        assertTrue(importResult.isSuccess)
+        val agreementEntry = importResult.getOrNull()!!.first()
+
+        // 3. Move file into Work/Contracts
+        val moveResult = vaultManager.moveEntries(setOf(agreementEntry.id), targetVirtualPath = "Work/Contracts")
+        assertTrue(moveResult.isSuccess)
+
+        val entriesInContracts = vaultManager.getEntriesInPath("Work/Contracts")
+        assertEquals(1, entriesInContracts.size)
+        assertEquals("agreement.txt", entriesInContracts.first().originalName)
+
+        // 4. Rename file
+        val renameResult = vaultManager.renameEntry(agreementEntry.id, "final_agreement.txt")
+        assertTrue(renameResult.isSuccess)
+        val renamed = renameResult.getOrNull()!!
+        assertEquals("final_agreement.txt", renamed.originalName)
+
+        // 5. Recursive Delete of folder "Work"
+        val deleteFolderResult = vaultManager.deleteEntries(setOf(workFolder.id))
+        assertTrue(deleteFolderResult.isSuccess)
+        assertEquals(0, vaultManager.getAllFiles().size)
     }
 }

@@ -12,7 +12,11 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.security.GeneralSecurityException
 import java.util.UUID
 import javax.crypto.SecretKey
@@ -39,7 +43,31 @@ class VaultManager(
 
     fun isUnlocked(): Boolean = activeKey != null
 
-    fun getFiles(): List<VaultFileEntry> = currentManifest?.files ?: emptyList()
+    fun getAllFiles(): List<VaultFileEntry> = currentManifest?.files ?: emptyList()
+
+    /**
+     * Lists entries inside a specific virtual path inside the Vault.
+     */
+    fun getEntriesInPath(virtualPath: String): List<VaultFileEntry> {
+        val cleanPath = virtualPath.trim('/').replace('\\', '/')
+        return (currentManifest?.files ?: emptyList())
+            .filter { it.parentVirtualPath == cleanPath }
+            .sortedWith(compareBy<VaultFileEntry> { !it.isDirectory }.thenBy { it.originalName.lowercase() })
+    }
+
+    /**
+     * Returns all virtual directories in the Vault for folder picking.
+     */
+    fun getAllFolders(): List<Pair<String, String>> {
+        val list = mutableListOf<Pair<String, String>>()
+        list.add("" to "Vault Root")
+        val folders = (currentManifest?.files ?: emptyList()).filter { it.isDirectory }
+        folders.sortedBy { it.parentVirtualPath + "/" + it.originalName }.forEach { folder ->
+            val fullPath = if (folder.parentVirtualPath.isEmpty()) folder.originalName else "${folder.parentVirtualPath}/${folder.originalName}"
+            list.add(fullPath to folder.originalName)
+        }
+        return list
+    }
 
     /**
      * Initializes a new Private Vault with a user password.
@@ -131,105 +159,290 @@ class VaultManager(
     }
 
     /**
-     * Imports an external file into the encrypted vault.
+     * Creates a new virtual folder inside the vault.
      */
-    suspend fun importFile(
-        sourceFile: File,
-        deleteOriginal: Boolean = false,
-        onProgress: ((bytesRead: Long) -> Unit)? = null
+    suspend fun createFolder(
+        folderName: String,
+        parentVirtualPath: String = ""
     ): Result<VaultFileEntry> = withContext(ioDispatcher) {
         runCatching {
             val key = activeKey ?: throw IllegalStateException("Vault is locked")
-            if (!sourceFile.exists() || !sourceFile.isFile) {
-                throw IllegalArgumentException("Source file does not exist: ${sourceFile.path}")
+            val cleanName = folderName.trim().replace('/', '_').replace('\\', '_')
+            require(cleanName.isNotEmpty()) { "Folder name cannot be empty" }
+
+            val cleanParent = parentVirtualPath.trim('/').replace('\\', '/')
+            val existing = (currentManifest?.files ?: emptyList()).any {
+                it.parentVirtualPath == cleanParent && it.originalName.equals(cleanName, ignoreCase = true)
+            }
+            if (existing) {
+                throw IllegalArgumentException("A folder or file named '$cleanName' already exists here")
             }
 
-            dataDir.mkdirs()
-            val fileId = UUID.randomUUID().toString()
-            val encFileName = "$fileId.enc"
-            val encFile = File(dataDir, encFileName)
-
-            // Encrypt streaming
-            cryptoEngine.encryptFile(
-                sourceFile = sourceFile,
-                destinationFile = encFile,
-                key = key,
-                onProgress = onProgress
-            )
-
             val entry = VaultFileEntry(
-                id = fileId,
-                originalName = sourceFile.name,
-                encryptedFileName = encFileName,
-                size = sourceFile.length(),
-                mimeType = MimeTypeResolver.getMimeType(sourceFile.extension) ?: "*/*",
+                id = UUID.randomUUID().toString(),
+                originalName = cleanName,
+                encryptedFileName = "",
+                parentVirtualPath = cleanParent,
+                isDirectory = true,
+                size = 0L,
+                mimeType = "inode/directory",
                 addedDate = System.currentTimeMillis()
             )
 
-            // Update Manifest
             val updatedList = (currentManifest?.files ?: emptyList()) + entry
             val updatedManifest = VaultManifest(updatedList)
             saveManifest(updatedManifest, key)
             currentManifest = updatedManifest
-
-            if (deleteOriginal) {
-                sourceFile.delete()
-            }
 
             entry
         }
     }
 
     /**
-     * Exports a file from the vault to a destination directory.
+     * Renames a vault file or virtual folder.
      */
-    suspend fun exportFile(
-        entry: VaultFileEntry,
-        destinationDir: File,
-        onProgress: ((bytesWritten: Long) -> Unit)? = null
-    ): Result<File> = withContext(ioDispatcher) {
+    suspend fun renameEntry(
+        entryId: String,
+        newName: String
+    ): Result<VaultFileEntry> = withContext(ioDispatcher) {
         runCatching {
             val key = activeKey ?: throw IllegalStateException("Vault is locked")
-            val encFile = File(dataDir, entry.encryptedFileName)
-            if (!encFile.exists()) {
-                throw IllegalStateException("Encrypted file payload missing: ${encFile.path}")
+            val cleanName = newName.trim().replace('/', '_').replace('\\', '_')
+            require(cleanName.isNotEmpty()) { "Name cannot be empty" }
+
+            val all = currentManifest?.files ?: emptyList()
+            val target = all.find { it.id == entryId } ?: throw IllegalArgumentException("Entry not found: $entryId")
+
+            val conflict = all.any {
+                it.id != entryId && it.parentVirtualPath == target.parentVirtualPath && it.originalName.equals(cleanName, ignoreCase = true)
+            }
+            if (conflict) {
+                throw IllegalArgumentException("An item named '$cleanName' already exists here")
             }
 
-            destinationDir.mkdirs()
-            var destFile = File(destinationDir, entry.originalName)
-            if (destFile.exists()) {
-                val nameWithoutExt = destFile.nameWithoutExtension
-                val ext = destFile.extension.let { if (it.isNotEmpty()) ".$it" else "" }
-                var counter = 1
-                while (destFile.exists()) {
-                    destFile = File(destinationDir, "$nameWithoutExt ($counter)$ext")
-                    counter++
+            val oldVirtualPath = if (target.parentVirtualPath.isEmpty()) target.originalName else "${target.parentVirtualPath}/${target.originalName}"
+            val newVirtualPath = if (target.parentVirtualPath.isEmpty()) cleanName else "${target.parentVirtualPath}/$cleanName"
+
+            val updatedList = all.map { entry ->
+                when {
+                    entry.id == entryId -> entry.copy(
+                        originalName = cleanName,
+                        lastModified = System.currentTimeMillis()
+                    )
+                    entry.parentVirtualPath == oldVirtualPath -> entry.copy(
+                        parentVirtualPath = newVirtualPath
+                    )
+                    entry.parentVirtualPath.startsWith("$oldVirtualPath/") -> entry.copy(
+                        parentVirtualPath = newVirtualPath + entry.parentVirtualPath.removePrefix(oldVirtualPath)
+                    )
+                    else -> entry
                 }
             }
 
-            cryptoEngine.decryptFile(
-                sourceFile = encFile,
-                destinationFile = destFile,
-                key = key,
-                onProgress = onProgress
-            )
+            val updatedManifest = VaultManifest(updatedList)
+            saveManifest(updatedManifest, key)
+            currentManifest = updatedManifest
 
-            destFile
+            updatedList.first { it.id == entryId }
         }
     }
 
     /**
-     * Deletes a file permanently from the encrypted vault.
+     * Moves vault files or folders to a new target virtual directory.
      */
-    suspend fun deleteFile(entry: VaultFileEntry): Result<Unit> = withContext(ioDispatcher) {
+    suspend fun moveEntries(
+        entryIds: Set<String>,
+        targetVirtualPath: String
+    ): Result<Unit> = withContext(ioDispatcher) {
+        runCatching {
+            val key = activeKey ?: throw IllegalStateException("Vault is locked")
+            val cleanTarget = targetVirtualPath.trim('/').replace('\\', '/')
+
+            val all = currentManifest?.files ?: emptyList()
+            val updatedList = all.map { entry ->
+                if (entryIds.contains(entry.id)) {
+                    entry.copy(
+                        parentVirtualPath = cleanTarget,
+                        lastModified = System.currentTimeMillis()
+                    )
+                } else {
+                    entry
+                }
+            }
+
+            val updatedManifest = VaultManifest(updatedList)
+            saveManifest(updatedManifest, key)
+            currentManifest = updatedManifest
+        }
+    }
+
+    /**
+     * Imports files into the encrypted vault under a target virtual directory.
+     */
+    suspend fun importFiles(
+        sources: List<File>,
+        targetVirtualPath: String = "",
+        deleteOriginals: Boolean = false,
+        onProgress: ((bytesRead: Long) -> Unit)? = null
+    ): Result<List<VaultFileEntry>> = withContext(ioDispatcher) {
+        runCatching {
+            val key = activeKey ?: throw IllegalStateException("Vault is locked")
+            dataDir.mkdirs()
+
+            val cleanParent = targetVirtualPath.trim('/').replace('\\', '/')
+            val importedEntries = mutableListOf<VaultFileEntry>()
+            var totalBytesRead = 0L
+
+            sources.forEach { sourceFile ->
+                if (sourceFile.exists() && sourceFile.isFile) {
+                    val fileId = UUID.randomUUID().toString()
+                    val encFileName = "$fileId.enc"
+                    val encFile = File(dataDir, encFileName)
+
+                    cryptoEngine.encryptFile(
+                        sourceFile = sourceFile,
+                        destinationFile = encFile,
+                        key = key,
+                        onProgress = { bytes ->
+                            totalBytesRead += bytes
+                            onProgress?.invoke(totalBytesRead)
+                        }
+                    )
+
+                    val entry = VaultFileEntry(
+                        id = fileId,
+                        originalName = sourceFile.name,
+                        encryptedFileName = encFileName,
+                        parentVirtualPath = cleanParent,
+                        isDirectory = false,
+                        size = sourceFile.length(),
+                        mimeType = MimeTypeResolver.getMimeType(sourceFile.extension) ?: "*/*",
+                        addedDate = System.currentTimeMillis()
+                    )
+                    importedEntries.add(entry)
+
+                    if (deleteOriginals) {
+                        sourceFile.delete()
+                    }
+                }
+            }
+
+            val updatedList = (currentManifest?.files ?: emptyList()) + importedEntries
+            val updatedManifest = VaultManifest(updatedList)
+            saveManifest(updatedManifest, key)
+            currentManifest = updatedManifest
+
+            importedEntries
+        }
+    }
+
+    /**
+     * Decrypts an encrypted vault entry directly into RAM for secure previewing without writing to disk.
+     */
+    suspend fun decryptToMemory(entry: VaultFileEntry): Result<ByteArray> = withContext(ioDispatcher) {
         runCatching {
             val key = activeKey ?: throw IllegalStateException("Vault is locked")
             val encFile = File(dataDir, entry.encryptedFileName)
-            if (encFile.exists()) {
-                encFile.delete()
+            if (!encFile.exists()) {
+                throw IllegalStateException("Encrypted payload missing: ${encFile.path}")
             }
 
-            val updatedList = (currentManifest?.files ?: emptyList()).filterNot { it.id == entry.id }
+            val byteOut = ByteArrayOutputStream()
+            FileInputStream(encFile).use { fis ->
+                cryptoEngine.aead.decryptStream(fis, byteOut, key, ioDispatcher)
+            }
+            byteOut.toByteArray()
+        }
+    }
+
+    /**
+     * Exports selected entries (files and recursively folders) to an external destination directory.
+     */
+    suspend fun exportEntries(
+        entryIds: Set<String>,
+        destinationDir: File,
+        onProgress: ((bytesWritten: Long) -> Unit)? = null
+    ): Result<Int> = withContext(ioDispatcher) {
+        runCatching {
+            val key = activeKey ?: throw IllegalStateException("Vault is locked")
+            destinationDir.mkdirs()
+
+            val all = currentManifest?.files ?: emptyList()
+            val entriesToExport = all.filter { entryIds.contains(it.id) }
+            var exportedCount = 0
+
+            suspend fun exportItem(entry: VaultFileEntry, targetFolder: File) {
+                if (entry.isDirectory) {
+                    val subFolder = File(targetFolder, entry.originalName).apply { mkdirs() }
+                    val fullVirtualPath = if (entry.parentVirtualPath.isEmpty()) entry.originalName else "${entry.parentVirtualPath}/${entry.originalName}"
+                    val children = all.filter { it.parentVirtualPath == fullVirtualPath }
+                    children.forEach { child ->
+                        exportItem(child, subFolder)
+                    }
+                    exportedCount++
+                } else {
+                    val encFile = File(dataDir, entry.encryptedFileName)
+                    if (encFile.exists()) {
+                        var destFile = File(targetFolder, entry.originalName)
+                        if (destFile.exists()) {
+                            val nameWithoutExt = destFile.nameWithoutExtension
+                            val ext = destFile.extension.let { if (it.isNotEmpty()) ".$it" else "" }
+                            var counter = 1
+                            while (destFile.exists()) {
+                                destFile = File(targetFolder, "$nameWithoutExt ($counter)$ext")
+                                counter++
+                            }
+                        }
+
+                        cryptoEngine.decryptFile(
+                            sourceFile = encFile,
+                            destinationFile = destFile,
+                            key = key,
+                            onProgress = onProgress
+                        )
+                        exportedCount++
+                    }
+                }
+            }
+
+            entriesToExport.forEach { entry ->
+                exportItem(entry, destinationDir)
+            }
+
+            exportedCount
+        }
+    }
+
+    /**
+     * Permanently deletes selected entries and all recursive sub-entries from the encrypted vault.
+     */
+    suspend fun deleteEntries(entryIds: Set<String>): Result<Unit> = withContext(ioDispatcher) {
+        runCatching {
+            val key = activeKey ?: throw IllegalStateException("Vault is locked")
+            val all = currentManifest?.files ?: emptyList()
+
+            val idsToDelete = mutableSetOf<String>()
+
+            fun collectDeletions(entry: VaultFileEntry) {
+                idsToDelete.add(entry.id)
+                if (entry.isDirectory) {
+                    val fullVirtualPath = if (entry.parentVirtualPath.isEmpty()) entry.originalName else "${entry.parentVirtualPath}/${entry.originalName}"
+                    val children = all.filter { it.parentVirtualPath == fullVirtualPath || it.parentVirtualPath.startsWith("$fullVirtualPath/") }
+                    children.forEach { collectDeletions(it) }
+                }
+            }
+
+            all.filter { entryIds.contains(it.id) }.forEach { collectDeletions(it) }
+
+            // Delete encrypted files on disk
+            all.filter { idsToDelete.contains(it.id) && !it.isDirectory }.forEach { entry ->
+                val encFile = File(dataDir, entry.encryptedFileName)
+                if (encFile.exists()) {
+                    encFile.delete()
+                }
+            }
+
+            val updatedList = all.filterNot { idsToDelete.contains(it.id) }
             val updatedManifest = VaultManifest(updatedList)
             saveManifest(updatedManifest, key)
             currentManifest = updatedManifest
