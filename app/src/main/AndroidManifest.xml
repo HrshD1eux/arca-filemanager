@@ -12,11 +12,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
-    <!-- Zero internet permission strictly enforced -->
+    <!-- Zero network permissions strictly enforced across application and dependencies -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <application
         android:name=".ArcaApplication"
         android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:requestLegacyExternalStorage="true"
         android:dataExtractionRules="@null"
         android:fullBackupContent="false"
