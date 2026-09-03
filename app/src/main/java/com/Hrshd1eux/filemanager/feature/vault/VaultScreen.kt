@@ -83,8 +83,10 @@ import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDia
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.CreateVaultSetup
 import com.Hrshd1eux.filemanager.feature.vault.components.UnlockVaultView
+import com.Hrshd1eux.filemanager.feature.vault.components.VaultLockSettingsDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultMoveDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultPreviewDialog
+import androidx.compose.material.icons.filled.Settings
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,11 +97,13 @@ fun VaultScreen(
     viewModel: VaultViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lockSettings by viewModel.lockSettings.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val localProvider = remember { LocalFileSystemProvider() }
 
     var showImportPicker by remember { mutableStateOf(false) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
+    var showLockSettingsDialog by remember { mutableStateOf(false) }
     var entryToRename by remember { mutableStateOf<VaultFileEntry?>(null) }
     var entryToMove by remember { mutableStateOf<VaultFileEntry?>(null) }
     var showBatchMoveDialog by remember { mutableStateOf(false) }
@@ -204,6 +208,13 @@ fun VaultScreen(
                                 Icon(
                                     imageVector = Icons.Default.CreateNewFolder,
                                     contentDescription = "New Folder",
+                                    tint = VaultEmerald
+                                )
+                            }
+                            IconButton(onClick = { showLockSettingsDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Vault Settings",
                                     tint = VaultEmerald
                                 )
                             }
@@ -569,6 +580,20 @@ fun VaultScreen(
                 viewModel.exportSelected(File(destNode.path))
             },
             onDismiss = { showBatchExportPicker = false }
+        )
+    }
+
+    // Vault Lock Settings Dialog
+    if (showLockSettingsDialog) {
+        VaultLockSettingsDialog(
+            currentSettings = lockSettings,
+            onSaveSettings = { newSettings ->
+                viewModel.updateLockSettings(newSettings)
+            },
+            onManualLock = {
+                viewModel.lockVault()
+            },
+            onDismiss = { showLockSettingsDialog = false }
         )
     }
 }
