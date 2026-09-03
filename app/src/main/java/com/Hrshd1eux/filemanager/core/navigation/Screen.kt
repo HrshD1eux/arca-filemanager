@@ -42,4 +42,7 @@ sealed interface Screen {
         val archivePath: String,
         val title: String = ""
     ) : Screen
+
+    @Serializable
+    data object Vault : Screen
 }

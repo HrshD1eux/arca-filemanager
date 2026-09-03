@@ -82,6 +82,7 @@ fun HomeScreen(
     onNavigateToCategorySearch: (CategoryFilter) -> Unit = {},
     onNavigateToLargeFiles: (rootPath: String?) -> Unit = {},
     onNavigateToDuplicateFinder: (rootPath: String?) -> Unit = {},
+    onNavigateToVault: () -> Unit = {},
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -311,6 +312,16 @@ fun HomeScreen(
                     icon = Icons.Default.ContentCopy,
                     iconTint = MaterialTheme.colorScheme.primary,
                     onClick = { onNavigateToDuplicateFinder(null) }
+                )
+            }
+
+            item {
+                FolderItem(
+                    name = "Private Vault",
+                    path = "Zero-knowledge AES-256 encrypted storage",
+                    icon = Icons.Default.Lock,
+                    iconTint = VaultEmerald,
+                    onClick = { onNavigateToVault() }
                 )
             }
 

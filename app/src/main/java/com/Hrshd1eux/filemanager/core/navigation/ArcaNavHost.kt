@@ -19,6 +19,7 @@ import com.Hrshd1eux.filemanager.feature.cleaner.largefiles.LargeFilesScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
 import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
+import com.Hrshd1eux.filemanager.feature.vault.VaultScreen
 import java.io.File
 
 @Composable
@@ -50,6 +51,9 @@ fun ArcaNavHost(
                 },
                 onNavigateToDuplicateFinder = { rootPath ->
                     navController.navigate(Screen.DuplicateFinder(rootPath = rootPath))
+                },
+                onNavigateToVault = {
+                    navController.navigate(Screen.Vault)
                 },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) }
@@ -152,6 +156,17 @@ fun ArcaNavHost(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) {
             AboutScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.Vault>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            VaultScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
