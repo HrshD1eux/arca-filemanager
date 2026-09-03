@@ -172,6 +172,7 @@ fun FileBrowserScreen(
     var nodeToExtract by remember { mutableStateOf<StorageNode?>(null) }
     var nodeForCustomExtract by remember { mutableStateOf<StorageNode?>(null) }
     var customExtractResolution by remember { mutableStateOf(ConflictResolution.RENAME_AUTO) }
+    var customExtractVerify by remember { mutableStateOf(false) }
     var showCustomExtractPicker by remember { mutableStateOf(false) }
     var nodeForChecksums by remember { mutableStateOf<StorageNode?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
@@ -588,13 +589,14 @@ fun FileBrowserScreen(
             title = "Copy to...",
             confirmButtonText = "Copy Here",
             excludedPaths = if (targetToCopy.isDirectory) setOf(targetToCopy.path) else emptySet(),
-            onDestinationSelected = { destination ->
+            onDestinationSelected = { destination, verifyIntegrity ->
                 nodeToCopy = null
                 activeOperationTitle = "Copying Files"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 viewModel.startCopy(
                     sources = listOf(targetToCopy),
                     destination = destination,
+                    verifyIntegrity = verifyIntegrity,
                     hasPermission = hasPermission
                 )
             },
@@ -610,13 +612,14 @@ fun FileBrowserScreen(
             title = "Copy ${targetBulkCopy.size} Items to...",
             confirmButtonText = "Copy Here",
             excludedPaths = targetBulkCopy.filter { it.isDirectory }.map { it.path }.toSet(),
-            onDestinationSelected = { destination ->
+            onDestinationSelected = { destination, verifyIntegrity ->
                 bulkNodesToCopy = null
                 activeOperationTitle = "Copying ${targetBulkCopy.size} Items"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 viewModel.startCopy(
                     sources = targetBulkCopy,
                     destination = destination,
+                    verifyIntegrity = verifyIntegrity,
                     hasPermission = hasPermission
                 )
             },
@@ -632,7 +635,7 @@ fun FileBrowserScreen(
             title = "Move to...",
             confirmButtonText = "Move Here",
             excludedPaths = if (targetToMove.isDirectory) setOf(targetToMove.path) else emptySet(),
-            onDestinationSelected = { destination ->
+            onDestinationSelected = { destination, _ ->
                 nodeToMove = null
                 activeOperationTitle = "Moving Files"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -654,7 +657,7 @@ fun FileBrowserScreen(
             title = "Move ${targetBulkMove.size} Items to...",
             confirmButtonText = "Move Here",
             excludedPaths = targetBulkMove.filter { it.isDirectory }.map { it.path }.toSet(),
-            onDestinationSelected = { destination ->
+            onDestinationSelected = { destination, _ ->
                 bulkNodesToMove = null
                 activeOperationTitle = "Moving ${targetBulkMove.size} Items"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -795,26 +798,27 @@ fun FileBrowserScreen(
         ExtractOptionsBottomSheet(
             archiveName = targetToExtract.name,
             isSelective = false,
-            onExtractToSubfolder = { resolution ->
+            onExtractToSubfolder = { resolution, verifyIntegrity ->
                 nodeToExtract = null
                 activeOperationTitle = "Extracting Archive"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val parentDir = File(targetToExtract.path).parentFile ?: File("/storage/emulated/0")
                 val targetDir = File(parentDir, File(targetToExtract.path).nameWithoutExtension)
-                viewModel.extractArchive(targetToExtract, targetDir, resolution, hasPermission)
+                viewModel.extractArchive(targetToExtract, targetDir, resolution, verifyIntegrity, hasPermission)
             },
-            onExtractHere = { resolution ->
+            onExtractHere = { resolution, verifyIntegrity ->
                 nodeToExtract = null
                 activeOperationTitle = "Extracting Archive"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val parentDir = File(targetToExtract.path).parentFile ?: File("/storage/emulated/0")
-                viewModel.extractArchive(targetToExtract, parentDir, resolution, hasPermission)
+                viewModel.extractArchive(targetToExtract, parentDir, resolution, verifyIntegrity, hasPermission)
             },
-            onExtractToCustom = { resolution ->
+            onExtractToCustom = { resolution, verifyIntegrity ->
                 val node = targetToExtract
                 nodeToExtract = null
                 nodeForCustomExtract = node
                 customExtractResolution = resolution
+                customExtractVerify = verifyIntegrity
                 showCustomExtractPicker = true
             },
             onDismiss = { nodeToExtract = null }
@@ -828,12 +832,12 @@ fun FileBrowserScreen(
             storageProvider = viewModel.storageProvider,
             title = "Extract to...",
             confirmButtonText = "Extract Here",
-            onDestinationSelected = { dest ->
+            onDestinationSelected = { dest, _ ->
                 showCustomExtractPicker = false
                 activeOperationTitle = "Extracting Archive"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val targetDir = File(dest.path, File(currentExtractTarget.path).nameWithoutExtension)
-                viewModel.extractArchive(currentExtractTarget, targetDir, customExtractResolution, hasPermission)
+                viewModel.extractArchive(currentExtractTarget, targetDir, customExtractResolution, customExtractVerify, hasPermission)
                 nodeForCustomExtract = null
             },
             onDismiss = {

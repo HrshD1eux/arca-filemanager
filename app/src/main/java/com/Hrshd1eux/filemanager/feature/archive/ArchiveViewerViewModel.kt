@@ -151,6 +151,7 @@ class ArchiveViewerViewModel(
     fun extractAll(
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onComplete: () -> Unit = {}
     ) {
         val file = archiveFile ?: return
@@ -161,25 +162,29 @@ class ArchiveViewerViewModel(
                     sevenZFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
                 isTar(file) -> tarEngine.extractAll(
                     tarFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
                 else -> zipEngine.extractAll(
                     zipFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
             }
             _activeProgress.value = null
             activeJob = null
             result.onSuccess { count ->
-                _userMessage.emit("Extracted $count items to ${destinationDir.name}")
+                val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
+                _userMessage.emit("Extracted $count items to ${destinationDir.name}$verifiedSuffix")
                 onComplete()
             }.onFailure { error ->
                 if (error !is kotlinx.coroutines.CancellationException) {
@@ -192,6 +197,7 @@ class ArchiveViewerViewModel(
     fun extractSelected(
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onComplete: () -> Unit = {}
     ) {
         val file = archiveFile ?: return
@@ -206,6 +212,7 @@ class ArchiveViewerViewModel(
                     entryPaths = selected,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
                 isTar(file) -> tarEngine.extractEntries(
@@ -213,6 +220,7 @@ class ArchiveViewerViewModel(
                     entryPaths = selected,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
                 else -> zipEngine.extractEntries(
@@ -220,6 +228,7 @@ class ArchiveViewerViewModel(
                     entryPaths = selected,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
             }
@@ -227,7 +236,8 @@ class ArchiveViewerViewModel(
             activeJob = null
             result.onSuccess { count ->
                 clearSelection()
-                _userMessage.emit("Extracted $count items to ${destinationDir.name}")
+                val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
+                _userMessage.emit("Extracted $count items to ${destinationDir.name}$verifiedSuffix")
                 onComplete()
             }.onFailure { error ->
                 if (error !is kotlinx.coroutines.CancellationException) {

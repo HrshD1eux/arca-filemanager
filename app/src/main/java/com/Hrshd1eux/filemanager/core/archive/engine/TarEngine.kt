@@ -99,6 +99,7 @@ class TarEngine(
         tarFile: File,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
         runCatching {
@@ -185,6 +186,7 @@ class TarEngine(
         entryPaths: Set<String>,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
         runCatching {

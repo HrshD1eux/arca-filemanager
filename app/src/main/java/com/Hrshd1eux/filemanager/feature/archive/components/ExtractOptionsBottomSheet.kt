@@ -24,6 +24,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,15 +48,16 @@ fun ExtractOptionsBottomSheet(
     archiveName: String,
     isSelective: Boolean = false,
     selectedCount: Int = 0,
-    onExtractToSubfolder: (ConflictResolution) -> Unit,
-    onExtractHere: (ConflictResolution) -> Unit,
-    onExtractToCustom: (ConflictResolution) -> Unit,
+    onExtractToSubfolder: (conflictResolution: ConflictResolution, verifyIntegrity: Boolean) -> Unit,
+    onExtractHere: (conflictResolution: ConflictResolution, verifyIntegrity: Boolean) -> Unit,
+    onExtractToCustom: (conflictResolution: ConflictResolution, verifyIntegrity: Boolean) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedResolution by remember { mutableStateOf(ConflictResolution.RENAME_AUTO) }
-    val folderName = archiveName.substringBeforeLast(".zip")
+    var verifyIntegrity by remember { mutableStateOf(false) }
+    val folderName = archiveName.substringBeforeLast(".")
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -119,7 +122,37 @@ fun ExtractOptionsBottomSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Verification toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { verifyIntegrity = !verifyIntegrity }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Verify files after extraction",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Slower: checks CRC against archive records",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = verifyIntegrity,
+                    onCheckedChange = { verifyIntegrity = it }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -132,7 +165,7 @@ fun ExtractOptionsBottomSheet(
                     subtitle = "Unpacks files into a new dedicated folder",
                     onClick = {
                         onDismiss()
-                        onExtractToSubfolder(selectedResolution)
+                        onExtractToSubfolder(selectedResolution, verifyIntegrity)
                     }
                 )
 
@@ -147,7 +180,7 @@ fun ExtractOptionsBottomSheet(
                 subtitle = "Unpacks directly into the current directory",
                 onClick = {
                     onDismiss()
-                    onExtractHere(selectedResolution)
+                    onExtractHere(selectedResolution, verifyIntegrity)
                 }
             )
 
@@ -161,7 +194,7 @@ fun ExtractOptionsBottomSheet(
                 subtitle = "Choose destination directory across storage",
                 onClick = {
                     onDismiss()
-                    onExtractToCustom(selectedResolution)
+                    onExtractToCustom(selectedResolution, verifyIntegrity)
                 }
             )
         }

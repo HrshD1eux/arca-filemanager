@@ -6,6 +6,7 @@ import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,8 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.zip.CRC32
 import kotlin.coroutines.coroutineContext
+
+private const val BUFFER_SIZE = 8192
 
 class SevenZEngine(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -71,6 +74,7 @@ class SevenZEngine(
         sevenZFile: File,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
         runCatching {
@@ -88,7 +92,6 @@ class SevenZEngine(
                 while (entry != null) {
                     coroutineContext.ensureActive()
 
-                    // Security: Validate path traversal & suspicious device names
                     val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(entry.name, destinationDir)
 
                     if (entry.isDirectory) {
@@ -107,7 +110,6 @@ class SevenZEngine(
                                         entryBytesRead += len
                                         cumulativeBytes += len
 
-                                        // Security: Live Decompression Bomb & Size Limit Guard
                                         ArchiveSafetyGuard.validateExpansionStream(
                                             entryName = entry.name,
                                             uncompressedBytesRead = entryBytesRead,
@@ -120,6 +122,9 @@ class SevenZEngine(
                                 }
                                 if (entry.lastModifiedDate != null) {
                                     targetFile.setLastModified(entry.lastModifiedDate.time)
+                                }
+                                if (verifyIntegrity && entry.hasCrc) {
+                                    FileVerifier.verifyCrc(targetFile, entry.crcValue, ioDispatcher)
                                 }
                                 extractedFilesCount++
                             } catch (e: Throwable) {
@@ -156,6 +161,7 @@ class SevenZEngine(
         entryPaths: Set<String>,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
         runCatching {
@@ -208,6 +214,9 @@ class SevenZEngine(
                                     }
                                     if (entry.lastModifiedDate != null) {
                                         targetFile.setLastModified(entry.lastModifiedDate.time)
+                                    }
+                                    if (verifyIntegrity && entry.hasCrc) {
+                                        FileVerifier.verifyCrc(targetFile, entry.crcValue, ioDispatcher)
                                     }
                                     extractedFilesCount++
                                 } catch (e: Throwable) {

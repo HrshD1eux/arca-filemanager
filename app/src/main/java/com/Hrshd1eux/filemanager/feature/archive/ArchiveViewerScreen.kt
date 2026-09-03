@@ -100,6 +100,7 @@ fun ArchiveViewerScreen(
     var showExtractOptionsSheet by remember { mutableStateOf(false) }
     var showExtractCustomPicker by remember { mutableStateOf(false) }
     var activeConflictResolution by remember { mutableStateOf(ConflictResolution.RENAME_AUTO) }
+    var activeExtractVerify by remember { mutableStateOf(false) }
     var showAddPicker by remember { mutableStateOf(false) }
     val localProvider = remember { LocalFileSystemProvider() }
 
@@ -408,24 +409,25 @@ fun ArchiveViewerScreen(
             archiveName = File(archivePath).name,
             isSelective = isSelective,
             selectedCount = selectedEntryPaths.size,
-            onExtractToSubfolder = { resolution ->
+            onExtractToSubfolder = { resolution, verifyIntegrity ->
                 showExtractOptionsSheet = false
                 val parentDir = File(archivePath).parentFile ?: File("/storage/emulated/0")
                 val targetDir = File(parentDir, File(archivePath).nameWithoutExtension)
-                viewModel.extractAll(targetDir, resolution)
+                viewModel.extractAll(targetDir, resolution, verifyIntegrity)
             },
-            onExtractHere = { resolution ->
+            onExtractHere = { resolution, verifyIntegrity ->
                 showExtractOptionsSheet = false
                 val parentDir = File(archivePath).parentFile ?: File("/storage/emulated/0")
                 if (isSelective) {
-                    viewModel.extractSelected(parentDir, resolution)
+                    viewModel.extractSelected(parentDir, resolution, verifyIntegrity)
                 } else {
-                    viewModel.extractAll(parentDir, resolution)
+                    viewModel.extractAll(parentDir, resolution, verifyIntegrity)
                 }
             },
-            onExtractToCustom = { resolution ->
+            onExtractToCustom = { resolution, verifyIntegrity ->
                 showExtractOptionsSheet = false
                 activeConflictResolution = resolution
+                activeExtractVerify = verifyIntegrity
                 showExtractCustomPicker = true
             },
             onDismiss = { showExtractOptionsSheet = false }
@@ -439,14 +441,14 @@ fun ArchiveViewerScreen(
             storageProvider = localProvider,
             title = if (isSelective) "Extract ${selectedEntryPaths.size} Selected Items to..." else "Extract All to...",
             confirmButtonText = "Extract Here",
-            onDestinationSelected = { destNode ->
+            onDestinationSelected = { destNode, _ ->
                 showExtractCustomPicker = false
                 if (isSelective) {
                     val extractTargetDir = File(destNode.path)
-                    viewModel.extractSelected(extractTargetDir, activeConflictResolution)
+                    viewModel.extractSelected(extractTargetDir, activeConflictResolution, activeExtractVerify)
                 } else {
                     val extractTargetDir = File(destNode.path, File(archivePath).nameWithoutExtension)
-                    viewModel.extractAll(extractTargetDir, activeConflictResolution)
+                    viewModel.extractAll(extractTargetDir, activeConflictResolution, activeExtractVerify)
                 }
             },
             onDismiss = { showExtractCustomPicker = false }

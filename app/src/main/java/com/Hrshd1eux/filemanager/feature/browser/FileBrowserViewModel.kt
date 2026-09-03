@@ -215,6 +215,7 @@ class FileBrowserViewModel(
         sources: List<StorageNode>,
         destination: StorageNode,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         hasPermission: Boolean
     ) {
         if (!hasPermission) {
@@ -229,10 +230,12 @@ class FileBrowserViewModel(
                 sources = sources,
                 destinationDir = destination,
                 conflictResolution = conflictResolution,
+                verifyIntegrity = verifyIntegrity,
                 onProgress = onProgress
             )
             val opResult = result.getOrThrow()
-            _userMessage.emit("Copied ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
+            val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
+            _userMessage.emit("Copied ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})$verifiedSuffix")
         }
     }
 
@@ -383,6 +386,7 @@ class FileBrowserViewModel(
         archiveNode: StorageNode,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         hasPermission: Boolean
     ) {
         if (!hasPermission) {
@@ -403,6 +407,7 @@ class FileBrowserViewModel(
                         sevenZFile = archiveFile,
                         destinationDir = destinationDir,
                         conflictResolution = conflictResolution,
+                        verifyIntegrity = verifyIntegrity,
                         onProgress = onProgress
                     ).getOrThrow()
                 }
@@ -413,6 +418,7 @@ class FileBrowserViewModel(
                         tarFile = archiveFile,
                         destinationDir = destinationDir,
                         conflictResolution = conflictResolution,
+                        verifyIntegrity = verifyIntegrity,
                         onProgress = onProgress
                     ).getOrThrow()
                 }
@@ -421,11 +427,13 @@ class FileBrowserViewModel(
                         zipFile = archiveFile,
                         destinationDir = destinationDir,
                         conflictResolution = conflictResolution,
+                        verifyIntegrity = verifyIntegrity,
                         onProgress = onProgress
                     ).getOrThrow()
                 }
             }
-            _userMessage.emit("Extracted $count items to ${destinationDir.name}")
+            val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
+            _userMessage.emit("Extracted $count items to ${destinationDir.name}$verifiedSuffix")
         }
     }
 

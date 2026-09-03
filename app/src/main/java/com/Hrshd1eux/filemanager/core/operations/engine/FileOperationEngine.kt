@@ -5,6 +5,7 @@ import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.operations.model.OperationResult
 import com.Hrshd1eux.filemanager.core.operations.util.ConflictHelper
 import com.Hrshd1eux.filemanager.core.operations.util.StreamCopier
+import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import kotlinx.coroutines.CancellationException
@@ -32,6 +33,7 @@ class FileOperationEngine(
         sources: List<StorageNode>,
         destinationDir: StorageNode,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<OperationResult> = withContext(ioDispatcher) {
         runCatching {
@@ -84,6 +86,7 @@ class FileOperationEngine(
                                 source = child,
                                 destination = targetChild,
                                 conflictResolution = conflictResolution,
+                                verifyIntegrity = verifyIntegrity,
                                 onChunkCopied = { chunk ->
                                     bytesProcessed += chunk
                                     onProgress?.invoke(
@@ -117,6 +120,7 @@ class FileOperationEngine(
                         source = srcFile,
                         destination = targetFile,
                         conflictResolution = conflictResolution,
+                        verifyIntegrity = verifyIntegrity,
                         onChunkCopied = { chunk ->
                             bytesProcessed += chunk
                             onProgress?.invoke(
@@ -362,6 +366,7 @@ class FileOperationEngine(
         source: File,
         destination: File,
         conflictResolution: ConflictResolution,
+        verifyIntegrity: Boolean = false,
         onChunkCopied: (chunk: Int) -> Unit
     ) {
         if (destination.exists() && conflictResolution == ConflictResolution.OVERWRITE) {
@@ -376,6 +381,10 @@ class FileOperationEngine(
                     onBytesCopied = onChunkCopied
                 )
             }
+        }
+
+        if (verifyIntegrity) {
+            FileVerifier.verifyFilePair(source, destination, ioDispatcher)
         }
     }
 

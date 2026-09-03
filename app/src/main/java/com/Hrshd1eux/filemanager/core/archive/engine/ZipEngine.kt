@@ -7,6 +7,7 @@ import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyException
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +76,7 @@ class ZipEngine(
         zipFile: File,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
         runCatching {
@@ -130,6 +132,9 @@ class ZipEngine(
                                 if (entry.time > 0) {
                                     targetFile.setLastModified(entry.time)
                                 }
+                                if (verifyIntegrity && entry.crc >= 0) {
+                                    FileVerifier.verifyCrc(targetFile, entry.crc, ioDispatcher)
+                                }
                                 extractedFilesCount++
                             } catch (e: Throwable) {
                                 if (targetFile.exists()) {
@@ -163,6 +168,7 @@ class ZipEngine(
         entryPaths: Set<String>,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
         runCatching {
@@ -217,6 +223,9 @@ class ZipEngine(
                                 }
                                 if (entry.time > 0) {
                                     targetFile.setLastModified(entry.time)
+                                }
+                                if (verifyIntegrity && entry.crc >= 0) {
+                                    FileVerifier.verifyCrc(targetFile, entry.crc, ioDispatcher)
                                 }
                                 extractedFilesCount++
                             } catch (e: Throwable) {

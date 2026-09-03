@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,7 +59,7 @@ fun DestinationPickerDialog(
     title: String = "Select Destination",
     confirmButtonText: String = "Copy Here",
     excludedPaths: Set<String> = emptySet(),
-    onDestinationSelected: (StorageNode) -> Unit,
+    onDestinationSelected: (destination: StorageNode, verifyIntegrity: Boolean) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -66,6 +67,7 @@ fun DestinationPickerDialog(
     var currentDir by remember { mutableStateOf(rootNode) }
     var folders by remember { mutableStateOf<List<StorageNode>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var verifyIntegrity by remember { mutableStateOf(false) }
     var breadcrumbs by remember { mutableStateOf<List<BreadcrumbItem>>(emptyList()) }
 
     LaunchedEffect(currentDir.id) {
@@ -213,11 +215,39 @@ fun DestinationPickerDialog(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { verifyIntegrity = !verifyIntegrity }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Verify files after copy",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Slower: computes bit-for-bit checksums",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = verifyIntegrity,
+                        onCheckedChange = { verifyIntegrity = it }
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onDestinationSelected(currentDir) },
+                onClick = { onDestinationSelected(currentDir, verifyIntegrity) },
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(confirmButtonText)
