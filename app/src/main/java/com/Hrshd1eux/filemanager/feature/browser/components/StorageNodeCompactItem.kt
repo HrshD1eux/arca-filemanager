@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,6 +65,7 @@ fun StorageNodeCompactItem(
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
     onCompressClick: () -> Unit = {},
+    onExtractClick: () -> Unit = {},
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -187,6 +189,18 @@ fun StorageNodeCompactItem(
                                 onCompressClick()
                             }
                         )
+                        if (node.name.endsWith(".zip", ignoreCase = true)) {
+                            DropdownMenuItem(
+                                text = { Text("Extract...") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Unarchive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onExtractClick()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Rename") },
                             leadingIcon = {

@@ -1,6 +1,7 @@
 package com.Hrshd1eux.filemanager.core.archive
 
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
+import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -116,6 +117,53 @@ class ZipEngineTest {
         assertTrue("Zip Slip archive extraction must fail", result.isFailure)
         assertTrue(result.exceptionOrNull() is SecurityException)
         assertFalse(File(tempFolder.root, "escaped_file.txt").exists())
+    }
+
+    @Test
+    fun extractAll_withConflictResolutionOverwrite_overwritesTarget() = runTest {
+        val file = tempFolder.newFile("notes.txt").apply { writeText("New Zip Content") }
+        val zipFile = File(tempFolder.root, "overwrite_test.zip")
+        zipEngine.createZip(listOf(file), zipFile)
+
+        val destDir = tempFolder.newFolder("dest_overwrite")
+        val existing = File(destDir, "notes.txt").apply { writeText("Old Existing Content") }
+
+        val result = zipEngine.extractAll(zipFile, destDir, conflictResolution = ConflictResolution.OVERWRITE)
+        assertTrue(result.isSuccess)
+        assertEquals("New Zip Content", existing.readText())
+    }
+
+    @Test
+    fun extractAll_withConflictResolutionSkip_preservesExisting() = runTest {
+        val file = tempFolder.newFile("notes.txt").apply { writeText("New Zip Content") }
+        val zipFile = File(tempFolder.root, "skip_test.zip")
+        zipEngine.createZip(listOf(file), zipFile)
+
+        val destDir = tempFolder.newFolder("dest_skip")
+        val existing = File(destDir, "notes.txt").apply { writeText("Original Content To Keep") }
+
+        val result = zipEngine.extractAll(zipFile, destDir, conflictResolution = ConflictResolution.SKIP)
+        assertTrue(result.isSuccess)
+        assertEquals("Original Content To Keep", existing.readText())
+    }
+
+    @Test
+    fun extractAll_withConflictResolutionKeepBoth_createsNumberedClone() = runTest {
+        val file = tempFolder.newFile("notes.txt").apply { writeText("Zip Content") }
+        val zipFile = File(tempFolder.root, "keep_both_test.zip")
+        zipEngine.createZip(listOf(file), zipFile)
+
+        val destDir = tempFolder.newFolder("dest_keep_both")
+        val existing = File(destDir, "notes.txt").apply { writeText("Existing Original") }
+
+        val result = zipEngine.extractAll(zipFile, destDir, conflictResolution = ConflictResolution.RENAME_AUTO)
+        assertTrue(result.isSuccess)
+
+        val renamed = File(destDir, "notes (1).txt")
+        assertTrue(existing.exists())
+        assertEquals("Existing Original", existing.readText())
+        assertTrue(renamed.exists())
+        assertEquals("Zip Content", renamed.readText())
     }
 
     @Test

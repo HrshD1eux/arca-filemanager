@@ -4,6 +4,8 @@ import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -61,11 +63,12 @@ class ZipEngine(
     }
 
     /**
-     * Extracts all files from the ZIP into destination directory with Zip-Slip defense.
+     * Extracts all files from the ZIP into destination directory with Zip-Slip defense and conflict resolution.
      */
     suspend fun extractAll(
         zipFile: File,
         destinationDir: File,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
         runCatching {
@@ -85,33 +88,43 @@ class ZipEngine(
                 while (entries.hasMoreElements()) {
                     coroutineContext.ensureActive()
                     val entry = entries.nextElement()
-                    val targetFile = File(destinationDir, entry.name)
+                    val initialTarget = File(destinationDir, entry.name)
 
                     // Zip Slip Defense
-                    if (!targetFile.canonicalPath.startsWith(destCanonical.path + File.separator) &&
-                        targetFile.canonicalPath != destCanonical.path
+                    if (!initialTarget.canonicalPath.startsWith(destCanonical.path + File.separator) &&
+                        initialTarget.canonicalPath != destCanonical.path
                     ) {
                         throw SecurityException("Zip Slip security violation detected: ${entry.name}")
                     }
 
                     if (entry.isDirectory) {
-                        targetFile.mkdirs()
+                        initialTarget.mkdirs()
                     } else {
-                        targetFile.parentFile?.mkdirs()
-                        zf.getInputStream(entry).use { input ->
-                            FileOutputStream(targetFile).use { output ->
-                                var len: Int
-                                while (input.read(buffer).also { len = it } != -1) {
-                                    coroutineContext.ensureActive()
-                                    output.write(buffer, 0, len)
-                                    bytesProcessed += len
+                        val targetFile = resolveTargetFile(initialTarget, conflictResolution)
+                        if (targetFile != null) {
+                            targetFile.parentFile?.mkdirs()
+                            try {
+                                zf.getInputStream(entry).use { input ->
+                                    FileOutputStream(targetFile).use { output ->
+                                        var len: Int
+                                        while (input.read(buffer).also { len = it } != -1) {
+                                            coroutineContext.ensureActive()
+                                            output.write(buffer, 0, len)
+                                            bytesProcessed += len
+                                        }
+                                    }
                                 }
+                                if (entry.time > 0) {
+                                    targetFile.setLastModified(entry.time)
+                                }
+                                extractedFilesCount++
+                            } catch (e: CancellationException) {
+                                if (targetFile.exists()) {
+                                    targetFile.delete()
+                                }
+                                throw e
                             }
                         }
-                        if (entry.time > 0) {
-                            targetFile.setLastModified(entry.time)
-                        }
-                        extractedFilesCount++
                     }
 
                     onProgress?.invoke(
@@ -130,12 +143,13 @@ class ZipEngine(
     }
 
     /**
-     * Extracts specific entries from the ZIP.
+     * Extracts specific entries from the ZIP with conflict resolution.
      */
     suspend fun extractEntries(
         zipFile: File,
         entryPaths: Set<String>,
         destinationDir: File,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
         runCatching {
@@ -151,32 +165,42 @@ class ZipEngine(
                 for (entryPath in entryPaths) {
                     coroutineContext.ensureActive()
                     val entry = zf.getEntry(entryPath) ?: zf.getEntry("$entryPath/") ?: continue
-                    val targetFile = File(destinationDir, entry.name.substringAfterLast('/'))
+                    val initialTarget = File(destinationDir, entry.name.substringAfterLast('/'))
 
-                    if (!targetFile.canonicalPath.startsWith(destCanonical.path + File.separator) &&
-                        targetFile.canonicalPath != destCanonical.path
+                    if (!initialTarget.canonicalPath.startsWith(destCanonical.path + File.separator) &&
+                        initialTarget.canonicalPath != destCanonical.path
                     ) {
                         throw SecurityException("Zip Slip security violation: ${entry.name}")
                     }
 
                     if (entry.isDirectory) {
-                        targetFile.mkdirs()
+                        initialTarget.mkdirs()
                     } else {
-                        targetFile.parentFile?.mkdirs()
-                        zf.getInputStream(entry).use { input ->
-                            FileOutputStream(targetFile).use { output ->
-                                var len: Int
-                                while (input.read(buffer).also { len = it } != -1) {
-                                    coroutineContext.ensureActive()
-                                    output.write(buffer, 0, len)
-                                    bytesProcessed += len
+                        val targetFile = resolveTargetFile(initialTarget, conflictResolution)
+                        if (targetFile != null) {
+                            targetFile.parentFile?.mkdirs()
+                            try {
+                                zf.getInputStream(entry).use { input ->
+                                    FileOutputStream(targetFile).use { output ->
+                                        var len: Int
+                                        while (input.read(buffer).also { len = it } != -1) {
+                                            coroutineContext.ensureActive()
+                                            output.write(buffer, 0, len)
+                                            bytesProcessed += len
+                                        }
+                                    }
                                 }
+                                if (entry.time > 0) {
+                                    targetFile.setLastModified(entry.time)
+                                }
+                                extractedFilesCount++
+                            } catch (e: CancellationException) {
+                                if (targetFile.exists()) {
+                                    targetFile.delete()
+                                }
+                                throw e
                             }
                         }
-                        if (entry.time > 0) {
-                            targetFile.setLastModified(entry.time)
-                        }
-                        extractedFilesCount++
                     }
 
                     onProgress?.invoke(
@@ -191,6 +215,28 @@ class ZipEngine(
                 }
             }
             extractedFilesCount
+        }
+    }
+
+    private fun resolveTargetFile(file: File, conflictResolution: ConflictResolution): File? {
+        if (!file.exists()) return file
+        return when (conflictResolution) {
+            ConflictResolution.OVERWRITE -> file
+            ConflictResolution.SKIP -> null
+            ConflictResolution.CANCEL -> throw CancellationException("Extraction cancelled on conflict with ${file.name}")
+            ConflictResolution.RENAME_AUTO -> {
+                val parent = file.parentFile ?: return file
+                val nameWithoutExt = file.nameWithoutExtension
+                val ext = file.extension
+                val dotExt = if (ext.isNotEmpty()) ".$ext" else ""
+                var counter = 1
+                var candidate = File(parent, "$nameWithoutExt ($counter)$dotExt")
+                while (candidate.exists()) {
+                    counter++
+                    candidate = File(parent, "$nameWithoutExt ($counter)$dotExt")
+                }
+                candidate
+            }
         }
     }
 

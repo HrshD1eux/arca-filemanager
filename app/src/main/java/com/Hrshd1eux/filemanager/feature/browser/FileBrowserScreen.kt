@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.browser
 
+import java.io.File
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -97,7 +98,9 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import com.Hrshd1eux.filemanager.core.storage.util.FileShareHelper
+import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.feature.archive.components.CreateZipDialog
+import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.ContextualActionBar
 import com.Hrshd1eux.filemanager.feature.browser.components.CreateFolderDialog
@@ -116,6 +119,7 @@ import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Unarchive
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
 import com.Hrshd1eux.filemanager.feature.browser.components.SortBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.StorageNodeCompactItem
@@ -148,6 +152,10 @@ fun FileBrowserScreen(
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToCompress by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeToExtract by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeForCustomExtract by remember { mutableStateOf<StorageNode?>(null) }
+    var customExtractResolution by remember { mutableStateOf(ConflictResolution.RENAME_AUTO) }
+    var showCustomExtractPicker by remember { mutableStateOf(false) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showSortBottomSheet by remember { mutableStateOf(false) }
 
@@ -430,6 +438,9 @@ fun FileBrowserScreen(
                                             onCompressClick = {
                                                 nodeToCompress = node
                                             },
+                                            onExtractClick = {
+                                                nodeToExtract = node
+                                            },
                                             onRenameClick = {
                                                 nodeToRename = node
                                             },
@@ -489,6 +500,9 @@ fun FileBrowserScreen(
                                             },
                                             onCompressClick = {
                                                 nodeToCompress = node
+                                            },
+                                            onExtractClick = {
+                                                nodeToExtract = node
                                             },
                                             onRenameClick = {
                                                 nodeToRename = node
@@ -724,6 +738,60 @@ fun FileBrowserScreen(
         )
     }
 
+    // Extract Options Bottom Sheet
+    val targetToExtract = nodeToExtract
+    if (targetToExtract != null) {
+        ExtractOptionsBottomSheet(
+            archiveName = targetToExtract.name,
+            isSelective = false,
+            onExtractToSubfolder = { resolution ->
+                nodeToExtract = null
+                activeOperationTitle = "Extracting Archive"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                val parentDir = File(targetToExtract.path).parentFile ?: File("/storage/emulated/0")
+                val targetDir = File(parentDir, File(targetToExtract.path).nameWithoutExtension)
+                viewModel.extractArchive(targetToExtract, targetDir, resolution, hasPermission)
+            },
+            onExtractHere = { resolution ->
+                nodeToExtract = null
+                activeOperationTitle = "Extracting Archive"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                val parentDir = File(targetToExtract.path).parentFile ?: File("/storage/emulated/0")
+                viewModel.extractArchive(targetToExtract, parentDir, resolution, hasPermission)
+            },
+            onExtractToCustom = { resolution ->
+                val node = targetToExtract
+                nodeToExtract = null
+                nodeForCustomExtract = node
+                customExtractResolution = resolution
+                showCustomExtractPicker = true
+            },
+            onDismiss = { nodeToExtract = null }
+        )
+    }
+
+    // Custom Extract Destination Picker Dialog
+    if (showCustomExtractPicker && nodeForCustomExtract != null) {
+        val currentExtractTarget = nodeForCustomExtract!!
+        DestinationPickerDialog(
+            storageProvider = viewModel.storageProvider,
+            title = "Extract to...",
+            confirmButtonText = "Extract Here",
+            onDestinationSelected = { dest ->
+                showCustomExtractPicker = false
+                activeOperationTitle = "Extracting Archive"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                val targetDir = File(dest.path, File(currentExtractTarget.path).nameWithoutExtension)
+                viewModel.extractArchive(currentExtractTarget, targetDir, customExtractResolution, hasPermission)
+                nodeForCustomExtract = null
+            },
+            onDismiss = {
+                showCustomExtractPicker = false
+                nodeForCustomExtract = null
+            }
+        )
+    }
+
     // Active Operation Progress Dialog
     val currentProgress = activeProgress
     if (currentProgress != null) {
@@ -835,6 +903,7 @@ private fun StorageNodeItem(
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
     onCompressClick: () -> Unit = {},
+    onExtractClick: () -> Unit = {},
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -973,6 +1042,18 @@ private fun StorageNodeItem(
                                 onCompressClick()
                             }
                         )
+                        if (node.name.endsWith(".zip", ignoreCase = true)) {
+                            DropdownMenuItem(
+                                text = { Text("Extract...") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Unarchive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onExtractClick()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Rename") },
                             leadingIcon = {

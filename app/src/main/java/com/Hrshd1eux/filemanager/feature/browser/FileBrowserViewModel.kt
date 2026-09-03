@@ -345,7 +345,7 @@ class FileBrowserViewModel(
         val destZip = File(destDir, archiveName)
 
         clearSelection()
-        viewModelScope.launch {
+        activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = sources.size)
             val sourceFiles = sources.map { File(it.path) }
             val result = zipEngine.createZip(
@@ -354,11 +354,48 @@ class FileBrowserViewModel(
                 onProgress = { _activeProgress.value = it }
             )
             _activeProgress.value = null
+            activeJob = null
             result.onSuccess { size ->
                 _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})")
                 refresh(hasPermission)
             }.onFailure { error ->
-                _userMessage.emit("Compression failed: ${error.localizedMessage}")
+                if (error !is kotlinx.coroutines.CancellationException) {
+                    _userMessage.emit("Compression failed: ${error.localizedMessage}")
+                }
+            }
+        }
+    }
+
+    fun extractArchive(
+        archiveNode: StorageNode,
+        destinationDir: File,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        hasPermission: Boolean
+    ) {
+        if (!hasPermission) {
+            _uiState.value = BrowserUiState.PermissionRequired()
+            return
+        }
+
+        clearSelection()
+        activeJob = viewModelScope.launch {
+            val archiveFile = File(archiveNode.path)
+            _activeProgress.value = OperationProgress(totalFiles = 1)
+            val result = zipEngine.extractAll(
+                zipFile = archiveFile,
+                destinationDir = destinationDir,
+                conflictResolution = conflictResolution,
+                onProgress = { _activeProgress.value = it }
+            )
+            _activeProgress.value = null
+            activeJob = null
+            result.onSuccess { count ->
+                _userMessage.emit("Extracted $count items to ${destinationDir.name}")
+                refresh(hasPermission)
+            }.onFailure { error ->
+                if (error !is kotlinx.coroutines.CancellationException) {
+                    _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                }
             }
         }
     }

@@ -70,11 +70,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
+import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchivePropertiesSheet
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveTestDialog
+import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import java.io.File
@@ -95,7 +97,9 @@ fun ArchiveViewerScreen(
     val archiveProperties by viewModel.archiveProperties.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var showExtractPicker by remember { mutableStateOf(false) }
+    var showExtractOptionsSheet by remember { mutableStateOf(false) }
+    var showExtractCustomPicker by remember { mutableStateOf(false) }
+    var activeConflictResolution by remember { mutableStateOf(ConflictResolution.RENAME_AUTO) }
     var showAddPicker by remember { mutableStateOf(false) }
     val localProvider = remember { LocalFileSystemProvider() }
 
@@ -171,7 +175,7 @@ fun ArchiveViewerScreen(
 
                             Row {
                                 Button(
-                                    onClick = { showExtractPicker = true },
+                                    onClick = { showExtractOptionsSheet = true },
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Icon(Icons.Default.Unarchive, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -189,7 +193,7 @@ fun ArchiveViewerScreen(
                     ) {
                         NavigationBarItem(
                             selected = false,
-                            onClick = { showExtractPicker = true },
+                            onClick = { showExtractOptionsSheet = true },
                             icon = { Icon(Icons.Default.Unarchive, contentDescription = "Extract") },
                             label = { Text("Extract") },
                             colors = NavigationBarItemDefaults.colors(
@@ -397,24 +401,55 @@ fun ArchiveViewerScreen(
         }
     }
 
-    // Extract Destination Picker Dialog
-    if (showExtractPicker) {
+    // Extract Options Bottom Sheet
+    if (showExtractOptionsSheet) {
+        val isSelective = selectedEntryPaths.isNotEmpty()
+        ExtractOptionsBottomSheet(
+            archiveName = File(archivePath).name,
+            isSelective = isSelective,
+            selectedCount = selectedEntryPaths.size,
+            onExtractToSubfolder = { resolution ->
+                showExtractOptionsSheet = false
+                val parentDir = File(archivePath).parentFile ?: File("/storage/emulated/0")
+                val targetDir = File(parentDir, File(archivePath).nameWithoutExtension)
+                viewModel.extractAll(targetDir, resolution)
+            },
+            onExtractHere = { resolution ->
+                showExtractOptionsSheet = false
+                val parentDir = File(archivePath).parentFile ?: File("/storage/emulated/0")
+                if (isSelective) {
+                    viewModel.extractSelected(parentDir, resolution)
+                } else {
+                    viewModel.extractAll(parentDir, resolution)
+                }
+            },
+            onExtractToCustom = { resolution ->
+                showExtractOptionsSheet = false
+                activeConflictResolution = resolution
+                showExtractCustomPicker = true
+            },
+            onDismiss = { showExtractOptionsSheet = false }
+        )
+    }
+
+    // Extract Destination Picker Dialog (Custom Directory)
+    if (showExtractCustomPicker) {
         val isSelective = selectedEntryPaths.isNotEmpty()
         DestinationPickerDialog(
             storageProvider = localProvider,
             title = if (isSelective) "Extract ${selectedEntryPaths.size} Selected Items to..." else "Extract All to...",
             confirmButtonText = "Extract Here",
             onDestinationSelected = { destNode ->
-                showExtractPicker = false
+                showExtractCustomPicker = false
                 if (isSelective) {
                     val extractTargetDir = File(destNode.path)
-                    viewModel.extractSelected(extractTargetDir)
+                    viewModel.extractSelected(extractTargetDir, activeConflictResolution)
                 } else {
                     val extractTargetDir = File(destNode.path, File(archivePath).nameWithoutExtension)
-                    viewModel.extractAll(extractTargetDir)
+                    viewModel.extractAll(extractTargetDir, activeConflictResolution)
                 }
             },
-            onDismiss = { showExtractPicker = false }
+            onDismiss = { showExtractCustomPicker = false }
         )
     }
 
@@ -452,7 +487,8 @@ fun ArchiveViewerScreen(
     if (activeProgress != null) {
         OperationProgressDialog(
             progress = activeProgress!!,
-            onCancel = { /* Managed by engine */ }
+            title = "Extracting Archive",
+            onCancel = { viewModel.cancelActiveOperation() }
         )
     }
 }

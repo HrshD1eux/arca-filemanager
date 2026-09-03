@@ -6,6 +6,7 @@ import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
+import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import kotlinx.coroutines.CoroutineDispatcher
@@ -120,45 +121,69 @@ class ArchiveViewerViewModel(
         _selectedEntryPaths.value = emptySet()
     }
 
-    fun extractAll(destinationDir: File, onComplete: () -> Unit = {}) {
+    private var activeJob: kotlinx.coroutines.Job? = null
+
+    fun cancelActiveOperation() {
+        activeJob?.cancel()
+        activeJob = null
+        _activeProgress.value = null
+    }
+
+    fun extractAll(
+        destinationDir: File,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        onComplete: () -> Unit = {}
+    ) {
         val file = archiveFile ?: return
-        viewModelScope.launch {
+        activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
             val result = zipEngine.extractAll(
                 zipFile = file,
                 destinationDir = destinationDir,
+                conflictResolution = conflictResolution,
                 onProgress = { _activeProgress.value = it }
             )
             _activeProgress.value = null
+            activeJob = null
             result.onSuccess { count ->
                 _userMessage.emit("Extracted $count items to ${destinationDir.name}")
                 onComplete()
             }.onFailure { error ->
-                _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                if (error !is kotlinx.coroutines.CancellationException) {
+                    _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                }
             }
         }
     }
 
-    fun extractSelected(destinationDir: File, onComplete: () -> Unit = {}) {
+    fun extractSelected(
+        destinationDir: File,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        onComplete: () -> Unit = {}
+    ) {
         val file = archiveFile ?: return
         val selected = _selectedEntryPaths.value
         if (selected.isEmpty()) return
 
-        viewModelScope.launch {
+        activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = selected.size)
             val result = zipEngine.extractEntries(
                 zipFile = file,
                 entryPaths = selected,
                 destinationDir = destinationDir,
+                conflictResolution = conflictResolution,
                 onProgress = { _activeProgress.value = it }
             )
             _activeProgress.value = null
+            activeJob = null
             result.onSuccess { count ->
                 clearSelection()
                 _userMessage.emit("Extracted $count items to ${destinationDir.name}")
                 onComplete()
             }.onFailure { error ->
-                _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                if (error !is kotlinx.coroutines.CancellationException) {
+                    _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                }
             }
         }
     }
