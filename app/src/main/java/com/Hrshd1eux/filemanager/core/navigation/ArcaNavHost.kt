@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
+import com.Hrshd1eux.filemanager.feature.cleaner.duplicates.DuplicateFinderScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.largefiles.LargeFilesScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
 import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
@@ -45,6 +46,9 @@ fun ArcaNavHost(
                 },
                 onNavigateToLargeFiles = { rootPath ->
                     navController.navigate(Screen.LargeFiles(rootPath = rootPath))
+                },
+                onNavigateToDuplicateFinder = { rootPath ->
+                    navController.navigate(Screen.DuplicateFinder(rootPath = rootPath))
                 },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) }
@@ -93,6 +97,19 @@ fun ArcaNavHost(
         ) { backStackEntry ->
             val route = backStackEntry.toRoute<Screen.LargeFiles>()
             LargeFilesScreen(
+                rootPath = route.rootPath,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.DuplicateFinder>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.DuplicateFinder>()
+            DuplicateFinderScreen(
                 rootPath = route.rootPath,
                 onNavigateBack = { navController.popBackStack() }
             )

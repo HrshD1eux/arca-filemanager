@@ -31,4 +31,9 @@ sealed interface Screen {
     data class LargeFiles(
         val rootPath: String? = null
     ) : Screen
+
+    @Serializable
+    data class DuplicateFinder(
+        val rootPath: String? = null
+    ) : Screen
 }

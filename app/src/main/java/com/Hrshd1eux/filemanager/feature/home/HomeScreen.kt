@@ -57,6 +57,7 @@ import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import android.os.Environment
 import androidx.compose.material.icons.filled.BookmarkRemove
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -80,6 +81,7 @@ fun HomeScreen(
     onNavigateToSearch: (rootPath: String?) -> Unit,
     onNavigateToCategorySearch: (CategoryFilter) -> Unit = {},
     onNavigateToLargeFiles: (rootPath: String?) -> Unit = {},
+    onNavigateToDuplicateFinder: (rootPath: String?) -> Unit = {},
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -299,6 +301,16 @@ fun HomeScreen(
                     icon = Icons.Default.CleaningServices,
                     iconTint = MaterialTheme.colorScheme.error,
                     onClick = { onNavigateToLargeFiles(null) }
+                )
+            }
+
+            item {
+                FolderItem(
+                    name = "Duplicate Finder",
+                    path = "Scan & remove duplicate copies (SHA-256)",
+                    icon = Icons.Default.ContentCopy,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    onClick = { onNavigateToDuplicateFinder(null) }
                 )
             }
 
