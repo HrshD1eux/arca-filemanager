@@ -3,8 +3,10 @@ package com.Hrshd1eux.filemanager.core.archive.engine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
-import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyException
+import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
+import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +15,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -25,7 +26,7 @@ class ZipEngine(
 ) {
 
     /**
-     * Lists all entries inside a .zip file without extracting.
+     * Lists all entries inside a .zip file with safety validation.
      */
     suspend fun listEntries(zipFile: File): List<ArchiveEntry> = withContext(ioDispatcher) {
         if (!zipFile.exists() || !zipFile.isFile) return@withContext emptyList()
@@ -33,10 +34,15 @@ class ZipEngine(
         val entries = mutableListOf<ArchiveEntry>()
         runCatching {
             ZipFile(zipFile).use { zf ->
+                ArchiveSafetyGuard.validateArchiveHeader(zf.size())
                 val zipEntries = zf.entries()
                 while (zipEntries.hasMoreElements()) {
                     val entry = zipEntries.nextElement()
-                    val rawName = entry.name.removeSuffix("/")
+                    val cleanPath = runCatching {
+                        ArchiveSafetyGuard.sanitizeAndValidateEntryName(entry.name)
+                    }.getOrDefault(entry.name.replace('\\', '/'))
+
+                    val rawName = cleanPath.removeSuffix("/")
                     val isDir = entry.isDirectory || entry.name.endsWith("/")
                     val pathParts = rawName.split("/")
                     val name = pathParts.lastOrNull() ?: rawName
@@ -63,7 +69,7 @@ class ZipEngine(
     }
 
     /**
-     * Extracts all files from the ZIP into destination directory with Zip-Slip defense and conflict resolution.
+     * Extracts all files from the ZIP into destination directory with full ArchiveSafetyGuard protections.
      */
     suspend fun extractAll(
         zipFile: File,
@@ -75,42 +81,49 @@ class ZipEngine(
             if (!destinationDir.exists()) {
                 destinationDir.mkdirs()
             }
-            val destCanonical = destinationDir.canonicalFile
 
             var extractedFilesCount = 0
-            var bytesProcessed = 0L
+            var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
             ZipFile(zipFile).use { zf ->
+                ArchiveSafetyGuard.validateArchiveHeader(zf.size())
                 val totalEntries = zf.size()
                 val entries = zf.entries()
 
                 while (entries.hasMoreElements()) {
                     coroutineContext.ensureActive()
                     val entry = entries.nextElement()
-                    val initialTarget = File(destinationDir, entry.name)
 
-                    // Zip Slip Defense
-                    if (!initialTarget.canonicalPath.startsWith(destCanonical.path + File.separator) &&
-                        initialTarget.canonicalPath != destCanonical.path
-                    ) {
-                        throw SecurityException("Zip Slip security violation detected: ${entry.name}")
-                    }
+                    // Security: Path traversal & device name validation
+                    val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(entry.name, destinationDir)
 
                     if (entry.isDirectory) {
-                        initialTarget.mkdirs()
+                        validatedTarget.mkdirs()
                     } else {
-                        val targetFile = resolveTargetFile(initialTarget, conflictResolution)
+                        val targetFile = resolveConflictFile(validatedTarget, conflictResolution)
                         if (targetFile != null) {
                             targetFile.parentFile?.mkdirs()
+                            var entryBytesRead = 0L
+
                             try {
                                 zf.getInputStream(entry).use { input ->
                                     FileOutputStream(targetFile).use { output ->
                                         var len: Int
                                         while (input.read(buffer).also { len = it } != -1) {
                                             coroutineContext.ensureActive()
+                                            entryBytesRead += len
+                                            cumulativeBytes += len
+
+                                            // Security: Real-time Zip Bomb and expansion limits monitoring
+                                            ArchiveSafetyGuard.validateExpansionStream(
+                                                entryName = entry.name,
+                                                uncompressedBytesRead = entryBytesRead,
+                                                compressedEntrySize = entry.compressedSize,
+                                                cumulativeUncompressedBytes = cumulativeBytes
+                                            )
+
                                             output.write(buffer, 0, len)
-                                            bytesProcessed += len
                                         }
                                     }
                                 }
@@ -118,7 +131,7 @@ class ZipEngine(
                                     targetFile.setLastModified(entry.time)
                                 }
                                 extractedFilesCount++
-                            } catch (e: CancellationException) {
+                            } catch (e: Throwable) {
                                 if (targetFile.exists()) {
                                     targetFile.delete()
                                 }
@@ -129,8 +142,8 @@ class ZipEngine(
 
                     onProgress?.invoke(
                         OperationProgress(
-                            bytesProcessed = bytesProcessed,
-                            totalBytes = bytesProcessed,
+                            bytesProcessed = cumulativeBytes,
+                            totalBytes = cumulativeBytes,
                             filesProcessed = extractedFilesCount,
                             totalFiles = totalEntries,
                             currentFileName = entry.name.substringAfterLast('/')
@@ -143,7 +156,7 @@ class ZipEngine(
     }
 
     /**
-     * Extracts specific entries from the ZIP with conflict resolution.
+     * Extracts specific entries from the ZIP with safety protections.
      */
     suspend fun extractEntries(
         zipFile: File,
@@ -156,37 +169,49 @@ class ZipEngine(
             if (!destinationDir.exists()) {
                 destinationDir.mkdirs()
             }
-            val destCanonical = destinationDir.canonicalFile
+
             var extractedFilesCount = 0
-            var bytesProcessed = 0L
+            var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
             ZipFile(zipFile).use { zf ->
+                ArchiveSafetyGuard.validateArchiveHeader(zf.size())
+
                 for (entryPath in entryPaths) {
                     coroutineContext.ensureActive()
                     val entry = zf.getEntry(entryPath) ?: zf.getEntry("$entryPath/") ?: continue
-                    val initialTarget = File(destinationDir, entry.name.substringAfterLast('/'))
 
-                    if (!initialTarget.canonicalPath.startsWith(destCanonical.path + File.separator) &&
-                        initialTarget.canonicalPath != destCanonical.path
-                    ) {
-                        throw SecurityException("Zip Slip security violation: ${entry.name}")
-                    }
+                    // Security: Path traversal & device name validation
+                    val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(
+                        entry.name.substringAfterLast('/'),
+                        destinationDir
+                    )
 
                     if (entry.isDirectory) {
-                        initialTarget.mkdirs()
+                        validatedTarget.mkdirs()
                     } else {
-                        val targetFile = resolveTargetFile(initialTarget, conflictResolution)
+                        val targetFile = resolveConflictFile(validatedTarget, conflictResolution)
                         if (targetFile != null) {
                             targetFile.parentFile?.mkdirs()
+                            var entryBytesRead = 0L
+
                             try {
                                 zf.getInputStream(entry).use { input ->
                                     FileOutputStream(targetFile).use { output ->
                                         var len: Int
                                         while (input.read(buffer).also { len = it } != -1) {
                                             coroutineContext.ensureActive()
+                                            entryBytesRead += len
+                                            cumulativeBytes += len
+
+                                            ArchiveSafetyGuard.validateExpansionStream(
+                                                entryName = entry.name,
+                                                uncompressedBytesRead = entryBytesRead,
+                                                compressedEntrySize = entry.compressedSize,
+                                                cumulativeUncompressedBytes = cumulativeBytes
+                                            )
+
                                             output.write(buffer, 0, len)
-                                            bytesProcessed += len
                                         }
                                     }
                                 }
@@ -194,7 +219,7 @@ class ZipEngine(
                                     targetFile.setLastModified(entry.time)
                                 }
                                 extractedFilesCount++
-                            } catch (e: CancellationException) {
+                            } catch (e: Throwable) {
                                 if (targetFile.exists()) {
                                     targetFile.delete()
                                 }
@@ -205,8 +230,8 @@ class ZipEngine(
 
                     onProgress?.invoke(
                         OperationProgress(
-                            bytesProcessed = bytesProcessed,
-                            totalBytes = bytesProcessed,
+                            bytesProcessed = cumulativeBytes,
+                            totalBytes = cumulativeBytes,
                             filesProcessed = extractedFilesCount,
                             totalFiles = entryPaths.size,
                             currentFileName = entry.name.substringAfterLast('/')
@@ -215,28 +240,6 @@ class ZipEngine(
                 }
             }
             extractedFilesCount
-        }
-    }
-
-    private fun resolveTargetFile(file: File, conflictResolution: ConflictResolution): File? {
-        if (!file.exists()) return file
-        return when (conflictResolution) {
-            ConflictResolution.OVERWRITE -> file
-            ConflictResolution.SKIP -> null
-            ConflictResolution.CANCEL -> throw CancellationException("Extraction cancelled on conflict with ${file.name}")
-            ConflictResolution.RENAME_AUTO -> {
-                val parent = file.parentFile ?: return file
-                val nameWithoutExt = file.nameWithoutExtension
-                val ext = file.extension
-                val dotExt = if (ext.isNotEmpty()) ".$ext" else ""
-                var counter = 1
-                var candidate = File(parent, "$nameWithoutExt ($counter)$dotExt")
-                while (candidate.exists()) {
-                    counter++
-                    candidate = File(parent, "$nameWithoutExt ($counter)$dotExt")
-                }
-                candidate
-            }
         }
     }
 
@@ -347,7 +350,8 @@ class ZipEngine(
     }
 
     /**
-     * Verifies the CRC-32 integrity of all entries in the ZIP archive without writing to disk.
+     * Verifies the CRC-32 integrity of all entries in the ZIP archive without writing to disk,
+     * protected by expansion limits against decompression bombs.
      */
     suspend fun testArchive(
         zipFile: File,
@@ -357,9 +361,11 @@ class ZipEngine(
             val startTime = System.currentTimeMillis()
             val corruptedEntries = mutableListOf<String>()
             var verifiedCount = 0
+            var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
             ZipFile(zipFile).use { zf ->
+                ArchiveSafetyGuard.validateArchiveHeader(zf.size())
                 val totalEntries = zf.size()
                 val entries = zf.entries()
 
@@ -367,12 +373,23 @@ class ZipEngine(
                     coroutineContext.ensureActive()
                     val entry = entries.nextElement()
                     val crcCalculator = CRC32()
+                    var entryBytesRead = 0L
 
                     try {
                         if (!entry.isDirectory) {
                             zf.getInputStream(entry).use { input ->
                                 var len: Int
                                 while (input.read(buffer).also { len = it } != -1) {
+                                    entryBytesRead += len
+                                    cumulativeBytes += len
+
+                                    ArchiveSafetyGuard.validateExpansionStream(
+                                        entryName = entry.name,
+                                        uncompressedBytesRead = entryBytesRead,
+                                        compressedEntrySize = entry.compressedSize,
+                                        cumulativeUncompressedBytes = cumulativeBytes
+                                    )
+
                                     crcCalculator.update(buffer, 0, len)
                                 }
                             }
@@ -385,6 +402,7 @@ class ZipEngine(
                             verifiedCount++
                         }
                     } catch (e: Exception) {
+                        if (e is ArchiveSafetyException) throw e
                         corruptedEntries.add(entry.name)
                     }
 
@@ -421,9 +439,7 @@ class ZipEngine(
         runCatching {
             val tempZip = File(zipFile.parentFile, "${zipFile.name}.tmp_${System.currentTimeMillis()}")
             val buffer = ByteArray(BUFFER_SIZE)
-            val addedPaths = mutableSetOf<String>()
 
-            // Determine relative paths for new sources
             val entriesToAdd = mutableListOf<Pair<String, File>>()
             for (source in newSources) {
                 if (source.isDirectory) {
@@ -441,7 +457,6 @@ class ZipEngine(
             val newPathSet = entriesToAdd.map { it.first }.toSet()
 
             ZipOutputStream(FileOutputStream(tempZip).buffered()).use { zos ->
-                // 1. Copy existing entries (unless overwritten)
                 if (zipFile.exists() && zipFile.length() > 0) {
                     ZipFile(zipFile).use { zf ->
                         val entries = zf.entries()
@@ -469,7 +484,6 @@ class ZipEngine(
                     }
                 }
 
-                // 2. Add new entries
                 for ((entryPath, file) in entriesToAdd) {
                     coroutineContext.ensureActive()
                     if (file.isDirectory) {
@@ -489,7 +503,6 @@ class ZipEngine(
                 }
             }
 
-            // Atomic replace
             if (zipFile.exists()) {
                 zipFile.delete()
             }
@@ -544,6 +557,28 @@ class ZipEngine(
             compressedSize = if (compressedSize > 0) compressedSize else zipFile.length(),
             lastModified = zipFile.lastModified()
         )
+    }
+
+    private fun resolveConflictFile(file: File, conflictResolution: ConflictResolution): File? {
+        if (!file.exists()) return file
+        return when (conflictResolution) {
+            ConflictResolution.OVERWRITE -> file
+            ConflictResolution.SKIP -> null
+            ConflictResolution.CANCEL -> throw CancellationException("Extraction cancelled on conflict with ${file.name}")
+            ConflictResolution.RENAME_AUTO -> {
+                val parent = file.parentFile ?: return file
+                val nameWithoutExt = file.nameWithoutExtension
+                val ext = file.extension
+                val dotExt = if (ext.isNotEmpty()) ".$ext" else ""
+                var counter = 1
+                var candidate = File(parent, "$nameWithoutExt ($counter)$dotExt")
+                while (candidate.exists()) {
+                    counter++
+                    candidate = File(parent, "$nameWithoutExt ($counter)$dotExt")
+                }
+                candidate
+            }
+        }
     }
 
     companion object {

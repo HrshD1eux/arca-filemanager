@@ -132,7 +132,7 @@ class ZipEngineTest {
         val result = zipEngine.extractAll(maliciousZip, extractDir)
 
         assertTrue("Zip Slip archive extraction must fail", result.isFailure)
-        assertTrue(result.exceptionOrNull() is SecurityException)
+        assertTrue(result.exceptionOrNull() is com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyException || result.exceptionOrNull() is SecurityException)
         assertFalse(File(tempFolder.root, "escaped_file.txt").exists())
     }
 
