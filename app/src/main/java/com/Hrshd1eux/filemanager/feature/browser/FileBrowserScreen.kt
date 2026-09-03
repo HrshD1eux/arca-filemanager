@@ -76,6 +76,10 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
@@ -88,6 +92,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -369,6 +374,8 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
+                                                } else {
+                                                    FileIntentDispatcher.view(context, node)
                                                 }
                                             },
                                             onToggleSelection = {
@@ -395,6 +402,8 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
+                                                } else {
+                                                    FileIntentDispatcher.view(context, node)
                                                 }
                                             },
                                             onToggleSelection = {
@@ -416,7 +425,13 @@ fun FileBrowserScreen(
                                                 nodeToDelete = node
                                             },
                                             onShareClick = {
-                                                FileShareHelper.shareNodes(context, listOf(node))
+                                                FileIntentDispatcher.share(context, node)
+                                            },
+                                            onOpenWithClick = {
+                                                FileIntentDispatcher.openWith(context, node)
+                                            },
+                                            onSendToClick = {
+                                                FileIntentDispatcher.sendTo(context, node)
                                             },
                                             onInfoClick = {
                                                 selectedNodeForProperties = node
@@ -442,6 +457,8 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
+                                                } else {
+                                                    FileIntentDispatcher.view(context, node)
                                                 }
                                             },
                                             onToggleSelection = {
@@ -463,7 +480,13 @@ fun FileBrowserScreen(
                                                 nodeToDelete = node
                                             },
                                             onShareClick = {
-                                                FileShareHelper.shareNodes(context, listOf(node))
+                                                FileIntentDispatcher.share(context, node)
+                                            },
+                                            onOpenWithClick = {
+                                                FileIntentDispatcher.openWith(context, node)
+                                            },
+                                            onSendToClick = {
+                                                FileIntentDispatcher.sendTo(context, node)
                                             },
                                             onInfoClick = {
                                                 selectedNodeForProperties = node
@@ -754,6 +777,8 @@ private fun StorageNodeItem(
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
+    onOpenWithClick: () -> Unit = {},
+    onSendToClick: () -> Unit = {},
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -889,6 +914,16 @@ private fun StorageNodeItem(
                         )
                         if (!node.isDirectory) {
                             DropdownMenuItem(
+                                text = { Text("Open with...") },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onOpenWithClick()
+                                }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Share") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -896,6 +931,16 @@ private fun StorageNodeItem(
                                 onClick = {
                                     showMenu = false
                                     onShareClick()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Send to…") },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onSendToClick()
                                 }
                             )
                         }

@@ -1,5 +1,7 @@
 package com.Hrshd1eux.filemanager.core.storage.model
 
+import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+
 /**
  * Universal, immutable representation of a file or directory.
  * Unifies local POSIX storage, SAF document trees, and future archive/vault/remote nodes.
@@ -19,4 +21,7 @@ data class StorageNode(
 ) {
     val extension: String
         get() = if (isDirectory) "" else name.substringAfterLast('.', "")
+
+    val fileType: FileType
+        get() = if (isDirectory) FileType.UNKNOWN else FileTypeResolver.resolveType(name, mimeType)
 }

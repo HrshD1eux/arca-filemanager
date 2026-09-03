@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -63,6 +65,8 @@ fun StorageNodeCompactItem(
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
+    onOpenWithClick: () -> Unit = {},
+    onSendToClick: () -> Unit = {},
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -183,6 +187,16 @@ fun StorageNodeCompactItem(
                         )
                         if (!node.isDirectory) {
                             DropdownMenuItem(
+                                text = { Text("Open with...") },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onOpenWithClick()
+                                }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Share") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -190,6 +204,16 @@ fun StorageNodeCompactItem(
                                 onClick = {
                                     showMenu = false
                                     onShareClick()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Send to…") },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onSendToClick()
                                 }
                             )
                         }
