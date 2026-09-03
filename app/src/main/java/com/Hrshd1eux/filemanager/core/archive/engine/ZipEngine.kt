@@ -1,8 +1,9 @@
 package com.Hrshd1eux.filemanager.core.archive.engine
 
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
+import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
+import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -10,8 +11,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.IOException
 import java.io.InputStream
+import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
@@ -287,6 +288,206 @@ class ZipEngine(
             }
             destinationZip.length()
         }
+    }
+
+    /**
+     * Verifies the CRC-32 integrity of all entries in the ZIP archive without writing to disk.
+     */
+    suspend fun testArchive(
+        zipFile: File,
+        onProgress: ((OperationProgress) -> Unit)? = null
+    ): Result<ArchiveIntegrityReport> = withContext(ioDispatcher) {
+        runCatching {
+            val startTime = System.currentTimeMillis()
+            val corruptedEntries = mutableListOf<String>()
+            var verifiedCount = 0
+            val buffer = ByteArray(BUFFER_SIZE)
+
+            ZipFile(zipFile).use { zf ->
+                val totalEntries = zf.size()
+                val entries = zf.entries()
+
+                while (entries.hasMoreElements()) {
+                    coroutineContext.ensureActive()
+                    val entry = entries.nextElement()
+                    val crcCalculator = CRC32()
+
+                    try {
+                        if (!entry.isDirectory) {
+                            zf.getInputStream(entry).use { input ->
+                                var len: Int
+                                while (input.read(buffer).also { len = it } != -1) {
+                                    crcCalculator.update(buffer, 0, len)
+                                }
+                            }
+                            if (entry.crc > 0 && crcCalculator.value != entry.crc) {
+                                corruptedEntries.add(entry.name)
+                            } else {
+                                verifiedCount++
+                            }
+                        } else {
+                            verifiedCount++
+                        }
+                    } catch (e: Exception) {
+                        corruptedEntries.add(entry.name)
+                    }
+
+                    onProgress?.invoke(
+                        OperationProgress(
+                            filesProcessed = verifiedCount + corruptedEntries.size,
+                            totalFiles = totalEntries,
+                            currentFileName = entry.name.substringAfterLast('/')
+                        )
+                    )
+                }
+
+                val elapsed = System.currentTimeMillis() - startTime
+                ArchiveIntegrityReport(
+                    archiveName = zipFile.name,
+                    totalEntries = totalEntries,
+                    verifiedEntries = verifiedCount,
+                    corruptedEntries = corruptedEntries,
+                    elapsedMs = elapsed
+                )
+            }
+        }
+    }
+
+    /**
+     * Safely appends/adds new files or directories into an existing ZIP archive.
+     */
+    suspend fun addEntries(
+        zipFile: File,
+        newSources: List<File>,
+        targetVirtualPath: String = "",
+        onProgress: ((OperationProgress) -> Unit)? = null
+    ): Result<Long> = withContext(ioDispatcher) {
+        runCatching {
+            val tempZip = File(zipFile.parentFile, "${zipFile.name}.tmp_${System.currentTimeMillis()}")
+            val buffer = ByteArray(BUFFER_SIZE)
+            val addedPaths = mutableSetOf<String>()
+
+            // Determine relative paths for new sources
+            val entriesToAdd = mutableListOf<Pair<String, File>>()
+            for (source in newSources) {
+                if (source.isDirectory) {
+                    val baseDir = source.parentFile ?: source
+                    source.walkTopDown().forEach { file ->
+                        val rel = file.relativeTo(baseDir).path.replace('\\', '/')
+                        val finalPath = if (targetVirtualPath.isEmpty()) rel else "$targetVirtualPath/$rel"
+                        entriesToAdd.add(finalPath to file)
+                    }
+                } else if (source.isFile) {
+                    val finalPath = if (targetVirtualPath.isEmpty()) source.name else "$targetVirtualPath/${source.name}"
+                    entriesToAdd.add(finalPath to source)
+                }
+            }
+            val newPathSet = entriesToAdd.map { it.first }.toSet()
+
+            ZipOutputStream(FileOutputStream(tempZip).buffered()).use { zos ->
+                // 1. Copy existing entries (unless overwritten)
+                if (zipFile.exists() && zipFile.length() > 0) {
+                    ZipFile(zipFile).use { zf ->
+                        val entries = zf.entries()
+                        while (entries.hasMoreElements()) {
+                            coroutineContext.ensureActive()
+                            val entry = entries.nextElement()
+                            val cleanName = entry.name.removeSuffix("/")
+                            if (!newPathSet.contains(cleanName) && !newPathSet.contains(entry.name)) {
+                                zos.putNextEntry(ZipEntry(entry.name).apply {
+                                    time = entry.time
+                                    comment = entry.comment
+                                    extra = entry.extra
+                                })
+                                if (!entry.isDirectory) {
+                                    zf.getInputStream(entry).use { input ->
+                                        var len: Int
+                                        while (input.read(buffer).also { len = it } != -1) {
+                                            zos.write(buffer, 0, len)
+                                        }
+                                    }
+                                }
+                                zos.closeEntry()
+                            }
+                        }
+                    }
+                }
+
+                // 2. Add new entries
+                for ((entryPath, file) in entriesToAdd) {
+                    coroutineContext.ensureActive()
+                    if (file.isDirectory) {
+                        val dirPath = if (entryPath.endsWith("/")) entryPath else "$entryPath/"
+                        zos.putNextEntry(ZipEntry(dirPath).apply { time = file.lastModified() })
+                        zos.closeEntry()
+                    } else {
+                        zos.putNextEntry(ZipEntry(entryPath).apply { time = file.lastModified() })
+                        FileInputStream(file).use { fis ->
+                            var len: Int
+                            while (fis.read(buffer).also { len = it } != -1) {
+                                zos.write(buffer, 0, len)
+                            }
+                        }
+                        zos.closeEntry()
+                    }
+                }
+            }
+
+            // Atomic replace
+            if (zipFile.exists()) {
+                zipFile.delete()
+            }
+            tempZip.renameTo(zipFile)
+            zipFile.length()
+        }
+    }
+
+    /**
+     * Computes metadata and compression footprint properties for the ZIP file.
+     */
+    suspend fun getArchiveProperties(zipFile: File): ArchiveProperties = withContext(ioDispatcher) {
+        if (!zipFile.exists() || !zipFile.isFile) {
+            return@withContext ArchiveProperties(
+                archiveName = zipFile.name,
+                archivePath = zipFile.absolutePath,
+                totalFiles = 0,
+                totalFolders = 0,
+                uncompressedSize = 0L,
+                compressedSize = 0L,
+                lastModified = zipFile.lastModified()
+            )
+        }
+
+        var totalFiles = 0
+        var totalFolders = 0
+        var uncompressedSize = 0L
+        var compressedSize = 0L
+
+        runCatching {
+            ZipFile(zipFile).use { zf ->
+                val entries = zf.entries()
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    if (entry.isDirectory || entry.name.endsWith("/")) {
+                        totalFolders++
+                    } else {
+                        totalFiles++
+                        uncompressedSize += entry.size.coerceAtLeast(0L)
+                        compressedSize += entry.compressedSize.coerceAtLeast(0L)
+                    }
+                }
+            }
+        }
+
+        ArchiveProperties(
+            archiveName = zipFile.name,
+            archivePath = zipFile.absolutePath,
+            totalFiles = totalFiles,
+            totalFolders = totalFolders,
+            uncompressedSize = uncompressedSize,
+            compressedSize = if (compressedSize > 0) compressedSize else zipFile.length(),
+            lastModified = zipFile.lastModified()
+        )
     }
 
     companion object {

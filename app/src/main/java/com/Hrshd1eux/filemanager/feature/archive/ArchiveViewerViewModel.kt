@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
+import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
+import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -43,6 +46,12 @@ class ArchiveViewerViewModel(
 
     private val _activeProgress = MutableStateFlow<OperationProgress?>(null)
     val activeProgress: StateFlow<OperationProgress?> = _activeProgress.asStateFlow()
+
+    private val _testReport = MutableStateFlow<ArchiveIntegrityReport?>(null)
+    val testReport: StateFlow<ArchiveIntegrityReport?> = _testReport.asStateFlow()
+
+    private val _archiveProperties = MutableStateFlow<ArchiveProperties?>(null)
+    val archiveProperties: StateFlow<ArchiveProperties?> = _archiveProperties.asStateFlow()
 
     private val _userMessage = MutableSharedFlow<String>()
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
@@ -150,6 +159,62 @@ class ArchiveViewerViewModel(
                 onComplete()
             }.onFailure { error ->
                 _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun testArchive() {
+        val file = archiveFile ?: return
+        viewModelScope.launch {
+            _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
+            val result = zipEngine.testArchive(
+                zipFile = file,
+                onProgress = { _activeProgress.value = it }
+            )
+            _activeProgress.value = null
+            result.onSuccess { report ->
+                _testReport.value = report
+            }.onFailure { error ->
+                _userMessage.emit("Integrity test failed to execute: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun dismissTestReport() {
+        _testReport.value = null
+    }
+
+    fun loadArchiveProperties() {
+        val file = archiveFile ?: return
+        viewModelScope.launch {
+            _archiveProperties.value = zipEngine.getArchiveProperties(file)
+        }
+    }
+
+    fun dismissArchiveProperties() {
+        _archiveProperties.value = null
+    }
+
+    fun addFiles(sources: List<File>) {
+        val file = archiveFile ?: return
+        if (sources.isEmpty()) return
+
+        viewModelScope.launch {
+            _activeProgress.value = OperationProgress(totalFiles = sources.size)
+            val result = zipEngine.addEntries(
+                zipFile = file,
+                newSources = sources,
+                targetVirtualPath = currentVirtualPath,
+                onProgress = { _activeProgress.value = it }
+            )
+            _activeProgress.value = null
+            result.onSuccess { newSize ->
+                _userMessage.emit("Added ${sources.size} items (${FileFormatter.formatFileSize(newSize)})")
+                // Reload archive entries
+                allEntries = zipEngine.listEntries(file)
+                updateVisibleState()
+            }.onFailure { error ->
+                _userMessage.emit("Failed to add items: ${error.localizedMessage}")
             }
         }
     }

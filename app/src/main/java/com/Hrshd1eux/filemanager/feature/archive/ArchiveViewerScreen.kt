@@ -22,7 +22,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
@@ -30,8 +32,8 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Unarchive
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -40,7 +42,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -58,7 +62,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,9 +70,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
-import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialog
+import com.Hrshd1eux.filemanager.feature.archive.components.ArchivePropertiesSheet
+import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveTestDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import java.io.File
@@ -86,10 +91,12 @@ fun ArchiveViewerScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedEntryPaths by viewModel.selectedEntryPaths.collectAsStateWithLifecycle()
     val activeProgress by viewModel.activeProgress.collectAsStateWithLifecycle()
+    val testReport by viewModel.testReport.collectAsStateWithLifecycle()
+    val archiveProperties by viewModel.archiveProperties.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var showExtractAllPicker by remember { mutableStateOf(false) }
-    var showExtractSelectedPicker by remember { mutableStateOf(false) }
+    var showExtractPicker by remember { mutableStateOf(false) }
+    var showAddPicker by remember { mutableStateOf(false) }
     val localProvider = remember { LocalFileSystemProvider() }
 
     LaunchedEffect(archivePath) {
@@ -115,7 +122,7 @@ fun ArchiveViewerScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = title.ifEmpty { "Archive Viewer" },
+                        text = title.ifEmpty { File(archivePath).name },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -134,13 +141,6 @@ fun ArchiveViewerScreen(
                         )
                     }
                 },
-                actions = {
-                    if (uiState is ArchiveViewerUiState.Success) {
-                        IconButton(onClick = { showExtractAllPicker = true }) {
-                            Icon(Icons.Default.Unarchive, contentDescription = "Extract All")
-                        }
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground
@@ -148,33 +148,85 @@ fun ArchiveViewerScreen(
             )
         },
         bottomBar = {
-            if (selectedEntryPaths.isNotEmpty() && uiState is ArchiveViewerUiState.Success) {
-                Surface(
-                    tonalElevation = 8.dp,
-                    shadowElevation = 8.dp,
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            if (uiState is ArchiveViewerUiState.Success) {
+                if (selectedEntryPaths.isNotEmpty()) {
+                    // Selected Items Contextual Extraction Bar
+                    Surface(
+                        tonalElevation = 8.dp,
+                        shadowElevation = 8.dp,
+                        color = MaterialTheme.colorScheme.surface
                     ) {
-                        Text(
-                            text = "${selectedEntryPaths.size} entries selected",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Button(
-                            onClick = { showExtractSelectedPicker = true },
-                            shape = RoundedCornerShape(8.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Unarchive, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Extract Selected")
+                            Text(
+                                text = "${selectedEntryPaths.size} selected",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Row {
+                                Button(
+                                    onClick = { showExtractPicker = true },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Unarchive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Extract Selected")
+                                }
+                            }
                         }
+                    }
+                } else {
+                    // Persistent 4 Actions: Extract, Add, Test, Properties
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 8.dp
+                    ) {
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = { showExtractPicker = true },
+                            icon = { Icon(Icons.Default.Unarchive, contentDescription = "Extract") },
+                            label = { Text("Extract") },
+                            colors = NavigationBarItemDefaults.colors(
+                                unselectedIconColor = ZipOrange,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = { showAddPicker = true },
+                            icon = { Icon(Icons.Default.Add, contentDescription = "Add") },
+                            label = { Text("Add") },
+                            colors = NavigationBarItemDefaults.colors(
+                                unselectedIconColor = MaterialTheme.colorScheme.primary,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = { viewModel.testArchive() },
+                            icon = { Icon(Icons.AutoMirrored.Filled.FactCheck, contentDescription = "Test") },
+                            label = { Text("Test") },
+                            colors = NavigationBarItemDefaults.colors(
+                                unselectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = { viewModel.loadArchiveProperties() },
+                            icon = { Icon(Icons.Outlined.Info, contentDescription = "Properties") },
+                            label = { Text("Properties") },
+                            colors = NavigationBarItemDefaults.colors(
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
                     }
                 }
             }
@@ -219,7 +271,7 @@ fun ArchiveViewerScreen(
                     }
                 }
                 is ArchiveViewerUiState.Success -> {
-                    // Archive Summary Banner
+                    // Archive Summary Header Banner
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -320,7 +372,7 @@ fun ArchiveViewerScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 80.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(state.items, key = { it.path }) { entry ->
@@ -345,34 +397,54 @@ fun ArchiveViewerScreen(
         }
     }
 
-    // Extract All Destination Picker Dialog
-    if (showExtractAllPicker) {
-        val parentDir = File(archivePath).parentFile ?: File("/storage/emulated/0")
+    // Extract Destination Picker Dialog
+    if (showExtractPicker) {
+        val isSelective = selectedEntryPaths.isNotEmpty()
         DestinationPickerDialog(
             storageProvider = localProvider,
-            title = "Extract All to...",
+            title = if (isSelective) "Extract ${selectedEntryPaths.size} Selected Items to..." else "Extract All to...",
             confirmButtonText = "Extract Here",
             onDestinationSelected = { destNode ->
-                showExtractAllPicker = false
-                val extractTargetDir = File(destNode.path, File(archivePath).nameWithoutExtension)
-                viewModel.extractAll(extractTargetDir)
+                showExtractPicker = false
+                if (isSelective) {
+                    val extractTargetDir = File(destNode.path)
+                    viewModel.extractSelected(extractTargetDir)
+                } else {
+                    val extractTargetDir = File(destNode.path, File(archivePath).nameWithoutExtension)
+                    viewModel.extractAll(extractTargetDir)
+                }
             },
-            onDismiss = { showExtractAllPicker = false }
+            onDismiss = { showExtractPicker = false }
         )
     }
 
-    // Extract Selected Destination Picker Dialog
-    if (showExtractSelectedPicker) {
-        DestinationPickerDialog(
+    // Add Items Source Picker Dialog
+    if (showAddPicker) {
+        ArchiveAddItemsDialog(
             storageProvider = localProvider,
-            title = "Extract Selected Entries to...",
-            confirmButtonText = "Extract Here",
-            onDestinationSelected = { destNode ->
-                showExtractSelectedPicker = false
-                val extractTargetDir = File(destNode.path)
-                viewModel.extractSelected(extractTargetDir)
+            onItemsSelected = { sourceFiles ->
+                showAddPicker = false
+                viewModel.addFiles(sourceFiles)
             },
-            onDismiss = { showExtractSelectedPicker = false }
+            onDismiss = { showAddPicker = false }
+        )
+    }
+
+    // Archive Test Dialog
+    val currentTestReport = testReport
+    if (currentTestReport != null) {
+        ArchiveTestDialog(
+            report = currentTestReport,
+            onDismiss = { viewModel.dismissTestReport() }
+        )
+    }
+
+    // Archive Properties Sheet
+    val currentProperties = archiveProperties
+    if (currentProperties != null) {
+        ArchivePropertiesSheet(
+            properties = currentProperties,
+            onDismiss = { viewModel.dismissArchiveProperties() }
         )
     }
 

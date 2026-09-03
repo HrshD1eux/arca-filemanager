@@ -103,7 +103,6 @@ class ZipEngineTest {
 
     @Test
     fun extractAll_zipSlipVulnerability_strictlyRejected() = runTest {
-        // Manually build a malicious zip entry that attempts directory traversal
         val maliciousZip = File(tempFolder.root, "malicious.zip")
         ZipOutputStream(FileOutputStream(maliciousZip)).use { zos ->
             zos.putNextEntry(ZipEntry("../../escaped_file.txt"))
@@ -117,5 +116,51 @@ class ZipEngineTest {
         assertTrue("Zip Slip archive extraction must fail", result.isFailure)
         assertTrue(result.exceptionOrNull() is SecurityException)
         assertFalse(File(tempFolder.root, "escaped_file.txt").exists())
+    }
+
+    @Test
+    fun testArchive_validArchive_passesIntegrityCheck() = runTest {
+        val file1 = tempFolder.newFile("notes.txt").apply { writeText("Sample note") }
+        val file2 = tempFolder.newFile("doc.pdf").apply { writeText("%PDF-1.4 header") }
+        val zipFile = File(tempFolder.root, "backup.zip")
+        zipEngine.createZip(listOf(file1, file2), zipFile)
+
+        val testResult = zipEngine.testArchive(zipFile)
+        assertTrue(testResult.isSuccess)
+        val report = testResult.getOrNull()!!
+        assertTrue(report.isPassed)
+        assertEquals(2, report.totalEntries)
+        assertEquals(2, report.verifiedEntries)
+        assertTrue(report.corruptedEntries.isEmpty())
+    }
+
+    @Test
+    fun addEntries_appendsFilesToExistingArchive() = runTest {
+        val file1 = tempFolder.newFile("original.txt").apply { writeText("Original content") }
+        val zipFile = File(tempFolder.root, "growing.zip")
+        zipEngine.createZip(listOf(file1), zipFile)
+
+        val file2 = tempFolder.newFile("added.txt").apply { writeText("Newly added content") }
+        val addResult = zipEngine.addEntries(zipFile, listOf(file2))
+        assertTrue(addResult.isSuccess)
+
+        val entries = zipEngine.listEntries(zipFile)
+        assertEquals(2, entries.size)
+        assertTrue(entries.any { it.name == "original.txt" })
+        assertTrue(entries.any { it.name == "added.txt" })
+    }
+
+    @Test
+    fun getArchiveProperties_accuratelyCalculatesMetadata() = runTest {
+        val file1 = tempFolder.newFile("p1.txt").apply { writeText("Some text content for compression testing") }
+        val zipFile = File(tempFolder.root, "properties.zip")
+        zipEngine.createZip(listOf(file1), zipFile)
+
+        val props = zipEngine.getArchiveProperties(zipFile)
+        assertEquals("properties.zip", props.archiveName)
+        assertEquals(1, props.totalFiles)
+        assertEquals(0, props.totalFolders)
+        assertTrue(props.uncompressedSize > 0)
+        assertTrue(props.compressedSize > 0)
     }
 }
