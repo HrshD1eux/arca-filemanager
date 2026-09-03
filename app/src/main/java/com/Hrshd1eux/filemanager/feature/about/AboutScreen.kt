@@ -139,7 +139,7 @@ private fun AppHeader(
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "Version 1.1.1-alpha (Build 10101)",
+            text = "Version 1.1.40 (Build 10140) • Foundation Complete",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
