@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.core.storage.util
 
+import com.Hrshd1eux.filemanager.core.storage.model.ArchiveFormat
 import com.Hrshd1eux.filemanager.core.storage.model.FileType
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 
@@ -88,6 +89,30 @@ object FileTypeResolver {
 
         val ext = lowerName.substringAfterLast('.', "")
         return MimeTypeResolver.getMimeType(ext) ?: "*/*"
+    }
+
+    fun resolveArchiveFormat(fileName: String): ArchiveFormat? {
+        val lower = fileName.lowercase()
+        return when {
+            lower.endsWith(".tar.gz") || lower.endsWith(".tgz") -> ArchiveFormat.TAR_GZ
+            lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2") -> ArchiveFormat.TAR_BZ2
+            lower.endsWith(".tar.xz") || lower.endsWith(".txz") -> ArchiveFormat.TAR_XZ
+            lower.endsWith(".zip") -> ArchiveFormat.ZIP
+            lower.endsWith(".tar") -> ArchiveFormat.TAR
+            lower.endsWith(".7z") -> ArchiveFormat.SEVEN_ZIP
+            lower.endsWith(".rar") -> ArchiveFormat.RAR
+            lower.endsWith(".gz") -> ArchiveFormat.GZIP
+            lower.endsWith(".bz2") -> ArchiveFormat.BZIP2
+            lower.endsWith(".xz") -> ArchiveFormat.XZ
+            lower.endsWith(".zst") -> ArchiveFormat.ZSTD
+            lower.endsWith(".iso") -> ArchiveFormat.ISO
+            isArchive(fileName) -> ArchiveFormat.OTHER
+            else -> null
+        }
+    }
+
+    fun canPreviewArchive(fileName: String): Boolean {
+        return resolveArchiveFormat(fileName)?.supportsStreamingPreview == true
     }
 
     fun isArchive(fileName: String): Boolean {

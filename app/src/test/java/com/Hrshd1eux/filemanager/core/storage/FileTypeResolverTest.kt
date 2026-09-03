@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.core.storage
 
+import com.Hrshd1eux.filemanager.core.storage.model.ArchiveFormat
 import com.Hrshd1eux.filemanager.core.storage.model.FileType
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import org.junit.Assert.assertEquals
@@ -11,14 +12,32 @@ class FileTypeResolverTest {
 
     @Test
     fun resolveType_standardExtensions_mapsAccurately() {
-        // Images
+        // Images (.jpg -> image)
         assertEquals(FileType.IMAGE, FileTypeResolver.resolveType("photo.jpg"))
         assertEquals(FileType.IMAGE, FileTypeResolver.resolveType("vacation.jpeg"))
         assertEquals(FileType.IMAGE, FileTypeResolver.resolveType("screenshot.png"))
         assertEquals(FileType.IMAGE, FileTypeResolver.resolveType("banner.webp"))
         assertEquals(FileType.IMAGE, FileTypeResolver.resolveType("raw_shot.heic"))
 
-        // Videos
+        // Documents (.pdf -> document)
+        assertEquals(FileType.DOCUMENT, FileTypeResolver.resolveType("contract.pdf"))
+        assertEquals(FileType.DOCUMENT, FileTypeResolver.resolveType("report.docx"))
+        assertEquals(FileType.DOCUMENT, FileTypeResolver.resolveType("sheet.xlsx"))
+        assertEquals(FileType.DOCUMENT, FileTypeResolver.resolveType("book.epub"))
+
+        // Archives (.zip -> archive)
+        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("backup.zip"))
+        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("data.rar"))
+        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("bundle.7z"))
+        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("archive.tar.gz"))
+        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("kernel.tar.xz"))
+
+        // Packages (.apk -> package)
+        assertEquals(FileType.PACKAGE, FileTypeResolver.resolveType("app-release.apk"))
+        assertEquals(FileType.PACKAGE, FileTypeResolver.resolveType("bundle.aab"))
+        assertEquals(FileType.PACKAGE, FileTypeResolver.resolveType("game.xapk"))
+
+        // Videos (.mp4 -> video)
         assertEquals(FileType.VIDEO, FileTypeResolver.resolveType("clip.mp4"))
         assertEquals(FileType.VIDEO, FileTypeResolver.resolveType("movie.mkv"))
         assertEquals(FileType.VIDEO, FileTypeResolver.resolveType("sample.webm"))
@@ -28,24 +47,6 @@ class FileTypeResolverTest {
         assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("track.flac"))
         assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("voice.m4a"))
 
-        // Documents
-        assertEquals(FileType.DOCUMENT, FileTypeResolver.resolveType("contract.pdf"))
-        assertEquals(FileType.DOCUMENT, FileTypeResolver.resolveType("report.docx"))
-        assertEquals(FileType.DOCUMENT, FileTypeResolver.resolveType("sheet.xlsx"))
-        assertEquals(FileType.DOCUMENT, FileTypeResolver.resolveType("book.epub"))
-
-        // Archives
-        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("backup.zip"))
-        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("data.rar"))
-        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("bundle.7z"))
-        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("archive.tar.gz"))
-        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("kernel.tar.xz"))
-
-        // Packages
-        assertEquals(FileType.PACKAGE, FileTypeResolver.resolveType("app-release.apk"))
-        assertEquals(FileType.PACKAGE, FileTypeResolver.resolveType("bundle.aab"))
-        assertEquals(FileType.PACKAGE, FileTypeResolver.resolveType("game.xapk"))
-
         // Code
         assertEquals(FileType.CODE, FileTypeResolver.resolveType("MainActivity.kt"))
         assertEquals(FileType.CODE, FileTypeResolver.resolveType("script.py"))
@@ -54,6 +55,24 @@ class FileTypeResolverTest {
         // Text
         assertEquals(FileType.TEXT, FileTypeResolver.resolveType("notes.txt"))
         assertEquals(FileType.TEXT, FileTypeResolver.resolveType("README.md"))
+    }
+
+    @Test
+    fun resolveArchiveFormat_detectsFormatsForUpcomingArchiveEngine() {
+        assertEquals(ArchiveFormat.ZIP, FileTypeResolver.resolveArchiveFormat("project.zip"))
+        assertEquals(ArchiveFormat.TAR, FileTypeResolver.resolveArchiveFormat("backup.tar"))
+        assertEquals(ArchiveFormat.TAR_GZ, FileTypeResolver.resolveArchiveFormat("source.tar.gz"))
+        assertEquals(ArchiveFormat.TAR_GZ, FileTypeResolver.resolveArchiveFormat("source.tgz"))
+        assertEquals(ArchiveFormat.TAR_BZ2, FileTypeResolver.resolveArchiveFormat("kernel.tar.bz2"))
+        assertEquals(ArchiveFormat.TAR_XZ, FileTypeResolver.resolveArchiveFormat("dist.tar.xz"))
+        assertEquals(ArchiveFormat.SEVEN_ZIP, FileTypeResolver.resolveArchiveFormat("data.7z"))
+        assertEquals(ArchiveFormat.RAR, FileTypeResolver.resolveArchiveFormat("archive.rar"))
+        assertEquals(ArchiveFormat.ISO, FileTypeResolver.resolveArchiveFormat("ubuntu.iso"))
+
+        assertTrue(FileTypeResolver.canPreviewArchive("project.zip"))
+        assertTrue(FileTypeResolver.canPreviewArchive("source.tar.gz"))
+        assertTrue(FileTypeResolver.canPreviewArchive("data.7z"))
+        assertFalse(FileTypeResolver.canPreviewArchive("image.jpg"))
     }
 
     @Test
