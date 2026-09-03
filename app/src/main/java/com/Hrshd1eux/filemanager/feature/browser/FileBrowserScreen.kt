@@ -97,10 +97,13 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import com.Hrshd1eux.filemanager.core.storage.util.FileShareHelper
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material.icons.filled.Sync
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.feature.archive.components.CompressDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
+import com.Hrshd1eux.filemanager.feature.operations.components.OperationsQueueSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.ContextualActionBar
 import com.Hrshd1eux.filemanager.feature.browser.components.CreateFolderDialog
@@ -139,11 +142,16 @@ fun FileBrowserScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val activeProgress by viewModel.activeProgress.collectAsStateWithLifecycle()
+    val activeOperation by viewModel.activeOperation.collectAsStateWithLifecycle()
+    val waitingQueue by viewModel.waitingQueue.collectAsStateWithLifecycle()
+    val completedHistory by viewModel.completedHistory.collectAsStateWithLifecycle()
     val selectedNodeIds by viewModel.selectedNodeIds.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var showOperationsQueueSheet by remember { mutableStateOf(false) }
 
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
     var bulkNodesForProperties by remember { mutableStateOf<List<StorageNode>?>(null) }
@@ -232,7 +240,7 @@ fun FileBrowserScreen(
                     onBulkMove = { bulkNodesToMove = selectedItems },
                     onBulkDelete = { bulkNodesToDelete = selectedItems },
                     onBulkCompress = { bulkNodesToCompress = selectedItems },
-                    onShare = { FileShareHelper.shareNodes(context, selectedItems) },
+                    onShare = { FileIntentDispatcher.shareMultiple(context, selectedItems) },
                     onRename = { nodeToRename = selectedItems.firstOrNull() },
                     onProperties = {
                         if (selectedItems.size == 1) {
@@ -268,6 +276,23 @@ fun FileBrowserScreen(
                         }
                     },
                     actions = {
+                        val pendingCount = (if (activeOperation != null) 1 else 0) + waitingQueue.size
+                        if (pendingCount > 0) {
+                            IconButton(onClick = { showOperationsQueueSheet = true }) {
+                                BadgedBox(
+                                    badge = {
+                                        Badge { Text("$pendingCount") }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Sync,
+                                        contentDescription = "Active Operations ($pendingCount)",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
                         val isCurrentFavorite = (uiState as? BrowserUiState.Success)?.let { viewModel.isFavorite(it.currentPath) } ?: false
                         IconButton(onClick = { viewModel.toggleCurrentFolderFavorite() }) {
                             Icon(
@@ -796,12 +821,25 @@ fun FileBrowserScreen(
         )
     }
 
-    // Active Operation Progress Dialog
+    // Operations Queue Bottom Sheet
+    if (showOperationsQueueSheet) {
+        OperationsQueueSheet(
+            activeOperation = activeOperation,
+            waitingQueue = waitingQueue,
+            completedHistory = completedHistory,
+            onCancelOperation = { id -> viewModel.cancelOperation(id) },
+            onCancelAll = { viewModel.cancelAllOperations() },
+            onClearCompleted = { viewModel.clearCompletedOperations() },
+            onDismiss = { showOperationsQueueSheet = false }
+        )
+    }
+
+    // Active Operation Progress Dialog (Fallback popup if queue sheet closed)
     val currentProgress = activeProgress
-    if (currentProgress != null) {
+    if (currentProgress != null && !showOperationsQueueSheet) {
         OperationProgressDialog(
             progress = currentProgress,
-            title = activeOperationTitle,
+            title = activeOperation?.title ?: activeOperationTitle,
             onCancel = { viewModel.cancelActiveOperation() }
         )
     }

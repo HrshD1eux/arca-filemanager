@@ -12,7 +12,10 @@ import com.Hrshd1eux.filemanager.core.favorites.repository.FavoritesRepository
 import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
-import com.Hrshd1eux.filemanager.core.operations.model.OperationResult
+import com.Hrshd1eux.filemanager.core.operations.queue.OperationManager
+import com.Hrshd1eux.filemanager.core.operations.queue.OperationStatus
+import com.Hrshd1eux.filemanager.core.operations.queue.OperationType
+import com.Hrshd1eux.filemanager.core.operations.queue.QueuedOperation
 import com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
@@ -21,13 +24,15 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.browser.model.BreadcrumbItem
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -39,6 +44,7 @@ class FileBrowserViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher),
     private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
+    private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
     private val recentsRepository: RecentsRepository = RecentsRepository()
@@ -47,8 +53,13 @@ class FileBrowserViewModel(
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
     val uiState: StateFlow<BrowserUiState> = _uiState.asStateFlow()
 
-    private val _activeProgress = MutableStateFlow<OperationProgress?>(null)
-    val activeProgress: StateFlow<OperationProgress?> = _activeProgress.asStateFlow()
+    val activeOperation: StateFlow<QueuedOperation?> = operationManager.activeOperation
+    val waitingQueue: StateFlow<List<QueuedOperation>> = operationManager.waitingQueue
+    val completedHistory: StateFlow<List<QueuedOperation>> = operationManager.completedHistory
+
+    val activeProgress: StateFlow<OperationProgress?> = operationManager.activeOperation
+        .map { it?.progress }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _selectedNodeIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedNodeIds: StateFlow<Set<String>> = _selectedNodeIds.asStateFlow()
@@ -61,8 +72,27 @@ class FileBrowserViewModel(
     private val _userMessage = MutableSharedFlow<String>()
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
 
-    private var activeJob: Job? = null
     private val rootNode: StorageNode = storageProvider.getRootNode()
+
+    init {
+        viewModelScope.launch {
+            operationManager.operationCompletedEvents.collect { completedOp ->
+                val current = _uiState.value
+                if (current is BrowserUiState.Success) {
+                    refresh(hasPermission = true)
+                }
+                when (completedOp.status) {
+                    OperationStatus.CANCELLED -> {
+                        _userMessage.emit("${completedOp.title} cancelled.")
+                    }
+                    OperationStatus.FAILED -> {
+                        _userMessage.emit("${completedOp.title} failed: ${completedOp.errorMessage}")
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
 
     fun toggleShowHiddenFiles(hasPermission: Boolean) {
         val current = displayPreferencesRepository.showHiddenFiles.value
@@ -116,7 +146,7 @@ class FileBrowserViewModel(
     }
 
     fun cycleViewMode() {
-        val nextMode = when (viewMode.value) {
+        val nextMode = when (displayPreferencesRepository.viewMode.value) {
             ViewMode.LIST -> ViewMode.COMPACT
             ViewMode.COMPACT -> ViewMode.GRID
             ViewMode.GRID -> ViewMode.LIST
@@ -133,9 +163,10 @@ class FileBrowserViewModel(
         }
     }
 
-    fun selectAll(items: List<StorageNode>) {
-        val allIds = items.map { it.id }.toSet()
-        _selectedNodeIds.value = if (_selectedNodeIds.value.size == allIds.size) {
+    fun selectAll(items: List<StorageNode>? = null) {
+        val targetItems = items ?: (_uiState.value as? BrowserUiState.Success)?.items ?: return
+        val allIds = targetItems.map { it.id }.toSet()
+        _selectedNodeIds.value = if (_selectedNodeIds.value == allIds) {
             emptySet()
         } else {
             allIds
@@ -146,7 +177,15 @@ class FileBrowserViewModel(
         _selectedNodeIds.value = emptySet()
     }
 
-    fun initialize(initialPath: String?, hasPermission: Boolean) {
+    fun navigateToBreadcrumb(breadcrumb: BreadcrumbItem, hasPermission: Boolean) {
+        loadDirectory(breadcrumb.path, hasPermission)
+    }
+
+    fun initialize(initialPath: String? = null, hasPermission: Boolean) {
+        initBrowser(hasPermission, initialPath)
+    }
+
+    fun initBrowser(hasPermission: Boolean, initialPath: String? = null) {
         val targetPath = initialPath ?: rootNode.path
         loadDirectory(targetPath, hasPermission)
     }
@@ -163,37 +202,16 @@ class FileBrowserViewModel(
         }
 
         clearSelection()
-        activeJob = viewModelScope.launch {
-            _activeProgress.value = OperationProgress(totalFiles = sources.size)
-
+        val title = if (sources.size == 1) "Copying ${sources.first().name}" else "Copying ${sources.size} items"
+        operationManager.enqueue(title = title, type = OperationType.COPY) { onProgress ->
             val result = operationEngine.copy(
                 sources = sources,
                 destinationDir = destination,
                 conflictResolution = conflictResolution,
-                onProgress = { progress ->
-                    _activeProgress.value = progress
-                }
+                onProgress = onProgress
             )
-
-            _activeProgress.value = null
-
-            result.onSuccess { opResult ->
-                when (opResult) {
-                    is OperationResult.Success -> {
-                        _userMessage.emit("Copied ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
-                        refresh(hasPermission)
-                    }
-                    is OperationResult.Cancelled -> {
-                        _userMessage.emit("Copy cancelled.")
-                        refresh(hasPermission)
-                    }
-                    is OperationResult.Failure -> {
-                        _userMessage.emit("Copy failed: ${opResult.error.message}")
-                    }
-                }
-            }.onFailure { error ->
-                _userMessage.emit("Copy error: ${error.localizedMessage}")
-            }
+            val opResult = result.getOrThrow()
+            _userMessage.emit("Copied ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
         }
     }
 
@@ -209,37 +227,16 @@ class FileBrowserViewModel(
         }
 
         clearSelection()
-        activeJob = viewModelScope.launch {
-            _activeProgress.value = OperationProgress(totalFiles = sources.size)
-
+        val title = if (sources.size == 1) "Moving ${sources.first().name}" else "Moving ${sources.size} items"
+        operationManager.enqueue(title = title, type = OperationType.MOVE) { onProgress ->
             val result = operationEngine.move(
                 sources = sources,
                 destinationDir = destination,
                 conflictResolution = conflictResolution,
-                onProgress = { progress ->
-                    _activeProgress.value = progress
-                }
+                onProgress = onProgress
             )
-
-            _activeProgress.value = null
-
-            result.onSuccess { opResult ->
-                when (opResult) {
-                    is OperationResult.Success -> {
-                        _userMessage.emit("Moved ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
-                        refresh(hasPermission)
-                    }
-                    is OperationResult.Cancelled -> {
-                        _userMessage.emit("Move cancelled.")
-                        refresh(hasPermission)
-                    }
-                    is OperationResult.Failure -> {
-                        _userMessage.emit("Move failed: ${opResult.error.message}")
-                    }
-                }
-            }.onFailure { error ->
-                _userMessage.emit("Move error: ${error.localizedMessage}")
-            }
+            val opResult = result.getOrThrow()
+            _userMessage.emit("Moved ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
         }
     }
 
@@ -253,35 +250,14 @@ class FileBrowserViewModel(
         }
 
         clearSelection()
-        activeJob = viewModelScope.launch {
-            _activeProgress.value = OperationProgress(totalFiles = targets.size)
-
+        val title = if (targets.size == 1) "Deleting ${targets.first().name}" else "Deleting ${targets.size} items"
+        operationManager.enqueue(title = title, type = OperationType.DELETE) { onProgress ->
             val result = operationEngine.delete(
                 targets = targets,
-                onProgress = { progress ->
-                    _activeProgress.value = progress
-                }
+                onProgress = onProgress
             )
-
-            _activeProgress.value = null
-
-            result.onSuccess { opResult ->
-                when (opResult) {
-                    is OperationResult.Success -> {
-                        _userMessage.emit("Deleted ${opResult.filesProcessed} items.")
-                        refresh(hasPermission)
-                    }
-                    is OperationResult.Cancelled -> {
-                        _userMessage.emit("Delete cancelled.")
-                        refresh(hasPermission)
-                    }
-                    is OperationResult.Failure -> {
-                        _userMessage.emit("Delete failed: ${opResult.error.message}")
-                    }
-                }
-            }.onFailure { error ->
-                _userMessage.emit("Delete error: ${error.localizedMessage}")
-            }
+            val opResult = result.getOrThrow()
+            _userMessage.emit("Deleted ${opResult.filesProcessed} items.")
         }
     }
 
@@ -346,25 +322,19 @@ class FileBrowserViewModel(
         val destZip = File(destDir, archiveName)
 
         clearSelection()
-        activeJob = viewModelScope.launch {
-            _activeProgress.value = OperationProgress(totalFiles = sources.size)
+        operationManager.enqueue(
+            title = "Compressing $archiveName",
+            type = OperationType.COMPRESS
+        ) { onProgress ->
             val sourceFiles = sources.map { File(it.path) }
             val result = zipEngine.createZip(
                 sources = sourceFiles,
                 destinationZip = destZip,
                 compressionLevel = compressionLevel,
-                onProgress = { _activeProgress.value = it }
+                onProgress = onProgress
             )
-            _activeProgress.value = null
-            activeJob = null
-            result.onSuccess { size ->
-                _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})")
-                refresh(hasPermission)
-            }.onFailure { error ->
-                if (error !is kotlinx.coroutines.CancellationException) {
-                    _userMessage.emit("Compression failed: ${error.localizedMessage}")
-                }
-            }
+            val size = result.getOrThrow()
+            _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})")
         }
     }
 
@@ -380,32 +350,36 @@ class FileBrowserViewModel(
         }
 
         clearSelection()
-        activeJob = viewModelScope.launch {
+        operationManager.enqueue(
+            title = "Extracting ${archiveNode.name}",
+            type = OperationType.EXTRACT
+        ) { onProgress ->
             val archiveFile = File(archiveNode.path)
-            _activeProgress.value = OperationProgress(totalFiles = 1)
             val result = zipEngine.extractAll(
                 zipFile = archiveFile,
                 destinationDir = destinationDir,
                 conflictResolution = conflictResolution,
-                onProgress = { _activeProgress.value = it }
+                onProgress = onProgress
             )
-            _activeProgress.value = null
-            activeJob = null
-            result.onSuccess { count ->
-                _userMessage.emit("Extracted $count items to ${destinationDir.name}")
-                refresh(hasPermission)
-            }.onFailure { error ->
-                if (error !is kotlinx.coroutines.CancellationException) {
-                    _userMessage.emit("Extraction failed: ${error.localizedMessage}")
-                }
-            }
+            val count = result.getOrThrow()
+            _userMessage.emit("Extracted $count items to ${destinationDir.name}")
         }
     }
 
     fun cancelActiveOperation() {
-        activeJob?.cancel()
-        activeJob = null
-        _activeProgress.value = null
+        operationManager.cancelActive()
+    }
+
+    fun cancelOperation(operationId: String) {
+        operationManager.cancel(operationId)
+    }
+
+    fun cancelAllOperations() {
+        operationManager.cancelAll()
+    }
+
+    fun clearCompletedOperations() {
+        operationManager.clearCompleted()
     }
 
     fun loadDirectory(path: String, hasPermission: Boolean) {
@@ -418,72 +392,51 @@ class FileBrowserViewModel(
         viewModelScope.launch {
             _uiState.value = BrowserUiState.Loading
 
-            val result = storageProvider.listChildren(path)
-            result.onSuccess { children ->
-                val filtered = if (displayPreferencesRepository.showHiddenFiles.value) {
-                    children
-                } else {
-                    children.filter { !it.name.startsWith(".") }
-                }
-                val sorted = NodeSorter.sort(filtered, displayPreferencesRepository.sortOrder.value)
-
-                val breadcrumbs = buildBreadcrumbs(
-                    currentPath = path,
-                    rootPath = rootNode.path,
-                    rootDisplayName = storageProvider.displayName
-                )
-
-                val stats = storageProvider.getStorageStats().getOrNull()
-                val currentTitle = if (path == rootNode.path) {
-                    storageProvider.displayName
-                } else {
-                    File(path).name.ifEmpty { path }
-                }
-
-                _uiState.value = BrowserUiState.Success(
-                    currentPath = path,
-                    currentTitle = currentTitle,
-                    breadcrumbs = breadcrumbs,
-                    items = sorted,
-                    stats = stats
-                )
-
-                recentsRepository.recordAccess(
-                    StorageNode(
-                        id = path,
-                        name = currentTitle,
-                        path = path,
-                        isDirectory = true,
-                        size = 0L,
-                        lastModified = System.currentTimeMillis()
-                    )
-                )
-            }.onFailure { error ->
-                _uiState.value = BrowserUiState.Error(
-                    message = error.localizedMessage ?: "Failed to read directory."
+            val targetNode = if (path == rootNode.path) {
+                rootNode
+            } else {
+                StorageNode(
+                    id = path,
+                    name = File(path).name.ifEmpty { "Internal Storage" },
+                    path = path,
+                    isDirectory = true
                 )
             }
-        }
-    }
 
-    fun recordFileAccess(node: StorageNode) {
-        recentsRepository.recordAccess(node)
+            // Record visited folder to Recents
+            recentsRepository.recordAccess(targetNode)
+
+            val rawItems = storageProvider.listChildren(targetNode.id).getOrDefault(emptyList())
+            val filteredItems = if (displayPreferencesRepository.showHiddenFiles.value) {
+                rawItems
+            } else {
+                rawItems.filterNot { it.name.startsWith(".") }
+            }
+
+            val sortedItems = NodeSorter.sort(filteredItems, displayPreferencesRepository.sortOrder.value)
+            val breadcrumbs = generateBreadcrumbs(path)
+
+            _uiState.value = BrowserUiState.Success(
+                currentPath = path,
+                currentTitle = targetNode.name.ifEmpty { "Internal Storage" },
+                breadcrumbs = breadcrumbs,
+                items = sortedItems
+            )
+        }
     }
 
     fun navigateInto(node: StorageNode, hasPermission: Boolean) {
-        if (node.isDirectory) {
-            loadDirectory(node.path, hasPermission)
-        }
+        if (!node.isDirectory) return
+        loadDirectory(node.path, hasPermission)
     }
 
     fun navigateUp(hasPermission: Boolean): Boolean {
         val currentState = _uiState.value
         if (currentState is BrowserUiState.Success) {
-            if (currentState.currentPath == rootNode.path) {
-                return false // At root, allow back navigation to exit browser
-            }
-            val parentFile = File(currentState.currentPath).parentFile
-            if (parentFile != null && parentFile.exists()) {
+            val currentFile = File(currentState.currentPath)
+            val parentFile = currentFile.parentFile
+
+            if (parentFile != null && parentFile.canRead() && currentState.currentPath != rootNode.path) {
                 loadDirectory(parentFile.absolutePath, hasPermission)
                 return true
             }
@@ -491,69 +444,50 @@ class FileBrowserViewModel(
         return false
     }
 
-    fun navigateToBreadcrumb(item: BreadcrumbItem, hasPermission: Boolean) {
-        loadDirectory(item.path, hasPermission)
+    fun refresh(hasPermission: Boolean = true) {
+        val currentState = _uiState.value
+        if (currentState is BrowserUiState.Success) {
+            loadDirectory(currentState.currentPath, hasPermission)
+        } else {
+            initBrowser(hasPermission)
+        }
     }
 
-    fun refresh(hasPermission: Boolean) {
-        val currentState = _uiState.value
-        val path = if (currentState is BrowserUiState.Success) {
-            currentState.currentPath
-        } else {
-            rootNode.path
-        }
-        loadDirectory(path, hasPermission)
+    private fun generateBreadcrumbs(currentPath: String): List<BreadcrumbItem> {
+        return buildBreadcrumbs(
+            currentPath = currentPath,
+            rootPath = rootNode.path,
+            rootDisplayName = rootNode.name.ifEmpty { "Internal Storage" }
+        )
     }
 
     companion object {
         fun buildBreadcrumbs(
             currentPath: String,
             rootPath: String,
-            rootDisplayName: String
+            rootDisplayName: String = "Internal Storage"
         ): List<BreadcrumbItem> {
-            val normalizedCurrent = File(currentPath).absolutePath
-            val normalizedRoot = File(rootPath).absolutePath
-
-            val items = mutableListOf<BreadcrumbItem>()
-
-            // Always add Root breadcrumb
-            items.add(
-                BreadcrumbItem(
-                    name = rootDisplayName,
-                    path = normalizedRoot,
-                    isCurrent = normalizedCurrent == normalizedRoot
-                )
-            )
-
-            if (normalizedCurrent != normalizedRoot && normalizedCurrent.startsWith(normalizedRoot)) {
-                val relative = normalizedCurrent
-                    .removePrefix(normalizedRoot)
-                    .trimStart(File.separatorChar, '/', '\\')
-
-                if (relative.isNotEmpty()) {
-                    val segments = relative.split(File.separatorChar, '/', '\\').filter { it.isNotEmpty() }
-                    var accumulatedPath = normalizedRoot
-
-                    segments.forEachIndexed { index, segment ->
-                        accumulatedPath = if (accumulatedPath.endsWith(File.separator) || accumulatedPath.endsWith("/")) {
-                            accumulatedPath + segment
-                        } else {
-                            accumulatedPath + File.separator + segment
-                        }
-
-                        val isCurrent = (index == segments.lastIndex)
-                        items.add(
-                            BreadcrumbItem(
-                                name = segment,
-                                path = accumulatedPath,
-                                isCurrent = isCurrent
-                            )
-                        )
-                    }
-                }
+            if (currentPath == rootPath) {
+                return listOf(BreadcrumbItem(name = rootDisplayName, path = rootPath, isCurrent = true))
             }
 
-            return items
+            val breadcrumbs = mutableListOf<BreadcrumbItem>()
+            var current: File? = File(currentPath)
+
+            while (current != null && current.path.startsWith(rootPath)) {
+                val isRoot = current.path == rootPath
+                val name = if (isRoot) rootDisplayName else current.name
+                val isCurrent = current.path == currentPath
+                breadcrumbs.add(0, BreadcrumbItem(name = name, path = current.path, isCurrent = isCurrent))
+                if (isRoot) break
+                current = current.parentFile
+            }
+
+            return if (breadcrumbs.isEmpty()) {
+                listOf(BreadcrumbItem(name = rootDisplayName, path = rootPath, isCurrent = true))
+            } else {
+                breadcrumbs
+            }
         }
     }
 }
