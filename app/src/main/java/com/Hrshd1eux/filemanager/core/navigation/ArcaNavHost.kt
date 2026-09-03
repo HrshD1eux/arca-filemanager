@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
+import com.Hrshd1eux.filemanager.feature.archive.ArchiveViewerScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.duplicates.DuplicateFinderScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.largefiles.LargeFilesScreen
@@ -68,6 +69,9 @@ fun ArcaNavHost(
                 onNavigateToSearch = { rootPath ->
                     navController.navigate(Screen.Search(rootPath = rootPath))
                 },
+                onNavigateToArchiveViewer = { archivePath, title ->
+                    navController.navigate(Screen.ArchiveViewer(archivePath = archivePath, title = title))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -111,6 +115,20 @@ fun ArcaNavHost(
             val route = backStackEntry.toRoute<Screen.DuplicateFinder>()
             DuplicateFinderScreen(
                 rootPath = route.rootPath,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.ArchiveViewer>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.ArchiveViewer>()
+            ArchiveViewerScreen(
+                archivePath = route.archivePath,
+                title = route.title,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

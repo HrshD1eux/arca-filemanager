@@ -2,6 +2,7 @@ package com.Hrshd1eux.filemanager.feature.browser
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
 import com.Hrshd1eux.filemanager.core.display.preferences.DisplayPreferencesRepository
@@ -37,6 +38,7 @@ class FileBrowserViewModel(
     val storageProvider: StorageProvider = LocalFileSystemProvider(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher),
+    private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
     private val recentsRepository: RecentsRepository = RecentsRepository()
@@ -329,6 +331,34 @@ class FileBrowserViewModel(
                 refresh(hasPermission)
             }.onFailure { error ->
                 _userMessage.emit("Failed to create folder: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun compressFiles(
+        sources: List<StorageNode>,
+        archiveName: String,
+        hasPermission: Boolean
+    ) {
+        val currentState = _uiState.value as? BrowserUiState.Success ?: return
+        val destDir = File(currentState.currentPath)
+        val destZip = File(destDir, archiveName)
+
+        clearSelection()
+        viewModelScope.launch {
+            _activeProgress.value = OperationProgress(totalFiles = sources.size)
+            val sourceFiles = sources.map { File(it.path) }
+            val result = zipEngine.createZip(
+                sources = sourceFiles,
+                destinationZip = destZip,
+                onProgress = { _activeProgress.value = it }
+            )
+            _activeProgress.value = null
+            result.onSuccess { size ->
+                _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})")
+                refresh(hasPermission)
+            }.onFailure { error ->
+                _userMessage.emit("Compression failed: ${error.localizedMessage}")
             }
         }
     }

@@ -36,4 +36,10 @@ sealed interface Screen {
     data class DuplicateFinder(
         val rootPath: String? = null
     ) : Screen
+
+    @Serializable
+    data class ArchiveViewer(
+        val archivePath: String,
+        val title: String = ""
+    ) : Screen
 }

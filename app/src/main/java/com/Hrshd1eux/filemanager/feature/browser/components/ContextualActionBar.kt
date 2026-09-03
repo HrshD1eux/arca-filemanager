@@ -2,6 +2,7 @@ package com.Hrshd1eux.filemanager.feature.browser.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -30,6 +31,7 @@ fun ContextualActionBar(
     onBulkCopy: () -> Unit,
     onBulkMove: () -> Unit,
     onBulkDelete: () -> Unit,
+    onBulkCompress: () -> Unit = {},
     onShare: () -> Unit,
     onRename: () -> Unit,
     onProperties: () -> Unit,
@@ -83,6 +85,14 @@ fun ContextualActionBar(
                 Icon(
                     imageVector = Icons.Default.ContentCopy,
                     contentDescription = "Copy"
+                )
+            }
+
+            // Compress
+            IconButton(onClick = onBulkCompress, enabled = selectedCount > 0) {
+                Icon(
+                    imageVector = Icons.Default.Archive,
+                    contentDescription = "Compress to ZIP"
                 )
             }
 

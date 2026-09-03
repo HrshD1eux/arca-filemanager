@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -62,6 +63,7 @@ fun StorageNodeCompactItem(
     onToggleFavorite: () -> Unit,
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
+    onCompressClick: () -> Unit = {},
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -173,6 +175,16 @@ fun StorageNodeCompactItem(
                             onClick = {
                                 showMenu = false
                                 onMoveClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Compress to ZIP") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onCompressClick()
                             }
                         )
                         DropdownMenuItem(

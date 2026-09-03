@@ -79,7 +79,7 @@ import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
@@ -97,6 +97,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import com.Hrshd1eux.filemanager.core.storage.util.FileShareHelper
+import com.Hrshd1eux.filemanager.feature.archive.components.CreateZipDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.ContextualActionBar
 import com.Hrshd1eux.filemanager.feature.browser.components.CreateFolderDialog
@@ -127,6 +128,7 @@ fun FileBrowserScreen(
     title: String,
     onNavigateBack: () -> Unit,
     onNavigateToSearch: (rootPath: String?) -> Unit = {},
+    onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: FileBrowserViewModel = viewModel()
 ) {
@@ -145,12 +147,14 @@ fun FileBrowserScreen(
     var nodeToMove by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeToCompress by remember { mutableStateOf<StorageNode?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showSortBottomSheet by remember { mutableStateOf(false) }
 
     var bulkNodesToCopy by remember { mutableStateOf<List<StorageNode>?>(null) }
     var bulkNodesToMove by remember { mutableStateOf<List<StorageNode>?>(null) }
     var bulkNodesToDelete by remember { mutableStateOf<List<StorageNode>?>(null) }
+    var bulkNodesToCompress by remember { mutableStateOf<List<StorageNode>?>(null) }
 
     var activeOperationTitle by remember { mutableStateOf("Processing Files") }
 
@@ -219,6 +223,7 @@ fun FileBrowserScreen(
                     onBulkCopy = { bulkNodesToCopy = selectedItems },
                     onBulkMove = { bulkNodesToMove = selectedItems },
                     onBulkDelete = { bulkNodesToDelete = selectedItems },
+                    onBulkCompress = { bulkNodesToCompress = selectedItems },
                     onShare = { FileShareHelper.shareNodes(context, selectedItems) },
                     onRename = { nodeToRename = selectedItems.firstOrNull() },
                     onProperties = {
@@ -374,6 +379,8 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
+                                                } else if (node.extension.equals("zip", ignoreCase = true)) {
+                                                    onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
                                                     FileIntentDispatcher.view(context, node)
                                                 }
@@ -402,6 +409,8 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
+                                                } else if (node.extension.equals("zip", ignoreCase = true)) {
+                                                    onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
                                                     FileIntentDispatcher.view(context, node)
                                                 }
@@ -417,6 +426,9 @@ fun FileBrowserScreen(
                                             },
                                             onMoveClick = {
                                                 nodeToMove = node
+                                            },
+                                            onCompressClick = {
+                                                nodeToCompress = node
                                             },
                                             onRenameClick = {
                                                 nodeToRename = node
@@ -457,6 +469,8 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
+                                                } else if (node.extension.equals("zip", ignoreCase = true)) {
+                                                    onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
                                                     FileIntentDispatcher.view(context, node)
                                                 }
@@ -472,6 +486,9 @@ fun FileBrowserScreen(
                                             },
                                             onMoveClick = {
                                                 nodeToMove = node
+                                            },
+                                            onCompressClick = {
+                                                nodeToCompress = node
                                             },
                                             onRenameClick = {
                                                 nodeToRename = node
@@ -664,6 +681,49 @@ fun FileBrowserScreen(
         )
     }
 
+    // Single Compress Dialog
+    val targetToCompress = nodeToCompress
+    if (targetToCompress != null) {
+        CreateZipDialog(
+            defaultName = "${targetToCompress.name}.zip",
+            onConfirmCreate = { archiveName ->
+                nodeToCompress = null
+                activeOperationTitle = "Compressing to $archiveName"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.compressFiles(
+                    sources = listOf(targetToCompress),
+                    archiveName = archiveName,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { nodeToCompress = null }
+        )
+    }
+
+    // Bulk Compress Dialog
+    val targetBulkCompress = bulkNodesToCompress
+    if (targetBulkCompress != null) {
+        val defaultZipName = if (targetBulkCompress.size == 1) {
+            "${targetBulkCompress.first().name}.zip"
+        } else {
+            "archive.zip"
+        }
+        CreateZipDialog(
+            defaultName = defaultZipName,
+            onConfirmCreate = { archiveName ->
+                bulkNodesToCompress = null
+                activeOperationTitle = "Compressing ${targetBulkCompress.size} Items"
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.compressFiles(
+                    sources = targetBulkCompress,
+                    archiveName = archiveName,
+                    hasPermission = hasPermission
+                )
+            },
+            onDismiss = { bulkNodesToCompress = null }
+        )
+    }
+
     // Active Operation Progress Dialog
     val currentProgress = activeProgress
     if (currentProgress != null) {
@@ -774,6 +834,7 @@ private fun StorageNodeItem(
     onToggleFavorite: () -> Unit,
     onCopyClick: () -> Unit,
     onMoveClick: () -> Unit,
+    onCompressClick: () -> Unit = {},
     onRenameClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
@@ -900,6 +961,16 @@ private fun StorageNodeItem(
                             onClick = {
                                 showMenu = false
                                 onMoveClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Compress to ZIP") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onCompressClick()
                             }
                         )
                         DropdownMenuItem(
