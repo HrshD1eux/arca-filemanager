@@ -29,7 +29,10 @@ import com.Hrshd1eux.filemanager.core.storage.preferences.LastDestinationReposit
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.provider.StorageProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.core.storage.util.SmartDestinationResolver
 import com.Hrshd1eux.filemanager.feature.browser.model.BreadcrumbItem
+import com.Hrshd1eux.filemanager.feature.browser.model.BrowserTab
+import com.Hrshd1eux.filemanager.feature.browser.model.TabType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -190,6 +193,91 @@ class FileBrowserViewModel(
         displayPreferencesRepository.updateDualPaneMode(!current)
     }
 
+    val isTabsMode: StateFlow<Boolean> = displayPreferencesRepository.isTabsMode
+
+    private val _tabs = MutableStateFlow<List<BrowserTab>>(emptyList())
+    val tabs: StateFlow<List<BrowserTab>> = _tabs.asStateFlow()
+
+    private val _activeTabId = MutableStateFlow<String>("")
+    val activeTabId: StateFlow<String> = _activeTabId.asStateFlow()
+
+    fun initDefaultTabs(context: Context? = null) {
+        if (_tabs.value.isNotEmpty()) return
+        val destinations = SmartDestinationResolver.getStorageDestinations(context)
+        val defaultTabs = destinations.map { item ->
+            val type = when {
+                item.name.equals("Internal", ignoreCase = true) -> TabType.INTERNAL
+                item.name.equals("SD Card", ignoreCase = true) -> TabType.SD_CARD
+                item.name.equals("USB", ignoreCase = true) -> TabType.USB
+                else -> TabType.CUSTOM
+            }
+            BrowserTab(
+                id = "tab_${item.name.lowercase().replace(" ", "_")}",
+                title = item.name,
+                path = item.path,
+                type = type,
+                isAvailable = item.isAvailable,
+                isClosable = type != TabType.INTERNAL
+            )
+        }
+        _tabs.value = defaultTabs
+        val currentPath = (_uiState.value as? BrowserUiState.Success)?.currentPath ?: rootNode.path
+        val matchingTab = defaultTabs.find { it.path == currentPath } ?: defaultTabs.firstOrNull()
+        if (matchingTab != null) {
+            _activeTabId.value = matchingTab.id
+        }
+    }
+
+    fun selectTab(tabId: String, hasPermission: Boolean) {
+        val targetTab = _tabs.value.find { it.id == tabId } ?: return
+        if (!targetTab.isAvailable) {
+            viewModelScope.launch {
+                _userMessage.emit("${targetTab.title} is not mounted or not connected")
+            }
+            return
+        }
+        _activeTabId.value = tabId
+        loadDirectory(targetTab.path, hasPermission)
+    }
+
+    fun addTab(path: String, title: String = File(path).name.ifEmpty { "Folder" }, type: TabType = TabType.CUSTOM, hasPermission: Boolean) {
+        val newTab = BrowserTab(
+            title = title,
+            path = path,
+            type = type,
+            isAvailable = true,
+            isClosable = true
+        )
+        _tabs.value = _tabs.value + newTab
+        _activeTabId.value = newTab.id
+        loadDirectory(path, hasPermission)
+    }
+
+    fun closeTab(tabId: String, hasPermission: Boolean) {
+        val currentTabs = _tabs.value
+        if (currentTabs.size <= 1) return
+        val tabToClose = currentTabs.find { it.id == tabId } ?: return
+        if (!tabToClose.isClosable) return
+
+        val remainingTabs = currentTabs.filter { it.id != tabId }
+        _tabs.value = remainingTabs
+
+        if (_activeTabId.value == tabId) {
+            val nextTab = remainingTabs.firstOrNull { it.isAvailable } ?: remainingTabs.first()
+            _activeTabId.value = nextTab.id
+            loadDirectory(nextTab.path, hasPermission)
+        }
+    }
+
+    fun toggleTabsMode(context: Context? = null) {
+        val current = displayPreferencesRepository.isTabsMode.value
+        val next = !current
+        displayPreferencesRepository.updateTabsMode(next)
+        if (next && _tabs.value.isEmpty()) {
+            initDefaultTabs(context)
+        }
+    }
+
     fun toggleSelection(nodeId: String) {
         val current = _selectedNodeIds.value
         _selectedNodeIds.value = if (current.contains(nodeId)) {
@@ -217,11 +305,14 @@ class FileBrowserViewModel(
         loadDirectory(breadcrumb.path, hasPermission)
     }
 
-    fun initialize(initialPath: String? = null, hasPermission: Boolean) {
-        initBrowser(hasPermission, initialPath)
+    fun initialize(initialPath: String? = null, hasPermission: Boolean, context: Context? = null) {
+        initBrowser(hasPermission, initialPath, context)
     }
 
-    fun initBrowser(hasPermission: Boolean, initialPath: String? = null) {
+    fun initBrowser(hasPermission: Boolean, initialPath: String? = null, context: Context? = null) {
+        if (displayPreferencesRepository.isTabsMode.value) {
+            initDefaultTabs(context)
+        }
         val targetPath = initialPath ?: rootNode.path
         loadDirectory(targetPath, hasPermission)
     }
@@ -719,6 +810,21 @@ class FileBrowserViewModel(
                 breadcrumbs = breadcrumbs,
                 items = sortedItems
             )
+
+            // Update active tab path and title if tabs are initialized
+            val currentActiveId = _activeTabId.value
+            if (currentActiveId.isNotEmpty()) {
+                _tabs.value = _tabs.value.map { tab ->
+                    if (tab.id == currentActiveId) {
+                        tab.copy(
+                            path = path,
+                            title = if (path == rootNode.path && tab.type == TabType.INTERNAL) "Internal" else targetNode.name.ifEmpty { tab.title }
+                        )
+                    } else {
+                        tab
+                    }
+                }
+            }
         }
     }
 

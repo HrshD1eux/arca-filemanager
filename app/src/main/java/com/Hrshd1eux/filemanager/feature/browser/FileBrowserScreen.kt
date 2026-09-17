@@ -89,6 +89,8 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tab
+import com.Hrshd1eux.filemanager.feature.browser.components.BrowserTabBar
 import com.Hrshd1eux.filemanager.feature.browser.components.DualPaneBrowserView
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -182,6 +184,9 @@ fun FileBrowserScreen(
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
     val isDualPaneMode by viewModel.isDualPaneMode.collectAsStateWithLifecycle()
+    val isTabsMode by viewModel.isTabsMode.collectAsStateWithLifecycle()
+    val tabs by viewModel.tabs.collectAsStateWithLifecycle()
+    val activeTabId by viewModel.activeTabId.collectAsStateWithLifecycle()
     val stagedNodesToMove by viewModel.stagedNodesToMove.collectAsStateWithLifecycle()
     val lastMoveDestination by viewModel.lastDestinationRepository.lastMoveDestination.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -225,7 +230,7 @@ fun FileBrowserScreen(
 
     LaunchedEffect(initialPath) {
         val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
-        viewModel.initialize(initialPath, hasPermission)
+        viewModel.initialize(initialPath, hasPermission, context)
     }
 
     LaunchedEffect(Unit) {
@@ -245,6 +250,13 @@ fun FileBrowserScreen(
                     viewModel.clearStagedMove()
                 } else if (isDualPaneMode) {
                     viewModel.toggleDualPaneMode()
+                } else if (isTabsMode && tabs.size > 1) {
+                    val activeTab = tabs.find { it.id == activeTabId }
+                    if (activeTab != null && activeTab.isClosable) {
+                        viewModel.closeTab(activeTab.id, hasPermission)
+                    } else {
+                        onNavigateBack()
+                    }
                 } else {
                     onNavigateBack()
                 }
@@ -426,6 +438,13 @@ fun FileBrowserScreen(
                                 tint = if (isDualPaneMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
                             )
                         }
+                        IconButton(onClick = { viewModel.toggleTabsMode(context) }) {
+                            Icon(
+                                imageVector = Icons.Default.Tab,
+                                contentDescription = if (isTabsMode) "Exit Tabs mode" else "Tabs mode",
+                                tint = if (isTabsMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                            )
+                        }
                         IconButton(onClick = { showSortBottomSheet = true }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Sort,
@@ -477,6 +496,27 @@ fun FileBrowserScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
+                if (isTabsMode && tabs.isNotEmpty()) {
+                    BrowserTabBar(
+                        tabs = tabs,
+                        activeTabId = activeTabId,
+                        onTabSelected = { tab ->
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            viewModel.selectTab(tab.id, hasPermission)
+                        },
+                        onTabClosed = { tab ->
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            viewModel.closeTab(tab.id, hasPermission)
+                        },
+                        onAddTab = {
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            val currentPath = (uiState as? BrowserUiState.Success)?.currentPath ?: viewModel.storageProvider.getRootNode().path
+                            val currentName = (uiState as? BrowserUiState.Success)?.currentTitle ?: "Tab"
+                            viewModel.addTab(currentPath, currentName, hasPermission = hasPermission)
+                        }
+                    )
+                }
+
                 when (val state = uiState) {
                 is BrowserUiState.Loading -> {
                     Box(
