@@ -55,6 +55,18 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.ui.graphics.Color
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.draganddrop.dragAndDropSource
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.DragAndDropTransferData
+import androidx.compose.ui.draganddrop.toAndroidDragEvent
+import androidx.compose.ui.draw.clip
+import com.Hrshd1eux.filemanager.core.dragdrop.DragDropManager
+import com.Hrshd1eux.filemanager.core.dragdrop.DragDropPayload
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StorageNodeCompactItem(
@@ -78,14 +90,49 @@ fun StorageNodeCompactItem(
     onChecksumClick: () -> Unit = {},
     onInfoClick: () -> Unit,
     onQuickActionClick: (() -> Unit)? = null,
+    allSelectedNodes: List<StorageNode> = emptyList(),
+    onDropIntoFolder: ((StorageNode, DragDropPayload) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var isHoveredAsDropTarget by remember { mutableStateOf(false) }
+
+    val dndTarget = remember(node) {
+        object : DragAndDropTarget {
+            override fun onEntered(event: DragAndDropEvent) {
+                isHoveredAsDropTarget = true
+            }
+
+            override fun onExited(event: DragAndDropEvent) {
+                isHoveredAsDropTarget = false
+            }
+
+            override fun onEnded(event: DragAndDropEvent) {
+                isHoveredAsDropTarget = false
+            }
+
+            override fun onDrop(event: DragAndDropEvent): Boolean {
+                isHoveredAsDropTarget = false
+                val clipData = event.toAndroidDragEvent().clipData
+                val payload = DragDropManager.parseClipData(clipData) ?: return false
+                onDropIntoFolder?.invoke(node, payload)
+                return true
+            }
+        }
+    }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .alpha(if (node.name.startsWith(".")) 0.65f else 1.0f)
+            .then(
+                if (node.isDirectory && onDropIntoFolder != null) {
+                    Modifier.dragAndDropTarget(
+                        shouldStartDragAndDrop = { true },
+                        target = dndTarget
+                    )
+                } else Modifier
+            )
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) {
@@ -97,8 +144,11 @@ fun StorageNodeCompactItem(
                 onLongClick = onToggleSelection
             ),
         shape = RoundedCornerShape(8.dp),
+        border = if (isHoveredAsDropTarget) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
+            containerColor = if (isHoveredAsDropTarget) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+            } else if (isSelected) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
             } else {
                 MaterialTheme.colorScheme.surface
@@ -119,12 +169,35 @@ fun StorageNodeCompactItem(
                 )
             }
 
-            Icon(
-                imageVector = if (node.isDirectory) Icons.Default.Folder else Icons.Default.Description,
-                contentDescription = null,
-                tint = if (node.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .dragAndDropSource {
+                        detectTapGestures(
+                            onLongPress = {
+                                val nodesToDrag = if (isSelected && isSelectionMode && allSelectedNodes.isNotEmpty()) {
+                                    allSelectedNodes
+                                } else {
+                                    listOf(node)
+                                }
+                                startTransfer(
+                                    DragAndDropTransferData(
+                                        clipData = DragDropManager.createClipData(nodesToDrag)
+                                    )
+                                )
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (node.isDirectory) Icons.Default.Folder else Icons.Default.Description,
+                    contentDescription = null,
+                    tint = if (node.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.width(10.dp))
 

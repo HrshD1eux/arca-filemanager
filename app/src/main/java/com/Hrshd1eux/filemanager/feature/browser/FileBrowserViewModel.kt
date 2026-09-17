@@ -1,8 +1,11 @@
 package com.Hrshd1eux.filemanager.feature.browser
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
+import com.Hrshd1eux.filemanager.core.dragdrop.DragDropManager
+import com.Hrshd1eux.filemanager.core.dragdrop.DragDropPayload
 import com.Hrshd1eux.filemanager.core.archive.engine.TarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
@@ -266,6 +269,127 @@ class FileBrowserViewModel(
             destination = destination,
             hasPermission = hasPermission
         )
+    }
+
+    fun handleDroppedPayload(
+        payload: DragDropPayload,
+        destinationFolder: StorageNode,
+        hasPermission: Boolean,
+        context: Context? = null
+    ) {
+        if (!hasPermission) {
+            _uiState.value = BrowserUiState.PermissionRequired()
+            return
+        }
+        if (!destinationFolder.isDirectory) return
+
+        if (!DragDropManager.canDrop(payload, destinationFolder)) {
+            viewModelScope.launch {
+                _userMessage.emit("Cannot drop into this folder (invalid destination)")
+            }
+            return
+        }
+
+        when (payload) {
+            is DragDropPayload.StorageNodes -> {
+                val nodesToMove = payload.paths.mapNotNull { path ->
+                    val file = File(path)
+                    if (file.exists()) {
+                        StorageNode(
+                            id = file.absolutePath,
+                            name = file.name,
+                            path = file.absolutePath,
+                            size = if (file.isDirectory) 0L else file.length(),
+                            lastModified = file.lastModified(),
+                            isDirectory = file.isDirectory
+                        )
+                    } else null
+                }
+                if (nodesToMove.isNotEmpty()) {
+                    startMove(
+                        sources = nodesToMove,
+                        destination = destinationFolder,
+                        hasPermission = hasPermission
+                    )
+                }
+            }
+            is DragDropPayload.ArchiveEntry -> {
+                val archiveFile = File(payload.archivePath)
+                if (!archiveFile.exists()) {
+                    viewModelScope.launch {
+                        _userMessage.emit("Source archive not found")
+                    }
+                    return
+                }
+                val destDir = File(destinationFolder.path)
+                val entryName = payload.entryPath.trimEnd('/').substringAfterLast('/')
+
+                operationManager.enqueue(
+                    title = "Extracting $entryName to ${destinationFolder.name}",
+                    type = OperationType.EXTRACT
+                ) { onProgress ->
+                    val lowerName = archiveFile.name.lowercase()
+                    val result: Result<Int> = when {
+                        lowerName.endsWith(".7z") -> {
+                            sevenZEngine.extractEntries(
+                                sevenZFile = archiveFile,
+                                entryPaths = setOf(payload.entryPath),
+                                destinationDir = destDir,
+                                onProgress = onProgress
+                            )
+                        }
+                        lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
+                        lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
+                        lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                            tarEngine.extractEntries(
+                                tarFile = archiveFile,
+                                entryPaths = setOf(payload.entryPath),
+                                destinationDir = destDir,
+                                onProgress = onProgress
+                            )
+                        }
+                        else -> {
+                            zipEngine.extractEntries(
+                                zipFile = archiveFile,
+                                entryPaths = setOf(payload.entryPath),
+                                destinationDir = destDir,
+                                onProgress = onProgress
+                            )
+                        }
+                    }
+                    result.onSuccess {
+                        _userMessage.emit("Extracted $entryName to ${destinationFolder.name}")
+                        refresh(hasPermission = true)
+                    }.onFailure { error ->
+                        _userMessage.emit("Failed extracting $entryName: ${error.localizedMessage}")
+                    }
+                }
+            }
+            is DragDropPayload.ExternalUris -> {
+                if (context == null) return
+                viewModelScope.launch(ioDispatcher) {
+                    val destDir = File(destinationFolder.path)
+                    var copiedCount = 0
+                    for (uri in payload.uris) {
+                        try {
+                            val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "dropped_file_${System.currentTimeMillis()}"
+                            val destFile = File(destDir, fileName)
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                destFile.outputStream().use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            copiedCount++
+                        } catch (_: Exception) {
+                        }
+                    }
+                    if (copiedCount > 0) {
+                        _userMessage.emit("Copied $copiedCount items to ${destinationFolder.name}")
+                        refresh(hasPermission = true)
+                    }
+                }
+            }
+        }
     }
 
     fun startMove(

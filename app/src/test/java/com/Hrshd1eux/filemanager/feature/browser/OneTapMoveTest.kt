@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.browser
 
+import com.Hrshd1eux.filemanager.core.dragdrop.DragDropPayload
 import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.preferences.LastDestinationRepository
@@ -195,5 +196,28 @@ class OneTapMoveTest {
         val lastDest = lastDestRepo.lastMoveDestination.value
         assertNotNull("Direct move must record last destination", lastDest)
         assertEquals(targetDir.absolutePath, lastDest?.path)
+    }
+
+    @Test
+    fun handleDroppedPayload_movesFileWhenValidDropOccurs() = runTest {
+        val file = File(sourceDir, "dragged_item.txt").apply { writeText("Dragged & Dropped") }
+        val targetNode = StorageNode(
+            id = targetDir.absolutePath,
+            name = "Target",
+            path = targetDir.absolutePath,
+            isDirectory = true
+        )
+
+        val payload = DragDropPayload.StorageNodes(listOf(file.absolutePath))
+        viewModel.handleDroppedPayload(
+            payload = payload,
+            destinationFolder = targetNode,
+            hasPermission = true
+        )
+        advanceUntilIdle()
+
+        val movedFile = File(targetDir, "dragged_item.txt")
+        assertTrue("Dragged file must be moved into target folder", movedFile.exists())
+        assertEquals("Dragged & Dropped", movedFile.readText())
     }
 }

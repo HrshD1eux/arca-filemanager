@@ -128,6 +128,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.draganddrop.dragAndDropSource
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.DragAndDropTransferData
+import androidx.compose.ui.draganddrop.toAndroidDragEvent
+import com.Hrshd1eux.filemanager.core.dragdrop.DragDropManager
+import com.Hrshd1eux.filemanager.core.dragdrop.DragDropPayload
 
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -488,6 +498,18 @@ fun FileBrowserScreen(
                     if (state.items.isEmpty()) {
                         EmptyFolderView()
                     } else {
+                        val allItems = state.items
+                        val selectedItems = allItems.filter { selectedNodeIds.contains(it.id) }
+                        val onDropIntoFolder: (StorageNode, DragDropPayload) -> Unit = { targetFolder, payload ->
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            viewModel.handleDroppedPayload(
+                                payload = payload,
+                                destinationFolder = targetFolder,
+                                hasPermission = hasPermission,
+                                context = context
+                            )
+                        }
+
                         when (viewMode) {
                             ViewMode.GRID -> {
                                 LazyVerticalGrid(
@@ -502,6 +524,8 @@ fun FileBrowserScreen(
                                             node = node,
                                             isSelected = selectedNodeIds.contains(node.id),
                                             isSelectionMode = selectedNodeIds.isNotEmpty(),
+                                            allSelectedNodes = selectedItems,
+                                            onDropIntoFolder = onDropIntoFolder,
                                             onClick = {
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -535,6 +559,8 @@ fun FileBrowserScreen(
                                             isSelected = selectedNodeIds.contains(node.id),
                                             isSelectionMode = selectedNodeIds.isNotEmpty(),
                                             isFavorite = viewModel.isFavorite(node.path),
+                                            allSelectedNodes = selectedItems,
+                                            onDropIntoFolder = onDropIntoFolder,
                                             onClick = {
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -607,6 +633,8 @@ fun FileBrowserScreen(
                                             isSelected = selectedNodeIds.contains(node.id),
                                             isSelectionMode = selectedNodeIds.isNotEmpty(),
                                             isFavorite = viewModel.isFavorite(node.path),
+                                            allSelectedNodes = selectedItems,
+                                            onDropIntoFolder = onDropIntoFolder,
                                             onClick = {
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -1215,14 +1243,49 @@ private fun StorageNodeItem(
     onChecksumClick: () -> Unit = {},
     onInfoClick: () -> Unit,
     onQuickActionClick: (() -> Unit)? = null,
+    allSelectedNodes: List<StorageNode> = emptyList(),
+    onDropIntoFolder: ((StorageNode, DragDropPayload) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var isHoveredAsDropTarget by remember { mutableStateOf(false) }
+
+    val dndTarget = remember(node) {
+        object : DragAndDropTarget {
+            override fun onEntered(event: DragAndDropEvent) {
+                isHoveredAsDropTarget = true
+            }
+
+            override fun onExited(event: DragAndDropEvent) {
+                isHoveredAsDropTarget = false
+            }
+
+            override fun onEnded(event: DragAndDropEvent) {
+                isHoveredAsDropTarget = false
+            }
+
+            override fun onDrop(event: DragAndDropEvent): Boolean {
+                isHoveredAsDropTarget = false
+                val clipData = event.toAndroidDragEvent().clipData
+                val payload = DragDropManager.parseClipData(clipData) ?: return false
+                onDropIntoFolder?.invoke(node, payload)
+                return true
+            }
+        }
+    }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .alpha(if (node.name.startsWith(".")) 0.65f else 1.0f)
+            .then(
+                if (node.isDirectory && onDropIntoFolder != null) {
+                    Modifier.dragAndDropTarget(
+                        shouldStartDragAndDrop = { true },
+                        target = dndTarget
+                    )
+                } else Modifier
+            )
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) {
@@ -1234,8 +1297,11 @@ private fun StorageNodeItem(
                 onLongClick = onToggleSelection
             ),
         shape = RoundedCornerShape(10.dp),
+        border = if (isHoveredAsDropTarget) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
+            containerColor = if (isHoveredAsDropTarget) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+            } else if (isSelected) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
             } else {
                 MaterialTheme.colorScheme.surface
@@ -1263,7 +1329,23 @@ private fun StorageNodeItem(
                     .background(
                         if (node.isDirectory) FolderYellow.copy(alpha = 0.15f)
                         else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                    ),
+                    )
+                    .dragAndDropSource {
+                        detectTapGestures(
+                            onLongPress = {
+                                val nodesToDrag = if (isSelected && isSelectionMode && allSelectedNodes.isNotEmpty()) {
+                                    allSelectedNodes
+                                } else {
+                                    listOf(node)
+                                }
+                                startTransfer(
+                                    DragAndDropTransferData(
+                                        clipData = DragDropManager.createClipData(nodesToDrag)
+                                    )
+                                )
+                            }
+                        )
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(

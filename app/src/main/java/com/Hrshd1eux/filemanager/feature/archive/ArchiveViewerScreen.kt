@@ -79,6 +79,11 @@ import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveTestDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.draganddrop.dragAndDropSource
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.draganddrop.DragAndDropTransferData
+import com.Hrshd1eux.filemanager.core.dragdrop.DragDropManager
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -382,6 +387,7 @@ fun ArchiveViewerScreen(
                         ) {
                             items(state.items, key = { it.path }) { entry ->
                                 ArchiveEntryRow(
+                                    archivePath = archivePath,
                                     entry = entry,
                                     isSelected = selectedEntryPaths.contains(entry.path),
                                     isSelectionMode = selectedEntryPaths.isNotEmpty(),
@@ -519,8 +525,10 @@ fun ArchiveViewerScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ArchiveEntryRow(
+    archivePath: String,
     entry: ArchiveEntry,
     isSelected: Boolean,
     isSelectionMode: Boolean,
@@ -562,7 +570,21 @@ private fun ArchiveEntryRow(
                     .background(
                         if (entry.isDirectory) FolderYellow.copy(alpha = 0.15f)
                         else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                    ),
+                    )
+                    .dragAndDropSource {
+                        detectTapGestures(
+                            onLongPress = {
+                                startTransfer(
+                                    DragAndDropTransferData(
+                                        clipData = DragDropManager.createArchiveEntryClipData(
+                                            archivePath = archivePath,
+                                            entryPath = entry.path
+                                        )
+                                    )
+                                )
+                            }
+                        )
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
