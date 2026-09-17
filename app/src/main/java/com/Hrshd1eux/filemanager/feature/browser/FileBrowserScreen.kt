@@ -656,6 +656,8 @@ fun FileBrowserScreen(
             title = "Copy ${targetBulkCopy.size} Items to...",
             confirmButtonText = "Copy Here",
             excludedPaths = targetBulkCopy.filter { it.isDirectory }.map { it.path }.toSet(),
+            favoritesRepository = viewModel.favoritesRepository,
+            recentsRepository = viewModel.recentsRepository,
             onDestinationSelected = { destination, verifyIntegrity ->
                 bulkNodesToCopy = null
                 activeOperationTitle = "Copying ${targetBulkCopy.size} Items"
@@ -679,6 +681,8 @@ fun FileBrowserScreen(
             title = "Move to...",
             confirmButtonText = "Move Here",
             excludedPaths = if (targetToMove.isDirectory) setOf(targetToMove.path) else emptySet(),
+            favoritesRepository = viewModel.favoritesRepository,
+            recentsRepository = viewModel.recentsRepository,
             onDestinationSelected = { destination, _ ->
                 nodeToMove = null
                 activeOperationTitle = "Moving Files"
@@ -701,6 +705,8 @@ fun FileBrowserScreen(
             title = "Move ${targetBulkMove.size} Items to...",
             confirmButtonText = "Move Here",
             excludedPaths = targetBulkMove.filter { it.isDirectory }.map { it.path }.toSet(),
+            favoritesRepository = viewModel.favoritesRepository,
+            recentsRepository = viewModel.recentsRepository,
             onDestinationSelected = { destination, _ ->
                 bulkNodesToMove = null
                 activeOperationTitle = "Moving ${targetBulkMove.size} Items"
@@ -890,6 +896,8 @@ fun FileBrowserScreen(
             storageProvider = viewModel.storageProvider,
             title = "Extract to...",
             confirmButtonText = "Extract Here",
+            favoritesRepository = viewModel.favoritesRepository,
+            recentsRepository = viewModel.recentsRepository,
             onDestinationSelected = { dest, _ ->
                 showCustomExtractPicker = false
                 activeOperationTitle = "Extracting Archive"

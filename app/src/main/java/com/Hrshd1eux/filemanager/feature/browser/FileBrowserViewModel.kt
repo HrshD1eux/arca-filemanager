@@ -53,8 +53,8 @@ class FileBrowserViewModel(
     private val tarEngine: TarEngine = TarEngine(ioDispatcher),
     private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
-    private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
-    private val recentsRepository: RecentsRepository = RecentsRepository()
+    val favoritesRepository: FavoritesRepository = FavoritesRepository(),
+    val recentsRepository: RecentsRepository = RecentsRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
