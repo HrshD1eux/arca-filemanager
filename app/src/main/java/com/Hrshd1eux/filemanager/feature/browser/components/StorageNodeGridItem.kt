@@ -42,6 +42,7 @@ fun StorageNodeGridItem(
     isSelectionMode: Boolean,
     onClick: () -> Unit,
     onToggleSelection: () -> Unit,
+    onQuickActionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -56,7 +57,15 @@ fun StorageNodeGridItem(
                         onClick()
                     }
                 },
-                onLongClick = onToggleSelection
+                onLongClick = {
+                    if (isSelectionMode) {
+                        onToggleSelection()
+                    } else if (onQuickActionClick != null) {
+                        onQuickActionClick()
+                    } else {
+                        onToggleSelection()
+                    }
+                }
             ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(

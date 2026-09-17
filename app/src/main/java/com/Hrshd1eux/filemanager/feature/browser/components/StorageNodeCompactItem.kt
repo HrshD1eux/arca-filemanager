@@ -77,6 +77,7 @@ fun StorageNodeCompactItem(
     onSendToClick: () -> Unit = {},
     onChecksumClick: () -> Unit = {},
     onInfoClick: () -> Unit,
+    onQuickActionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -149,7 +150,13 @@ fun StorageNodeCompactItem(
             if (!isSelectionMode) {
                 Box {
                     IconButton(
-                        onClick = { showMenu = !showMenu },
+                        onClick = {
+                            if (onQuickActionClick != null) {
+                                onQuickActionClick()
+                            } else {
+                                showMenu = !showMenu
+                            }
+                        },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(

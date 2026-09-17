@@ -588,6 +588,69 @@ class FileBrowserViewModel(
         }
     }
 
+    fun addFilesToArchive(archiveFile: File, sources: List<File>) {
+        if (sources.isEmpty()) return
+        val lowerName = archiveFile.name.lowercase()
+        if (lowerName.endsWith(".7z") || lowerName.endsWith(".tar") || lowerName.contains(".tar.")) {
+            viewModelScope.launch {
+                _userMessage.emit("Appending entries is supported for ZIP archives. To add to 7z/TAR, create a new archive.")
+            }
+            return
+        }
+
+        operationManager.enqueue(
+            title = "Adding to ${archiveFile.name}",
+            type = OperationType.COMPRESS
+        ) { progressEmitter ->
+            val result = zipEngine.addEntries(
+                zipFile = archiveFile,
+                newSources = sources,
+                targetVirtualPath = "",
+                onProgress = progressEmitter
+            )
+            result.getOrThrow()
+        }
+    }
+
+    fun encryptIntoVault(context: android.content.Context, source: File, deleteOriginal: Boolean = false) {
+        val vaultDir = File(context.filesDir, "vault")
+        val vaultManager = com.Hrshd1eux.filemanager.core.vault.VaultManager(vaultDir = vaultDir)
+
+        if (!vaultManager.isConfigured()) {
+            viewModelScope.launch {
+                _userMessage.emit("Private Vault is not set up yet. Open Private Vault from Home to initialize.")
+            }
+            return
+        }
+        if (!vaultManager.isUnlocked()) {
+            viewModelScope.launch {
+                _userMessage.emit("Private Vault is locked. Unlock Private Vault first to import files.")
+            }
+            return
+        }
+
+        operationManager.enqueue(
+            title = "Encrypting ${source.name} into Vault",
+            type = OperationType.COPY
+        ) { progressEmitter ->
+            val result = vaultManager.importFiles(
+                sources = listOf(source),
+                targetVirtualPath = "",
+                deleteOriginals = deleteOriginal,
+                onProgress = { bytesRead ->
+                    progressEmitter(
+                        OperationProgress(
+                            bytesProcessed = bytesRead,
+                            totalFiles = 1,
+                            currentFileName = source.name
+                        )
+                    )
+                }
+            )
+            result.getOrThrow()
+        }
+    }
+
     private fun generateBreadcrumbs(currentPath: String): List<BreadcrumbItem> {
         return buildBreadcrumbs(
             currentPath = currentPath,

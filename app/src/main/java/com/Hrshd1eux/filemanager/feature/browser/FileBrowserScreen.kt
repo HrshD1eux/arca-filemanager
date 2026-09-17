@@ -116,6 +116,10 @@ import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDi
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.RenameDialog
+import com.Hrshd1eux.filemanager.core.actions.QuickActionType
+import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.EncryptChoiceDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.QuickActionBottomSheet
 import com.Hrshd1eux.filemanager.feature.properties.BulkPropertiesSheet
 
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -177,6 +181,10 @@ fun FileBrowserScreen(
     var nodeForChecksums by remember { mutableStateOf<StorageNode?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showSortBottomSheet by remember { mutableStateOf(false) }
+
+    var quickActionNode by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeToEncrypt by remember { mutableStateOf<StorageNode?>(null) }
+    var archiveToAddItems by remember { mutableStateOf<StorageNode?>(null) }
 
     var bulkNodesToCopy by remember { mutableStateOf<List<StorageNode>?>(null) }
     var bulkNodesToMove by remember { mutableStateOf<List<StorageNode>?>(null) }
@@ -431,6 +439,9 @@ fun FileBrowserScreen(
                                             },
                                             onToggleSelection = {
                                                 viewModel.toggleSelection(node.id)
+                                            },
+                                            onQuickActionClick = {
+                                                quickActionNode = node
                                             }
                                         )
                                     }
@@ -500,6 +511,9 @@ fun FileBrowserScreen(
                                             },
                                             onInfoClick = {
                                                 selectedNodeForProperties = node
+                                            },
+                                            onQuickActionClick = {
+                                                quickActionNode = node
                                             }
                                         )
                                     }
@@ -569,6 +583,9 @@ fun FileBrowserScreen(
                                             },
                                             onInfoClick = {
                                                 selectedNodeForProperties = node
+                                            },
+                                            onQuickActionClick = {
+                                                quickActionNode = node
                                             }
                                         )
                                     }
@@ -945,6 +962,67 @@ fun FileBrowserScreen(
             onDismiss = { showSortBottomSheet = false }
         )
     }
+
+    // Quick Action System Bottom Sheet
+    quickActionNode?.let { node ->
+        QuickActionBottomSheet(
+            node = node,
+            onActionClick = { action ->
+                quickActionNode = null
+                when (action) {
+                    QuickActionType.OPEN, QuickActionType.OPEN_FOLDER -> {
+                        if (node.isDirectory) {
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            viewModel.navigateInto(node, hasPermission)
+                        } else {
+                            FileIntentDispatcher.view(context, node)
+                        }
+                    }
+                    QuickActionType.OPEN_ARCHIVE -> {
+                        onNavigateToArchiveViewer(node.path, node.name)
+                    }
+                    QuickActionType.MOVE -> nodeToMove = node
+                    QuickActionType.COPY -> nodeToCopy = node
+                    QuickActionType.COMPRESS -> nodeToCompress = node
+                    QuickActionType.ENCRYPT -> nodeToEncrypt = node
+                    QuickActionType.SHARE -> FileIntentDispatcher.share(context, node)
+                    QuickActionType.PROPERTIES -> selectedNodeForProperties = node
+                    QuickActionType.EXTRACT -> nodeToExtract = node
+                    QuickActionType.TEST -> viewModel.testArchive(node)
+                    QuickActionType.ADD -> archiveToAddItems = node
+                }
+            },
+            onDismiss = { quickActionNode = null }
+        )
+    }
+
+    // Encrypt Choice Dialog
+    nodeToEncrypt?.let { node ->
+        EncryptChoiceDialog(
+            node = node,
+            onEncryptToVault = {
+                nodeToEncrypt = null
+                viewModel.encryptIntoVault(context, File(node.path))
+            },
+            onEncryptToArchive = {
+                nodeToEncrypt = null
+                nodeToCompress = node
+            },
+            onDismiss = { nodeToEncrypt = null }
+        )
+    }
+
+    // Archive Add Items Dialog
+    archiveToAddItems?.let { archiveNode ->
+        ArchiveAddItemsDialog(
+            storageProvider = viewModel.storageProvider,
+            onItemsSelected = { files ->
+                archiveToAddItems = null
+                viewModel.addFilesToArchive(File(archiveNode.path), files)
+            },
+            onDismiss = { archiveToAddItems = null }
+        )
+    }
 }
 
 @Composable
@@ -1021,6 +1099,7 @@ private fun StorageNodeItem(
     onSendToClick: () -> Unit = {},
     onChecksumClick: () -> Unit = {},
     onInfoClick: () -> Unit,
+    onQuickActionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -1108,7 +1187,13 @@ private fun StorageNodeItem(
             if (!isSelectionMode) {
                 Box {
                     IconButton(
-                        onClick = { showMenu = !showMenu },
+                        onClick = {
+                            if (onQuickActionClick != null) {
+                                onQuickActionClick()
+                            } else {
+                                showMenu = !showMenu
+                            }
+                        },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
