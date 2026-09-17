@@ -183,6 +183,13 @@ class FileBrowserViewModel(
         setViewMode(nextMode)
     }
 
+    val isDualPaneMode: StateFlow<Boolean> = displayPreferencesRepository.isDualPaneMode
+
+    fun toggleDualPaneMode() {
+        val current = displayPreferencesRepository.isDualPaneMode.value
+        displayPreferencesRepository.updateDualPaneMode(!current)
+    }
+
     fun toggleSelection(nodeId: String) {
         val current = _selectedNodeIds.value
         _selectedNodeIds.value = if (current.contains(nodeId)) {

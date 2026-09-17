@@ -23,6 +23,9 @@ class DisplayPreferencesRepository(context: Context? = null) {
     private val _showHiddenFiles = MutableStateFlow(loadShowHiddenFiles())
     val showHiddenFiles: StateFlow<Boolean> = _showHiddenFiles.asStateFlow()
 
+    private val _isDualPaneMode = MutableStateFlow(loadDualPaneMode())
+    val isDualPaneMode: StateFlow<Boolean> = _isDualPaneMode.asStateFlow()
+
     fun updateSortOrder(newOrder: SortOrder) {
         _sortOrder.value = newOrder
         prefs?.edit()?.apply {
@@ -45,6 +48,14 @@ class DisplayPreferencesRepository(context: Context? = null) {
         _showHiddenFiles.value = show
         prefs?.edit()?.apply {
             putBoolean(KEY_SHOW_HIDDEN_FILES, show)
+            apply()
+        }
+    }
+
+    fun updateDualPaneMode(enabled: Boolean) {
+        _isDualPaneMode.value = enabled
+        prefs?.edit()?.apply {
+            putBoolean(KEY_DUAL_PANE_MODE, enabled)
             apply()
         }
     }
@@ -74,11 +85,17 @@ class DisplayPreferencesRepository(context: Context? = null) {
         return prefs.getBoolean(KEY_SHOW_HIDDEN_FILES, false)
     }
 
+    private fun loadDualPaneMode(): Boolean {
+        if (prefs == null) return false
+        return prefs.getBoolean(KEY_DUAL_PANE_MODE, false)
+    }
+
     companion object {
         private const val KEY_SORT_FIELD = "sort_field"
         private const val KEY_SORT_DIRECTION = "sort_direction"
         private const val KEY_FOLDERS_FIRST = "folders_first"
         private const val KEY_VIEW_MODE = "view_mode"
         private const val KEY_SHOW_HIDDEN_FILES = "show_hidden_files"
+        private const val KEY_DUAL_PANE_MODE = "dual_pane_mode"
     }
 }

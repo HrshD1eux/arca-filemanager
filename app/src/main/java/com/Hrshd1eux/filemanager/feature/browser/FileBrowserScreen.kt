@@ -77,6 +77,7 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -88,6 +89,7 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import com.Hrshd1eux.filemanager.feature.browser.components.DualPaneBrowserView
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.Checkbox
@@ -179,6 +181,7 @@ fun FileBrowserScreen(
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
+    val isDualPaneMode by viewModel.isDualPaneMode.collectAsStateWithLifecycle()
     val stagedNodesToMove by viewModel.stagedNodesToMove.collectAsStateWithLifecycle()
     val lastMoveDestination by viewModel.lastDestinationRepository.lastMoveDestination.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -240,6 +243,8 @@ fun FileBrowserScreen(
             if (!handled) {
                 if (stagedNodesToMove != null) {
                     viewModel.clearStagedMove()
+                } else if (isDualPaneMode) {
+                    viewModel.toggleDualPaneMode()
                 } else {
                     onNavigateBack()
                 }
@@ -256,7 +261,7 @@ fun FileBrowserScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            if (uiState is BrowserUiState.Success && selectedNodeIds.isEmpty()) {
+            if (!isDualPaneMode && uiState is BrowserUiState.Success && selectedNodeIds.isEmpty()) {
                 FloatingActionButton(
                     onClick = { showCreateFolderDialog = true },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -270,7 +275,7 @@ fun FileBrowserScreen(
             }
         },
         bottomBar = {
-            if (selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
+            if (!isDualPaneMode && selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
                 val allItems = (uiState as? BrowserUiState.Success)?.items ?: emptyList()
                 val selectedItems = allItems.filter { selectedNodeIds.contains(it.id) }
 
@@ -314,7 +319,7 @@ fun FileBrowserScreen(
                         }
                     )
                 }
-            } else if (stagedNodesToMove != null && uiState is BrowserUiState.Success) {
+            } else if (!isDualPaneMode && stagedNodesToMove != null && uiState is BrowserUiState.Success) {
                 val successState = uiState as BrowserUiState.Success
                 val currentFolder = StorageNode(
                     id = successState.currentPath,
@@ -414,6 +419,13 @@ fun FileBrowserScreen(
                                 contentDescription = "Search"
                             )
                         }
+                        IconButton(onClick = { viewModel.toggleDualPaneMode() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.CompareArrows,
+                                contentDescription = if (isDualPaneMode) "Exit Dual-pane mode" else "Dual-pane mode",
+                                tint = if (isDualPaneMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                            )
+                        }
                         IconButton(onClick = { showSortBottomSheet = true }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Sort,
@@ -449,12 +461,23 @@ fun FileBrowserScreen(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (val state = uiState) {
+        if (isDualPaneMode) {
+            val rightViewModel: FileBrowserViewModel = viewModel(key = "right_pane_browser_vm")
+            DualPaneBrowserView(
+                leftViewModel = viewModel,
+                rightViewModel = rightViewModel,
+                onNavigateToArchiveViewer = onNavigateToArchiveViewer,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                when (val state = uiState) {
                 is BrowserUiState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -700,6 +723,7 @@ fun FileBrowserScreen(
             }
         }
     }
+}
 
     // Single Copy Destination Picker
     val targetToCopy = nodeToCopy
