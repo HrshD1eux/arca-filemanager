@@ -121,6 +121,7 @@ import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialo
 import com.Hrshd1eux.filemanager.feature.browser.components.EncryptChoiceDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.QuickActionBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.SelectionBottomBar
+import com.Hrshd1eux.filemanager.feature.browser.components.StagedMoveFloatingBar
 import com.Hrshd1eux.filemanager.feature.properties.BulkPropertiesSheet
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -168,6 +169,8 @@ fun FileBrowserScreen(
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
+    val stagedNodesToMove by viewModel.stagedNodesToMove.collectAsStateWithLifecycle()
+    val lastMoveDestination by viewModel.lastDestinationRepository.lastMoveDestination.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showOperationsQueueSheet by remember { mutableStateOf(false) }
@@ -225,7 +228,11 @@ fun FileBrowserScreen(
             val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
             val handled = viewModel.navigateUp(hasPermission)
             if (!handled) {
-                onNavigateBack()
+                if (stagedNodesToMove != null) {
+                    viewModel.clearStagedMove()
+                } else {
+                    onNavigateBack()
+                }
             }
         }
     }
@@ -253,37 +260,78 @@ fun FileBrowserScreen(
             }
         },
         bottomBar = {
-            AnimatedVisibility(
-                visible = selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-            ) {
+            if (selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
                 val allItems = (uiState as? BrowserUiState.Success)?.items ?: emptyList()
                 val selectedItems = allItems.filter { selectedNodeIds.contains(it.id) }
 
-                SelectionBottomBar(
-                    selectedCount = selectedNodeIds.size,
-                    onMove = { bulkNodesToMove = selectedItems },
-                    onCopy = { bulkNodesToCopy = selectedItems },
-                    onCompress = { bulkNodesToCompress = selectedItems },
-                    onDelete = { bulkNodesToDelete = selectedItems },
-                    onEncrypt = {
-                        if (selectedItems.size == 1) {
-                            nodeToEncrypt = selectedItems.first()
-                        } else {
-                            bulkNodesToEncrypt = selectedItems
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                ) {
+                    SelectionBottomBar(
+                        selectedCount = selectedNodeIds.size,
+                        lastMoveDestination = lastMoveDestination?.takeIf { dest ->
+                            selectedItems.none { it.path == dest.path }
+                        },
+                        onMoveToRecent = { target ->
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            viewModel.startMove(
+                                sources = selectedItems,
+                                destination = target,
+                                hasPermission = hasPermission
+                            )
+                        },
+                        onMove = { bulkNodesToMove = selectedItems },
+                        onCopy = { bulkNodesToCopy = selectedItems },
+                        onCompress = { bulkNodesToCompress = selectedItems },
+                        onDelete = { bulkNodesToDelete = selectedItems },
+                        onEncrypt = {
+                            if (selectedItems.size == 1) {
+                                nodeToEncrypt = selectedItems.first()
+                            } else {
+                                bulkNodesToEncrypt = selectedItems
+                            }
+                        },
+                        onShare = { FileIntentDispatcher.shareMultiple(context, selectedItems) },
+                        onRename = { nodeToRename = selectedItems.firstOrNull() },
+                        onProperties = {
+                            if (selectedItems.size == 1) {
+                                selectedNodeForProperties = selectedItems.first()
+                            } else {
+                                bulkNodesForProperties = selectedItems
+                            }
                         }
-                    },
-                    onShare = { FileIntentDispatcher.shareMultiple(context, selectedItems) },
-                    onRename = { nodeToRename = selectedItems.firstOrNull() },
-                    onProperties = {
-                        if (selectedItems.size == 1) {
-                            selectedNodeForProperties = selectedItems.first()
-                        } else {
-                            bulkNodesForProperties = selectedItems
-                        }
-                    }
+                    )
+                }
+            } else if (stagedNodesToMove != null && uiState is BrowserUiState.Success) {
+                val successState = uiState as BrowserUiState.Success
+                val currentFolder = StorageNode(
+                    id = successState.currentPath,
+                    name = successState.currentTitle,
+                    path = successState.currentPath,
+                    isDirectory = true
                 )
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                ) {
+                    StagedMoveFloatingBar(
+                        stagedItems = stagedNodesToMove!!,
+                        currentFolder = currentFolder,
+                        onMoveHere = {
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            viewModel.commitMoveHere(
+                                destination = currentFolder,
+                                hasPermission = hasPermission
+                            )
+                        },
+                        onCancel = {
+                            viewModel.clearStagedMove()
+                        }
+                    )
+                }
             }
         },
         topBar = {
@@ -683,6 +731,12 @@ fun FileBrowserScreen(
             excludedPaths = if (targetToMove.isDirectory) setOf(targetToMove.path) else emptySet(),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
+            lastMoveDestination = lastMoveDestination?.takeIf { it.path != targetToMove.path },
+            onStageForMove = {
+                val toStage = listOf(targetToMove)
+                nodeToMove = null
+                viewModel.stageNodesForMove(toStage)
+            },
             onDestinationSelected = { destination, _ ->
                 nodeToMove = null
                 activeOperationTitle = "Moving Files"
@@ -707,6 +761,14 @@ fun FileBrowserScreen(
             excludedPaths = targetBulkMove.filter { it.isDirectory }.map { it.path }.toSet(),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
+            lastMoveDestination = lastMoveDestination?.takeIf { dest ->
+                targetBulkMove.none { it.path == dest.path }
+            },
+            onStageForMove = {
+                val toStage = targetBulkMove
+                bulkNodesToMove = null
+                viewModel.stageNodesForMove(toStage)
+            },
             onDestinationSelected = { destination, _ ->
                 bulkNodesToMove = null
                 activeOperationTitle = "Moving ${targetBulkMove.size} Items"

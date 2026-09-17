@@ -22,6 +22,7 @@ import com.Hrshd1eux.filemanager.core.operations.queue.OperationType
 import com.Hrshd1eux.filemanager.core.operations.queue.QueuedOperation
 import com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.preferences.LastDestinationRepository
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.provider.StorageProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
@@ -54,7 +55,8 @@ class FileBrowserViewModel(
     private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     val favoritesRepository: FavoritesRepository = FavoritesRepository(),
-    val recentsRepository: RecentsRepository = RecentsRepository()
+    val recentsRepository: RecentsRepository = RecentsRepository(),
+    val lastDestinationRepository: LastDestinationRepository = LastDestinationRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
@@ -84,6 +86,9 @@ class FileBrowserViewModel(
 
     private val _selectedNodeIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedNodeIds: StateFlow<Set<String>> = _selectedNodeIds.asStateFlow()
+
+    private val _stagedNodesToMove = MutableStateFlow<List<StorageNode>?>(null)
+    val stagedNodesToMove: StateFlow<List<StorageNode>?> = _stagedNodesToMove.asStateFlow()
 
     val sortOrder: StateFlow<SortOrder> = displayPreferencesRepository.sortOrder
     val viewMode: StateFlow<ViewMode> = displayPreferencesRepository.viewMode
@@ -239,6 +244,30 @@ class FileBrowserViewModel(
         }
     }
 
+    fun stageNodesForMove(nodes: List<StorageNode>) {
+        if (nodes.isEmpty()) return
+        clearSelection()
+        _stagedNodesToMove.value = nodes
+        viewModelScope.launch {
+            val countText = if (nodes.size == 1) "1 item" else "${nodes.size} items"
+            _userMessage.emit("Staged $countText to move. Navigate to destination folder and tap 'Move here'.")
+        }
+    }
+
+    fun clearStagedMove() {
+        _stagedNodesToMove.value = null
+    }
+
+    fun commitMoveHere(destination: StorageNode, hasPermission: Boolean) {
+        val staged = _stagedNodesToMove.value ?: return
+        clearStagedMove()
+        startMove(
+            sources = staged,
+            destination = destination,
+            hasPermission = hasPermission
+        )
+    }
+
     fun startMove(
         sources: List<StorageNode>,
         destination: StorageNode,
@@ -251,6 +280,8 @@ class FileBrowserViewModel(
         }
 
         clearSelection()
+        lastDestinationRepository.recordMoveDestination(destination)
+
         val title = if (sources.size == 1) "Moving ${sources.first().name}" else "Moving ${sources.size} items"
         operationManager.enqueue(title = title, type = OperationType.MOVE) { onProgress ->
             val result = operationEngine.move(
