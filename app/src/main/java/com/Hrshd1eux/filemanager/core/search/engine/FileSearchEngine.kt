@@ -25,6 +25,7 @@ class FileSearchEngine(
     private val audioExtensions = setOf("mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "opus", "mid")
     private val docExtensions = setOf("pdf", "doc", "docx", "txt", "rtf", "odt", "xls", "xlsx", "ppt", "pptx", "csv", "json", "xml", "html", "md")
     private val archiveExtensions = setOf("zip", "tar", "gz", "7z", "rar", "bz2", "xz", "iso", "apk", "jar")
+    private val apkExtensions = setOf("apk", "xapk", "apks")
 
     fun search(criteria: SearchCriteria): Flow<List<StorageNode>> = flow {
         val rootFile = File(criteria.rootPath)
@@ -97,6 +98,7 @@ class FileSearchEngine(
                 CategoryFilter.AUDIO -> audioExtensions.contains(ext)
                 CategoryFilter.DOCUMENTS -> docExtensions.contains(ext)
                 CategoryFilter.ARCHIVES -> archiveExtensions.contains(ext)
+                CategoryFilter.APKS -> apkExtensions.contains(ext)
             }
             if (!matchesCategory) return false
         }
