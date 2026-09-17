@@ -68,7 +68,7 @@ enum class QuickActionContext {
      * Archive:
      * Open, Extract, Test, Add, Encrypt, Properties
      */
-    fun getActions(): List<QuickActionType> {
+    fun getActions(node: StorageNode? = null): List<QuickActionType> {
         return when (this) {
             FOLDER -> listOf(
                 QuickActionType.OPEN_FOLDER,
@@ -87,14 +87,31 @@ enum class QuickActionContext {
                 QuickActionType.ENCRYPT,
                 QuickActionType.PROPERTIES
             )
-            ARCHIVE -> listOf(
-                QuickActionType.OPEN_ARCHIVE,
-                QuickActionType.EXTRACT,
-                QuickActionType.TEST,
-                QuickActionType.ADD,
-                QuickActionType.ENCRYPT,
-                QuickActionType.PROPERTIES
-            )
+            ARCHIVE -> {
+                val isReadOnlyArchive = node != null && (
+                    FileTypeResolver.isRar(node.name) ||
+                    node.name.endsWith(".7z", ignoreCase = true) ||
+                    node.name.contains(".tar", ignoreCase = true)
+                )
+                if (isReadOnlyArchive) {
+                    listOf(
+                        QuickActionType.OPEN_ARCHIVE,
+                        QuickActionType.EXTRACT,
+                        QuickActionType.TEST,
+                        QuickActionType.ENCRYPT,
+                        QuickActionType.PROPERTIES
+                    )
+                } else {
+                    listOf(
+                        QuickActionType.OPEN_ARCHIVE,
+                        QuickActionType.EXTRACT,
+                        QuickActionType.TEST,
+                        QuickActionType.ADD,
+                        QuickActionType.ENCRYPT,
+                        QuickActionType.PROPERTIES
+                    )
+                }
+            }
         }
     }
 }

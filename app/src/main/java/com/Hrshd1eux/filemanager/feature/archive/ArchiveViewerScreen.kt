@@ -131,13 +131,24 @@ fun ArchiveViewerScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = title.ifEmpty { File(archivePath).name },
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Column {
+                        Text(
+                            text = title.ifEmpty { File(archivePath).name },
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        val success = uiState as? ArchiveViewerUiState.Success
+                        if (success?.formatBadge != null) {
+                            Text(
+                                text = success.formatBadge,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -158,7 +169,8 @@ fun ArchiveViewerScreen(
             )
         },
         bottomBar = {
-            if (uiState is ArchiveViewerUiState.Success) {
+            val successState = uiState as? ArchiveViewerUiState.Success
+            if (successState != null) {
                 if (selectedEntryPaths.isNotEmpty()) {
                     // Selected Items Contextual Extraction Bar
                     Surface(
@@ -209,12 +221,15 @@ fun ArchiveViewerScreen(
                         )
                         NavigationBarItem(
                             selected = false,
+                            enabled = !successState.isReadOnly,
                             onClick = { showAddPicker = true },
                             icon = { Icon(Icons.Default.Add, contentDescription = "Add") },
-                            label = { Text("Add") },
+                            label = { Text(if (successState.isReadOnly) "Add (N/A)" else "Add") },
                             colors = NavigationBarItemDefaults.colors(
                                 unselectedIconColor = MaterialTheme.colorScheme.primary,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                disabledIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
                         )
                         NavigationBarItem(
@@ -309,6 +324,21 @@ fun ArchiveViewerScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                if (state.formatBadge != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = state.formatBadge,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
                             }
 
                             Column(horizontalAlignment = Alignment.End) {

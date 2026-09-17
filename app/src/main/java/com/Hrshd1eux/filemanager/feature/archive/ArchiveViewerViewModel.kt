@@ -2,6 +2,7 @@ package com.Hrshd1eux.filemanager.feature.archive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.archive.engine.RarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.TarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
@@ -31,7 +32,9 @@ sealed interface ArchiveViewerUiState {
         val items: List<ArchiveEntry>,
         val totalUncompressedBytes: Long,
         val totalCompressedBytes: Long,
-        val totalFilesCount: Int
+        val totalFilesCount: Int,
+        val isReadOnly: Boolean = false,
+        val formatBadge: String? = null
     ) : ArchiveViewerUiState
     data class Error(val message: String) : ArchiveViewerUiState
 }
@@ -40,7 +43,8 @@ class ArchiveViewerViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
     private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher),
-    private val tarEngine: TarEngine = TarEngine(ioDispatcher)
+    private val tarEngine: TarEngine = TarEngine(ioDispatcher),
+    private val rarEngine: RarEngine = RarEngine(ioDispatcher)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArchiveViewerUiState>(ArchiveViewerUiState.Loading)
@@ -65,6 +69,10 @@ class ArchiveViewerViewModel(
     private var allEntries: List<ArchiveEntry> = emptyList()
     private var currentVirtualPath: String = ""
 
+    private fun isRar(file: File?): Boolean {
+        return file?.extension?.equals("rar", ignoreCase = true) == true
+    }
+
     private fun is7z(file: File?): Boolean {
         return file?.extension?.equals("7z", ignoreCase = true) == true
     }
@@ -88,6 +96,7 @@ class ArchiveViewerViewModel(
             _uiState.value = ArchiveViewerUiState.Loading
             try {
                 allEntries = when {
+                    isRar(file) -> rarEngine.listEntries(file, password)
                     is7z(file) -> sevenZEngine.listEntries(file, password)
                     isTar(file) -> tarEngine.listEntries(file)
                     else -> zipEngine.listEntries(file)
@@ -159,6 +168,14 @@ class ArchiveViewerViewModel(
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
             val result = when {
+                isRar(file) -> rarEngine.extractAll(
+                    rarFile = file,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    password = password,
+                    verifyIntegrity = verifyIntegrity,
+                    onProgress = { _activeProgress.value = it }
+                )
                 is7z(file) -> sevenZEngine.extractAll(
                     sevenZFile = file,
                     destinationDir = destinationDir,
@@ -210,6 +227,15 @@ class ArchiveViewerViewModel(
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = selected.size)
             val result = when {
+                isRar(file) -> rarEngine.extractEntries(
+                    rarFile = file,
+                    entryPaths = selected,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    password = password,
+                    verifyIntegrity = verifyIntegrity,
+                    onProgress = { _activeProgress.value = it }
+                )
                 is7z(file) -> sevenZEngine.extractEntries(
                     sevenZFile = file,
                     entryPaths = selected,
@@ -256,6 +282,11 @@ class ArchiveViewerViewModel(
         viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
             val result = when {
+                isRar(file) -> rarEngine.testArchive(
+                    rarFile = file,
+                    password = password,
+                    onProgress = { _activeProgress.value = it }
+                )
                 is7z(file) -> sevenZEngine.testArchive(
                     sevenZFile = file,
                     password = password,
@@ -283,10 +314,11 @@ class ArchiveViewerViewModel(
         _testReport.value = null
     }
 
-    fun loadArchiveProperties() {
+    fun loadArchiveProperties(password: CharArray? = null) {
         val file = archiveFile ?: return
         viewModelScope.launch {
             _archiveProperties.value = when {
+                isRar(file) -> rarEngine.getArchiveProperties(file, password)
                 is7z(file) -> sevenZEngine.getArchiveProperties(file)
                 isTar(file) -> tarEngine.getArchiveProperties(file)
                 else -> zipEngine.getArchiveProperties(file)
@@ -301,6 +333,13 @@ class ArchiveViewerViewModel(
     fun addFiles(sources: List<File>) {
         val file = archiveFile ?: return
         if (sources.isEmpty()) return
+
+        if (isRar(file)) {
+            viewModelScope.launch {
+                _userMessage.emit("RAR is a read-only format in ARCA (extraction and viewing only). Creating or modifying RAR archives is not supported.")
+            }
+            return
+        }
 
         if (is7z(file) || isTar(file)) {
             viewModelScope.launch {
@@ -343,6 +382,9 @@ class ArchiveViewerViewModel(
         val totalUncompressed = allEntries.filter { !it.isDirectory }.sumOf { it.uncompressedSize }
         val totalCompressed = allEntries.filter { !it.isDirectory }.sumOf { it.compressedSize }
         val totalFiles = allEntries.count { !it.isDirectory }
+        val isRarFormat = isRar(file)
+        val formatBadge = if (isRarFormat) "RAR (Extraction & Viewing only)" else null
+        val isReadOnly = isRarFormat || is7z(file) || isTar(file)
 
         _uiState.value = ArchiveViewerUiState.Success(
             archiveName = file.name,
@@ -351,7 +393,9 @@ class ArchiveViewerViewModel(
             items = directChildren,
             totalUncompressedBytes = totalUncompressed,
             totalCompressedBytes = totalCompressed,
-            totalFilesCount = totalFiles
+            totalFilesCount = totalFiles,
+            isReadOnly = isReadOnly,
+            formatBadge = formatBadge
         )
     }
 }

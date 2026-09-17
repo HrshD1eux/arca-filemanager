@@ -28,7 +28,7 @@ enum class ArchiveFormat(val displayName: String, val supportsStreamingPreview: 
     TAR_BZ2("BZip2-Compressed TAR", true),
     TAR_XZ("XZ-Compressed TAR", true),
     SEVEN_ZIP("7-Zip Archive", true),
-    RAR("RAR Archive", false),
+    RAR("RAR Archive (Read-Only)", true),
     GZIP("GZip Compressed File", false),
     BZIP2("BZip2 Compressed File", false),
     XZ("XZ Compressed File", false),

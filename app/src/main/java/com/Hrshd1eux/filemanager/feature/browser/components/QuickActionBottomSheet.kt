@@ -59,7 +59,7 @@ fun QuickActionBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val actionContext = QuickActionContext.fromNode(node)
-    val actions = actionContext.getActions()
+    val actions = actionContext.getActions(node)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

@@ -88,6 +88,7 @@ dependencies {
     // Archive & Compression Engines (7z, Tar, XZ, etc.)
     implementation(libs.apache.commons.compress)
     implementation(libs.tukaani.xz)
+    implementation(libs.junrar)
 
     // Background WorkManager
     implementation(libs.androidx.work.runtime.ktx)

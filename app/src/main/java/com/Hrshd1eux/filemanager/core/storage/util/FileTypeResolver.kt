@@ -121,6 +121,10 @@ object FileTypeResolver {
                 lower.substringAfterLast('.', "") in archiveExtensions
     }
 
+    fun isRar(fileName: String): Boolean {
+        return fileName.substringAfterLast('.', "").lowercase() == "rar"
+    }
+
     fun isPackage(fileName: String): Boolean {
         return fileName.substringAfterLast('.', "").lowercase() in packageExtensions
     }

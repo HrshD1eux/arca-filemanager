@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.feature.browser
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.archive.engine.RarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
 import com.Hrshd1eux.filemanager.core.dragdrop.DragDropManager
 import com.Hrshd1eux.filemanager.core.dragdrop.DragDropPayload
@@ -58,6 +59,7 @@ class FileBrowserViewModel(
     private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
     private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher),
     private val tarEngine: TarEngine = TarEngine(ioDispatcher),
+    private val rarEngine: RarEngine = RarEngine(ioDispatcher),
     private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     val favoritesRepository: FavoritesRepository = FavoritesRepository(),
@@ -428,6 +430,14 @@ class FileBrowserViewModel(
                 ) { onProgress ->
                     val lowerName = archiveFile.name.lowercase()
                     val result: Result<Int> = when {
+                        lowerName.endsWith(".rar") -> {
+                            rarEngine.extractEntries(
+                                rarFile = archiveFile,
+                                entryPaths = setOf(payload.entryPath),
+                                destinationDir = destDir,
+                                onProgress = onProgress
+                            )
+                        }
                         lowerName.endsWith(".7z") -> {
                             sevenZEngine.extractEntries(
                                 sevenZFile = archiveFile,
@@ -607,6 +617,9 @@ class FileBrowserViewModel(
             try {
                 val sourceFiles = sources.map { File(it.path) }
                 val lowerName = archiveName.lowercase()
+                if (lowerName.endsWith(".rar")) {
+                    rarEngine.createRar(sourceFiles, destFile)
+                }
                 val size = when {
                     lowerName.endsWith(".7z") -> {
                         sevenZEngine.create7z(
@@ -666,6 +679,16 @@ class FileBrowserViewModel(
                 val archiveFile = File(archiveNode.path)
                 val lowerName = archiveFile.name.lowercase()
                 val count = when {
+                    lowerName.endsWith(".rar") -> {
+                        rarEngine.extractAll(
+                            rarFile = archiveFile,
+                            destinationDir = destinationDir,
+                            conflictResolution = conflictResolution,
+                            password = password,
+                            verifyIntegrity = verifyIntegrity,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
                     lowerName.endsWith(".7z") -> {
                         sevenZEngine.extractAll(
                             sevenZFile = archiveFile,
@@ -735,6 +758,9 @@ class FileBrowserViewModel(
         archiveTestJob = viewModelScope.launch {
             val lowerName = file.name.lowercase()
             val result = when {
+                lowerName.endsWith(".rar") -> {
+                    rarEngine.testArchive(file) { _testProgress.value = it }
+                }
                 lowerName.endsWith(".7z") -> {
                     sevenZEngine.testArchive(file) { _testProgress.value = it }
                 }

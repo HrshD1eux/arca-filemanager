@@ -95,8 +95,34 @@ class QuickActionSystemTest {
     }
 
     @Test
+    fun archiveContext_rarArchive_omitsAddAction_dueToReadOnlyBoundary() {
+        val rarNode = StorageNode(
+            id = "/storage/emulated/0/Download/backup.rar",
+            name = "backup.rar",
+            path = "/storage/emulated/0/Download/backup.rar",
+            size = 2048L,
+            lastModified = System.currentTimeMillis(),
+            isDirectory = false
+        )
+
+        val context = QuickActionContext.fromNode(rarNode)
+        assertEquals(QuickActionContext.ARCHIVE, context)
+
+        val actions = context.getActions(rarNode)
+        val expectedActions = listOf(
+            QuickActionType.OPEN_ARCHIVE,
+            QuickActionType.EXTRACT,
+            QuickActionType.TEST,
+            QuickActionType.ENCRYPT,
+            QuickActionType.PROPERTIES
+        )
+        assertEquals(expectedActions, actions)
+        org.junit.Assert.assertFalse(actions.contains(QuickActionType.ADD))
+    }
+
+    @Test
     fun contextDetection_variousArchiveExtensions() {
-        val extensions = listOf("zip", "7z", "tar", "tar.gz", "tgz", "tar.bz2", "tbz2", "tar.xz", "txz")
+        val extensions = listOf("zip", "rar", "7z", "tar", "tar.gz", "tgz", "tar.bz2", "tbz2", "tar.xz", "txz")
         for (ext in extensions) {
             val node = StorageNode(
                 id = "/test/file.$ext",

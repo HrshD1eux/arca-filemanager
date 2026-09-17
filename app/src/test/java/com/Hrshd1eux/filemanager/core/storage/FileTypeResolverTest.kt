@@ -72,17 +72,23 @@ class FileTypeResolverTest {
         assertTrue(FileTypeResolver.canPreviewArchive("project.zip"))
         assertTrue(FileTypeResolver.canPreviewArchive("source.tar.gz"))
         assertTrue(FileTypeResolver.canPreviewArchive("data.7z"))
+        assertTrue(FileTypeResolver.canPreviewArchive("archive.rar"))
         assertFalse(FileTypeResolver.canPreviewArchive("image.jpg"))
     }
 
     @Test
     fun isArchive_accuratelyDetectsArchives() {
         assertTrue(FileTypeResolver.isArchive("archive.zip"))
+        assertTrue(FileTypeResolver.isArchive("archive.rar"))
         assertTrue(FileTypeResolver.isArchive("archive.7z"))
         assertTrue(FileTypeResolver.isArchive("archive.tar.gz"))
         assertTrue(FileTypeResolver.isArchive("archive.tar.bz2"))
         assertTrue(FileTypeResolver.isArchive("archive.tar.xz"))
         assertTrue(FileTypeResolver.isArchive("archive.tgz"))
+
+        assertTrue(FileTypeResolver.isRar("archive.rar"))
+        assertTrue(FileTypeResolver.isRar("FILE.RAR"))
+        assertFalse(FileTypeResolver.isRar("archive.zip"))
 
         assertFalse(FileTypeResolver.isArchive("document.pdf"))
         assertFalse(FileTypeResolver.isArchive("image.png"))
