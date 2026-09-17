@@ -1,15 +1,9 @@
 package com.Hrshd1eux.filemanager.feature.browser.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DriveFileMove
-import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,6 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 
+/**
+ * Streamlined Selection Top App Bar.
+ *
+ * Displays:
+ * [X] N selected                     [Select All / Deselect All]
+ *
+ * Primary actions (Move | Copy | Compress | More) are delegated to the signature SelectionBottomBar.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContextualActionBar(
@@ -28,20 +30,22 @@ fun ContextualActionBar(
     totalCount: Int,
     onCloseSelection: () -> Unit,
     onSelectAllToggle: () -> Unit,
-    onBulkCopy: () -> Unit,
-    onBulkMove: () -> Unit,
-    onBulkDelete: () -> Unit,
+    onBulkCopy: () -> Unit = {},
+    onBulkMove: () -> Unit = {},
+    onBulkDelete: () -> Unit = {},
     onBulkCompress: () -> Unit = {},
-    onShare: () -> Unit,
-    onRename: () -> Unit,
-    onProperties: () -> Unit,
+    onShare: () -> Unit = {},
+    onRename: () -> Unit = {},
+    onProperties: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val allSelected = totalCount > 0 && selectedCount == totalCount
+
     TopAppBar(
         title = {
             Text(
                 text = "$selectedCount selected",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
         },
@@ -49,75 +53,16 @@ fun ContextualActionBar(
             IconButton(onClick = onCloseSelection) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Close Selection"
+                    contentDescription = "Clear Selection"
                 )
             }
         },
         actions = {
-            // Select All Toggle
+            // Select All / Deselect All Toggle
             IconButton(onClick = onSelectAllToggle) {
                 Icon(
-                    imageVector = Icons.Default.SelectAll,
-                    contentDescription = if (selectedCount == totalCount) "Deselect All" else "Select All"
-                )
-            }
-
-            // Share Action
-            IconButton(onClick = onShare, enabled = selectedCount > 0) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Share"
-                )
-            }
-
-            // Rename (active when exactly 1 item selected)
-            if (selectedCount == 1) {
-                IconButton(onClick = onRename) {
-                    Icon(
-                        imageVector = Icons.Default.DriveFileRenameOutline,
-                        contentDescription = "Rename"
-                    )
-                }
-            }
-
-            // Copy
-            IconButton(onClick = onBulkCopy, enabled = selectedCount > 0) {
-                Icon(
-                    imageVector = Icons.Default.ContentCopy,
-                    contentDescription = "Copy"
-                )
-            }
-
-            // Compress
-            IconButton(onClick = onBulkCompress, enabled = selectedCount > 0) {
-                Icon(
-                    imageVector = Icons.Default.Archive,
-                    contentDescription = "Compress to ZIP"
-                )
-            }
-
-            // Move
-            IconButton(onClick = onBulkMove, enabled = selectedCount > 0) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
-                    contentDescription = "Move"
-                )
-            }
-
-            // Delete
-            IconButton(onClick = onBulkDelete, enabled = selectedCount > 0) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    tint = if (selectedCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    contentDescription = "Delete"
-                )
-            }
-
-            // Properties / Info
-            IconButton(onClick = onProperties, enabled = selectedCount > 0) {
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = "Properties"
+                    imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                    contentDescription = if (allSelected) "Deselect All" else "Select All"
                 )
             }
         },

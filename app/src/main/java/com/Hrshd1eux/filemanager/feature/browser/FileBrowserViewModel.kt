@@ -612,7 +612,8 @@ class FileBrowserViewModel(
         }
     }
 
-    fun encryptIntoVault(context: android.content.Context, source: File, deleteOriginal: Boolean = false) {
+    fun encryptIntoVault(context: android.content.Context, sources: List<File>, deleteOriginal: Boolean = false) {
+        if (sources.isEmpty()) return
         val vaultDir = File(context.filesDir, "vault")
         val vaultManager = com.Hrshd1eux.filemanager.core.vault.VaultManager(vaultDir = vaultDir)
 
@@ -629,26 +630,32 @@ class FileBrowserViewModel(
             return
         }
 
+        val title = if (sources.size == 1) "Encrypting ${sources.first().name} into Vault" else "Encrypting ${sources.size} items into Vault"
+
         operationManager.enqueue(
-            title = "Encrypting ${source.name} into Vault",
+            title = title,
             type = OperationType.COPY
         ) { progressEmitter ->
             val result = vaultManager.importFiles(
-                sources = listOf(source),
+                sources = sources,
                 targetVirtualPath = "",
                 deleteOriginals = deleteOriginal,
                 onProgress = { bytesRead ->
                     progressEmitter(
                         OperationProgress(
                             bytesProcessed = bytesRead,
-                            totalFiles = 1,
-                            currentFileName = source.name
+                            totalFiles = sources.size,
+                            currentFileName = if (sources.size == 1) sources.first().name else "${sources.size} files"
                         )
                     )
                 }
             )
             result.getOrThrow()
         }
+    }
+
+    fun encryptIntoVault(context: android.content.Context, source: File, deleteOriginal: Boolean = false) {
+        encryptIntoVault(context, listOf(source), deleteOriginal)
     }
 
     private fun generateBreadcrumbs(currentPath: String): List<BreadcrumbItem> {

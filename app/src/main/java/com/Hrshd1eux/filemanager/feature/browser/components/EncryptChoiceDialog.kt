@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,13 +32,26 @@ import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 
 /**
- * Dialog presenting encryption options for an item:
+ * Dialog presenting encryption options for single or multiple items:
  * 1. Private Vault (Zero-knowledge AES-256 storage)
  * 2. Encrypted Archive (Password-protected 7z archive)
  */
 @Composable
 fun EncryptChoiceDialog(
     node: StorageNode,
+    onEncryptToVault: () -> Unit,
+    onEncryptToArchive: () -> Unit,
+    onDismiss: () -> Unit
+) = EncryptChoiceDialog(
+    title = "Encrypt \"${node.name}\"",
+    onEncryptToVault = onEncryptToVault,
+    onEncryptToArchive = onEncryptToArchive,
+    onDismiss = onDismiss
+)
+
+@Composable
+fun EncryptChoiceDialog(
+    title: String,
     onEncryptToVault: () -> Unit,
     onEncryptToArchive: () -> Unit,
     onDismiss: () -> Unit
@@ -56,7 +68,7 @@ fun EncryptChoiceDialog(
         },
         title = {
             Text(
-                text = "Encrypt \"${node.name}\"",
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -67,7 +79,7 @@ fun EncryptChoiceDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Select how you want to encrypt this item at rest:",
+                    text = "Select how you want to encrypt at rest:",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

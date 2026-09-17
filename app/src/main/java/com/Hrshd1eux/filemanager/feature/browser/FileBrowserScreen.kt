@@ -120,7 +120,13 @@ import com.Hrshd1eux.filemanager.core.actions.QuickActionType
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.EncryptChoiceDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.QuickActionBottomSheet
+import com.Hrshd1eux.filemanager.feature.browser.components.SelectionBottomBar
 import com.Hrshd1eux.filemanager.feature.properties.BulkPropertiesSheet
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -190,6 +196,7 @@ fun FileBrowserScreen(
     var bulkNodesToMove by remember { mutableStateOf<List<StorageNode>?>(null) }
     var bulkNodesToDelete by remember { mutableStateOf<List<StorageNode>?>(null) }
     var bulkNodesToCompress by remember { mutableStateOf<List<StorageNode>?>(null) }
+    var bulkNodesToEncrypt by remember { mutableStateOf<List<StorageNode>?>(null) }
 
     var activeOperationTitle by remember { mutableStateOf("Processing Files") }
 
@@ -245,20 +252,28 @@ fun FileBrowserScreen(
                 }
             }
         },
-        topBar = {
-            if (selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
-                val allItems = (uiState as BrowserUiState.Success).items
+        bottomBar = {
+            AnimatedVisibility(
+                visible = selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                val allItems = (uiState as? BrowserUiState.Success)?.items ?: emptyList()
                 val selectedItems = allItems.filter { selectedNodeIds.contains(it.id) }
 
-                ContextualActionBar(
+                SelectionBottomBar(
                     selectedCount = selectedNodeIds.size,
-                    totalCount = allItems.size,
-                    onCloseSelection = { viewModel.clearSelection() },
-                    onSelectAllToggle = { viewModel.selectAll(allItems) },
-                    onBulkCopy = { bulkNodesToCopy = selectedItems },
-                    onBulkMove = { bulkNodesToMove = selectedItems },
-                    onBulkDelete = { bulkNodesToDelete = selectedItems },
-                    onBulkCompress = { bulkNodesToCompress = selectedItems },
+                    onMove = { bulkNodesToMove = selectedItems },
+                    onCopy = { bulkNodesToCopy = selectedItems },
+                    onCompress = { bulkNodesToCompress = selectedItems },
+                    onDelete = { bulkNodesToDelete = selectedItems },
+                    onEncrypt = {
+                        if (selectedItems.size == 1) {
+                            nodeToEncrypt = selectedItems.first()
+                        } else {
+                            bulkNodesToEncrypt = selectedItems
+                        }
+                    },
                     onShare = { FileIntentDispatcher.shareMultiple(context, selectedItems) },
                     onRename = { nodeToRename = selectedItems.firstOrNull() },
                     onProperties = {
@@ -268,6 +283,18 @@ fun FileBrowserScreen(
                             bulkNodesForProperties = selectedItems
                         }
                     }
+                )
+            }
+        },
+        topBar = {
+            if (selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
+                val allItems = (uiState as BrowserUiState.Success).items
+
+                ContextualActionBar(
+                    selectedCount = selectedNodeIds.size,
+                    totalCount = allItems.size,
+                    onCloseSelection = { viewModel.clearSelection() },
+                    onSelectAllToggle = { viewModel.selectAll(allItems) }
                 )
             } else {
                 TopAppBar(
@@ -1009,6 +1036,24 @@ fun FileBrowserScreen(
                 nodeToCompress = node
             },
             onDismiss = { nodeToEncrypt = null }
+        )
+    }
+
+    // Bulk Encrypt Choice Dialog
+    bulkNodesToEncrypt?.let { nodes ->
+        EncryptChoiceDialog(
+            title = "Encrypt ${nodes.size} items",
+            onEncryptToVault = {
+                val files = nodes.map { File(it.path) }
+                bulkNodesToEncrypt = null
+                viewModel.clearSelection()
+                viewModel.encryptIntoVault(context, files)
+            },
+            onEncryptToArchive = {
+                bulkNodesToEncrypt = null
+                bulkNodesToCompress = nodes
+            },
+            onDismiss = { bulkNodesToEncrypt = null }
         )
     }
 
