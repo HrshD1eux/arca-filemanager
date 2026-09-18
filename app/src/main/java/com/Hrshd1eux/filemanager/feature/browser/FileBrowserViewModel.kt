@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.feature.browser
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.archive.engine.IsoEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.RarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
 import com.Hrshd1eux.filemanager.core.dragdrop.DragDropManager
@@ -60,6 +61,7 @@ class FileBrowserViewModel(
     private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher),
     private val tarEngine: TarEngine = TarEngine(ioDispatcher),
     private val rarEngine: RarEngine = RarEngine(ioDispatcher),
+    private val isoEngine: IsoEngine = IsoEngine(ioDispatcher),
     private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     val favoritesRepository: FavoritesRepository = FavoritesRepository(),
@@ -430,6 +432,14 @@ class FileBrowserViewModel(
                 ) { onProgress ->
                     val lowerName = archiveFile.name.lowercase()
                     val result: Result<Int> = when {
+                        lowerName.endsWith(".iso") -> {
+                            isoEngine.extractEntries(
+                                isoFile = archiveFile,
+                                entryPaths = setOf(payload.entryPath),
+                                destinationDir = destDir,
+                                onProgress = onProgress
+                            )
+                        }
                         lowerName.endsWith(".rar") -> {
                             rarEngine.extractEntries(
                                 rarFile = archiveFile,
@@ -617,6 +627,9 @@ class FileBrowserViewModel(
             try {
                 val sourceFiles = sources.map { File(it.path) }
                 val lowerName = archiveName.lowercase()
+                if (lowerName.endsWith(".iso")) {
+                    isoEngine.createIso(sourceFiles, destFile)
+                }
                 if (lowerName.endsWith(".rar")) {
                     rarEngine.createRar(sourceFiles, destFile)
                 }
@@ -679,6 +692,15 @@ class FileBrowserViewModel(
                 val archiveFile = File(archiveNode.path)
                 val lowerName = archiveFile.name.lowercase()
                 val count = when {
+                    lowerName.endsWith(".iso") -> {
+                        isoEngine.extractAll(
+                            isoFile = archiveFile,
+                            destinationDir = destinationDir,
+                            conflictResolution = conflictResolution,
+                            verifyIntegrity = verifyIntegrity,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
                     lowerName.endsWith(".rar") -> {
                         rarEngine.extractAll(
                             rarFile = archiveFile,
@@ -758,6 +780,9 @@ class FileBrowserViewModel(
         archiveTestJob = viewModelScope.launch {
             val lowerName = file.name.lowercase()
             val result = when {
+                lowerName.endsWith(".iso") -> {
+                    isoEngine.testArchive(file) { _testProgress.value = it }
+                }
                 lowerName.endsWith(".rar") -> {
                     rarEngine.testArchive(file) { _testProgress.value = it }
                 }

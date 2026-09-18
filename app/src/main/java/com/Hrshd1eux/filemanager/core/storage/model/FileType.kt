@@ -33,6 +33,6 @@ enum class ArchiveFormat(val displayName: String, val supportsStreamingPreview: 
     BZIP2("BZip2 Compressed File", false),
     XZ("XZ Compressed File", false),
     ZSTD("Zstandard Compressed File", false),
-    ISO("ISO Disc Image", false),
+    ISO("ISO Disc Image (Read-Only)", true),
     OTHER("Archive", false)
 }

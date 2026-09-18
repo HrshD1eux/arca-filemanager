@@ -121,8 +121,34 @@ class QuickActionSystemTest {
     }
 
     @Test
+    fun archiveContext_isoArchive_omitsAddAction_dueToReadOnlyBoundary() {
+        val isoNode = StorageNode(
+            id = "/storage/emulated/0/Download/image.iso",
+            name = "image.iso",
+            path = "/storage/emulated/0/Download/image.iso",
+            size = 4096L,
+            lastModified = System.currentTimeMillis(),
+            isDirectory = false
+        )
+
+        val context = QuickActionContext.fromNode(isoNode)
+        assertEquals(QuickActionContext.ARCHIVE, context)
+
+        val actions = context.getActions(isoNode)
+        val expectedActions = listOf(
+            QuickActionType.OPEN_ARCHIVE,
+            QuickActionType.EXTRACT,
+            QuickActionType.TEST,
+            QuickActionType.ENCRYPT,
+            QuickActionType.PROPERTIES
+        )
+        assertEquals(expectedActions, actions)
+        org.junit.Assert.assertFalse(actions.contains(QuickActionType.ADD))
+    }
+
+    @Test
     fun contextDetection_variousArchiveExtensions() {
-        val extensions = listOf("zip", "rar", "7z", "tar", "tar.gz", "tgz", "tar.bz2", "tbz2", "tar.xz", "txz")
+        val extensions = listOf("zip", "rar", "iso", "7z", "tar", "tar.gz", "tgz", "tar.bz2", "tbz2", "tar.xz", "txz")
         for (ext in extensions) {
             val node = StorageNode(
                 id = "/test/file.$ext",

@@ -2,6 +2,7 @@ package com.Hrshd1eux.filemanager.feature.archive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.archive.engine.IsoEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.RarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.TarEngine
@@ -44,7 +45,8 @@ class ArchiveViewerViewModel(
     private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
     private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher),
     private val tarEngine: TarEngine = TarEngine(ioDispatcher),
-    private val rarEngine: RarEngine = RarEngine(ioDispatcher)
+    private val rarEngine: RarEngine = RarEngine(ioDispatcher),
+    private val isoEngine: IsoEngine = IsoEngine(ioDispatcher)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArchiveViewerUiState>(ArchiveViewerUiState.Loading)
@@ -68,6 +70,10 @@ class ArchiveViewerViewModel(
     private var archiveFile: File? = null
     private var allEntries: List<ArchiveEntry> = emptyList()
     private var currentVirtualPath: String = ""
+
+    private fun isIso(file: File?): Boolean {
+        return file?.extension?.equals("iso", ignoreCase = true) == true
+    }
 
     private fun isRar(file: File?): Boolean {
         return file?.extension?.equals("rar", ignoreCase = true) == true
@@ -96,6 +102,7 @@ class ArchiveViewerViewModel(
             _uiState.value = ArchiveViewerUiState.Loading
             try {
                 allEntries = when {
+                    isIso(file) -> isoEngine.listEntries(file)
                     isRar(file) -> rarEngine.listEntries(file, password)
                     is7z(file) -> sevenZEngine.listEntries(file, password)
                     isTar(file) -> tarEngine.listEntries(file)
@@ -168,6 +175,13 @@ class ArchiveViewerViewModel(
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
             val result = when {
+                isIso(file) -> isoEngine.extractAll(
+                    isoFile = file,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    verifyIntegrity = verifyIntegrity,
+                    onProgress = { _activeProgress.value = it }
+                )
                 isRar(file) -> rarEngine.extractAll(
                     rarFile = file,
                     destinationDir = destinationDir,
@@ -227,6 +241,14 @@ class ArchiveViewerViewModel(
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = selected.size)
             val result = when {
+                isIso(file) -> isoEngine.extractEntries(
+                    isoFile = file,
+                    entryPaths = selected,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    verifyIntegrity = verifyIntegrity,
+                    onProgress = { _activeProgress.value = it }
+                )
                 isRar(file) -> rarEngine.extractEntries(
                     rarFile = file,
                     entryPaths = selected,
@@ -282,6 +304,10 @@ class ArchiveViewerViewModel(
         viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
             val result = when {
+                isIso(file) -> isoEngine.testArchive(
+                    isoFile = file,
+                    onProgress = { _activeProgress.value = it }
+                )
                 isRar(file) -> rarEngine.testArchive(
                     rarFile = file,
                     password = password,
@@ -318,6 +344,7 @@ class ArchiveViewerViewModel(
         val file = archiveFile ?: return
         viewModelScope.launch {
             _archiveProperties.value = when {
+                isIso(file) -> isoEngine.getArchiveProperties(file)
                 isRar(file) -> rarEngine.getArchiveProperties(file, password)
                 is7z(file) -> sevenZEngine.getArchiveProperties(file)
                 isTar(file) -> tarEngine.getArchiveProperties(file)
@@ -333,6 +360,13 @@ class ArchiveViewerViewModel(
     fun addFiles(sources: List<File>) {
         val file = archiveFile ?: return
         if (sources.isEmpty()) return
+
+        if (isIso(file)) {
+            viewModelScope.launch {
+                _userMessage.emit("ISO is a read-only disc image format in ARCA (extraction and viewing only). Modifying disc images is not supported.")
+            }
+            return
+        }
 
         if (isRar(file)) {
             viewModelScope.launch {
@@ -383,8 +417,13 @@ class ArchiveViewerViewModel(
         val totalCompressed = allEntries.filter { !it.isDirectory }.sumOf { it.compressedSize }
         val totalFiles = allEntries.count { !it.isDirectory }
         val isRarFormat = isRar(file)
-        val formatBadge = if (isRarFormat) "RAR (Extraction & Viewing only)" else null
-        val isReadOnly = isRarFormat || is7z(file) || isTar(file)
+        val isIsoFormat = isIso(file)
+        val formatBadge = when {
+            isIsoFormat -> "ISO Disc Image (Extraction & Viewing only)"
+            isRarFormat -> "RAR (Extraction & Viewing only)"
+            else -> null
+        }
+        val isReadOnly = isIsoFormat || isRarFormat || is7z(file) || isTar(file)
 
         _uiState.value = ArchiveViewerUiState.Success(
             archiveName = file.name,

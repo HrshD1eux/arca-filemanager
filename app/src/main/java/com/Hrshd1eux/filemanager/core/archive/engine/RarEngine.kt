@@ -437,17 +437,17 @@ class RarEngine(
         return when (conflictResolution) {
             ConflictResolution.OVERWRITE -> file
             ConflictResolution.SKIP -> null
-            ConflictResolution.CANCEL -> throw CancellationException("Extraction cancelled on conflict with ")
+            ConflictResolution.CANCEL -> throw CancellationException("Extraction cancelled on conflict with ${file.name}")
             ConflictResolution.RENAME_AUTO -> {
                 val parent = file.parentFile ?: return file
                 val nameWithoutExt = file.nameWithoutExtension
                 val ext = file.extension
-                val dotExt = if (ext.isNotEmpty()) "." else ""
+                val dotExt = if (ext.isNotEmpty()) ".$ext" else ""
                 var counter = 1
-                var candidate = File(parent, " ()")
+                var candidate = File(parent, "$nameWithoutExt ($counter)$dotExt")
                 while (candidate.exists()) {
                     counter++
-                    candidate = File(parent, " ()")
+                    candidate = File(parent, "$nameWithoutExt ($counter)$dotExt")
                 }
                 candidate
             }

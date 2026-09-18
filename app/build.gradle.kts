@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.apache.commons.compress)
     implementation(libs.tukaani.xz)
     implementation(libs.junrar)
+    implementation(libs.isofilereader)
 
     // Background WorkManager
     implementation(libs.androidx.work.runtime.ktx)

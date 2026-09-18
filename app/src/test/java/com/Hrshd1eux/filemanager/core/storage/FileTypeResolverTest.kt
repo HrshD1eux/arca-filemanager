@@ -73,6 +73,7 @@ class FileTypeResolverTest {
         assertTrue(FileTypeResolver.canPreviewArchive("source.tar.gz"))
         assertTrue(FileTypeResolver.canPreviewArchive("data.7z"))
         assertTrue(FileTypeResolver.canPreviewArchive("archive.rar"))
+        assertTrue(FileTypeResolver.canPreviewArchive("ubuntu.iso"))
         assertFalse(FileTypeResolver.canPreviewArchive("image.jpg"))
     }
 
@@ -85,10 +86,15 @@ class FileTypeResolverTest {
         assertTrue(FileTypeResolver.isArchive("archive.tar.bz2"))
         assertTrue(FileTypeResolver.isArchive("archive.tar.xz"))
         assertTrue(FileTypeResolver.isArchive("archive.tgz"))
+        assertTrue(FileTypeResolver.isArchive("disc.iso"))
 
         assertTrue(FileTypeResolver.isRar("archive.rar"))
         assertTrue(FileTypeResolver.isRar("FILE.RAR"))
         assertFalse(FileTypeResolver.isRar("archive.zip"))
+
+        assertTrue(FileTypeResolver.isIso("disc.iso"))
+        assertTrue(FileTypeResolver.isIso("IMAGE.ISO"))
+        assertFalse(FileTypeResolver.isIso("archive.zip"))
 
         assertFalse(FileTypeResolver.isArchive("document.pdf"))
         assertFalse(FileTypeResolver.isArchive("image.png"))
