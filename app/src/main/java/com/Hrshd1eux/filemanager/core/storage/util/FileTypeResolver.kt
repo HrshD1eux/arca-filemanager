@@ -23,7 +23,8 @@ object FileTypeResolver {
     )
 
     private val archiveExtensions = setOf(
-        "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "zst", "tgz", "tbz2", "txz", "lz4", "lzh", "cab", "iso", "dmg"
+        "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "zst", "tgz", "tbz2", "txz", "lz4", "lzh", "cab", "iso", "dmg",
+        "arj", "cpio", "ar", "a", "deb", "z", "taz"
     )
 
     private val packageExtensions = setOf(
@@ -46,8 +47,8 @@ object FileTypeResolver {
     fun resolveType(fileName: String, mimeType: String? = null): FileType {
         val lowerName = fileName.lowercase()
 
-        // Compound archive check (.tar.gz, .tar.bz2, .tar.xz)
-        if (lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tar.xz")) {
+        // Compound archive check (.tar.gz, .tar.bz2, .tar.xz, .tar.z)
+        if (lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tar.xz") || lowerName.endsWith(".tar.z")) {
             return FileType.ARCHIVE
         }
 
@@ -97,10 +98,15 @@ object FileTypeResolver {
             lower.endsWith(".tar.gz") || lower.endsWith(".tgz") -> ArchiveFormat.TAR_GZ
             lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2") -> ArchiveFormat.TAR_BZ2
             lower.endsWith(".tar.xz") || lower.endsWith(".txz") -> ArchiveFormat.TAR_XZ
+            lower.endsWith(".tar.z") || lower.endsWith(".taz") -> ArchiveFormat.TAR_Z
             lower.endsWith(".zip") -> ArchiveFormat.ZIP
             lower.endsWith(".tar") -> ArchiveFormat.TAR
             lower.endsWith(".7z") -> ArchiveFormat.SEVEN_ZIP
             lower.endsWith(".rar") -> ArchiveFormat.RAR
+            lower.endsWith(".arj") -> ArchiveFormat.ARJ
+            lower.endsWith(".cpio") -> ArchiveFormat.CPIO
+            lower.endsWith(".deb") -> ArchiveFormat.DEB
+            lower.endsWith(".ar") || lower.endsWith(".a") -> ArchiveFormat.AR
             lower.endsWith(".gz") -> ArchiveFormat.GZIP
             lower.endsWith(".bz2") -> ArchiveFormat.BZIP2
             lower.endsWith(".xz") -> ArchiveFormat.XZ
@@ -118,6 +124,7 @@ object FileTypeResolver {
     fun isArchive(fileName: String): Boolean {
         val lower = fileName.lowercase()
         return lower.endsWith(".tar.gz") || lower.endsWith(".tar.bz2") || lower.endsWith(".tar.xz") ||
+                lower.endsWith(".tar.z") || lower.endsWith(".taz") ||
                 lower.substringAfterLast('.', "") in archiveExtensions
     }
 
@@ -127,6 +134,28 @@ object FileTypeResolver {
 
     fun isIso(fileName: String): Boolean {
         return fileName.substringAfterLast('.', "").lowercase() == "iso"
+    }
+
+    fun isArj(fileName: String): Boolean {
+        return fileName.substringAfterLast('.', "").lowercase() == "arj"
+    }
+
+    fun isCpio(fileName: String): Boolean {
+        return fileName.substringAfterLast('.', "").lowercase() == "cpio"
+    }
+
+    fun isAr(fileName: String): Boolean {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return ext == "ar" || ext == "a"
+    }
+
+    fun isDeb(fileName: String): Boolean {
+        return fileName.substringAfterLast('.', "").lowercase() == "deb"
+    }
+
+    fun isTarZ(fileName: String): Boolean {
+        val lower = fileName.lowercase()
+        return lower.endsWith(".tar.z") || lower.endsWith(".taz")
     }
 
     fun isPackage(fileName: String): Boolean {

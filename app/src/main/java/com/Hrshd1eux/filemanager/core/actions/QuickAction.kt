@@ -91,6 +91,11 @@ enum class QuickActionContext {
                 val isReadOnlyArchive = node != null && (
                     FileTypeResolver.isRar(node.name) ||
                     FileTypeResolver.isIso(node.name) ||
+                    FileTypeResolver.isArj(node.name) ||
+                    FileTypeResolver.isAr(node.name) ||
+                    FileTypeResolver.isDeb(node.name) ||
+                    FileTypeResolver.isTarZ(node.name) ||
+                    FileTypeResolver.isCpio(node.name) ||
                     node.name.endsWith(".7z", ignoreCase = true) ||
                     node.name.contains(".tar", ignoreCase = true)
                 )

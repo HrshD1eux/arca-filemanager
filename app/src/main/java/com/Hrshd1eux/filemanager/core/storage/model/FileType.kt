@@ -34,5 +34,10 @@ enum class ArchiveFormat(val displayName: String, val supportsStreamingPreview: 
     XZ("XZ Compressed File", false),
     ZSTD("Zstandard Compressed File", false),
     ISO("ISO Disc Image (Read-Only)", true),
+    ARJ("ARJ Archive (Read-Only)", true),
+    CPIO("CPIO Archive", true),
+    AR("AR Archive (Read-Only)", true),
+    DEB("Debian Package (Read-Only)", true),
+    TAR_Z("Unix Compress TAR (Read-Only)", true),
     OTHER("Archive", false)
 }

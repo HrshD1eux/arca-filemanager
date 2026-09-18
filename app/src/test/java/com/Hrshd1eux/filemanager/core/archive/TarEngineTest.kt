@@ -163,4 +163,47 @@ class TarEngineTest {
         assertEquals(10L, props.uncompressedSize)
         assertTrue(props.compressedSize > 0)
     }
+
+    @Test
+    fun listAndExtractTarZ_handlesUnixCompressTarSuccessfully() = runTest {
+        val sampleTarZ = File(tempFolder.root, "sample.tar.Z")
+        val stream = javaClass.classLoader?.getResourceAsStream("bla.tar.Z")
+        if (stream != null) {
+            stream.use { input ->
+                sampleTarZ.outputStream().use { output -> input.copyTo(output) }
+            }
+        } else {
+            val candidatePaths = listOf(
+                File("src/test/resources/bla.tar.Z"),
+                File("app/src/test/resources/bla.tar.Z"),
+                File("../app/src/test/resources/bla.tar.Z")
+            )
+            val source = candidatePaths.firstOrNull { it.exists() }
+                ?: error("bla.tar.Z fixture not found")
+            source.copyTo(sampleTarZ, overwrite = true)
+        }
+
+        val entries = tarEngine.listEntries(sampleTarZ)
+        assertFalse("TAR.Z entries should not be empty", entries.isEmpty())
+
+        val destDir = tempFolder.newFolder("ExtractedTarZ")
+        val result = tarEngine.extractAll(
+            tarFile = sampleTarZ,
+            destinationDir = destDir,
+            conflictResolution = ConflictResolution.OVERWRITE
+        )
+        assertTrue(result.isSuccess)
+        assertTrue((result.getOrNull() ?: 0) > 0)
+    }
+
+    @Test
+    fun createTar_Z_returnsFailureWithUnsupportedOperationException() = runTest {
+        val dummy = tempFolder.newFile("dummy.txt").apply { writeText("data") }
+        val outTarZ = File(tempFolder.root, "out.tar.Z")
+        val result = tarEngine.createTar(listOf(dummy), outTarZ, TarCompressionType.Z)
+        assertTrue(result.isFailure)
+        val exception = result.exceptionOrNull()
+        assertTrue(exception is UnsupportedOperationException)
+        assertTrue(exception?.message?.contains("Unix Compress") == true)
+    }
 }

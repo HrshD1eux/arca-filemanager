@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.feature.browser
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Hrshd1eux.filemanager.core.archive.engine.ExtendedArchiveEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.IsoEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.RarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
@@ -62,6 +63,7 @@ class FileBrowserViewModel(
     private val tarEngine: TarEngine = TarEngine(ioDispatcher),
     private val rarEngine: RarEngine = RarEngine(ioDispatcher),
     private val isoEngine: IsoEngine = IsoEngine(ioDispatcher),
+    private val extendedArchiveEngine: ExtendedArchiveEngine = ExtendedArchiveEngine(ioDispatcher),
     private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     val favoritesRepository: FavoritesRepository = FavoritesRepository(),
@@ -456,9 +458,19 @@ class FileBrowserViewModel(
                                 onProgress = onProgress
                             )
                         }
+                        lowerName.endsWith(".arj") || lowerName.endsWith(".cpio") || lowerName.endsWith(".deb") ||
+                        lowerName.endsWith(".ar") || lowerName.endsWith(".a") -> {
+                            extendedArchiveEngine.extractEntries(
+                                archiveFile = archiveFile,
+                                entryPaths = setOf(payload.entryPath),
+                                destinationDir = destDir,
+                                onProgress = onProgress
+                            )
+                        }
                         lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
                         lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
-                        lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                        lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") ||
+                        lowerName.endsWith(".tar.z") || lowerName.endsWith(".taz") -> {
                             tarEngine.extractEntries(
                                 tarFile = archiveFile,
                                 entryPaths = setOf(payload.entryPath),
@@ -633,7 +645,29 @@ class FileBrowserViewModel(
                 if (lowerName.endsWith(".rar")) {
                     rarEngine.createRar(sourceFiles, destFile)
                 }
+                if (lowerName.endsWith(".arj")) {
+                    extendedArchiveEngine.createArj(sourceFiles, destFile)
+                }
+                if (lowerName.endsWith(".deb") || lowerName.endsWith(".ar") || lowerName.endsWith(".a")) {
+                    extendedArchiveEngine.createAr(sourceFiles, destFile)
+                }
+                if (lowerName.endsWith(".cab")) {
+                    extendedArchiveEngine.rejectCab()
+                }
+                if (lowerName.endsWith(".lzh") || lowerName.endsWith(".lha")) {
+                    extendedArchiveEngine.rejectLzh()
+                }
+                if (lowerName.endsWith(".zst")) {
+                    extendedArchiveEngine.rejectZstd()
+                }
                 val size = when {
+                    lowerName.endsWith(".cpio") -> {
+                        extendedArchiveEngine.createCpio(
+                            sources = sourceFiles,
+                            destinationCpio = destFile,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
                     lowerName.endsWith(".7z") -> {
                         sevenZEngine.create7z(
                             sources = sourceFiles,
@@ -644,7 +678,8 @@ class FileBrowserViewModel(
                     }
                     lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
                     lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
-                    lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                    lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") ||
+                    lowerName.endsWith(".tar.z") || lowerName.endsWith(".taz") -> {
                         tarEngine.createTar(
                             sources = sourceFiles,
                             destinationTar = destFile,
@@ -721,9 +756,20 @@ class FileBrowserViewModel(
                             onProgress = onProgress
                         ).getOrThrow()
                     }
+                    lowerName.endsWith(".arj") || lowerName.endsWith(".cpio") || lowerName.endsWith(".deb") ||
+                    lowerName.endsWith(".ar") || lowerName.endsWith(".a") -> {
+                        extendedArchiveEngine.extractAll(
+                            archiveFile = archiveFile,
+                            destinationDir = destinationDir,
+                            conflictResolution = conflictResolution,
+                            verifyIntegrity = verifyIntegrity,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                    }
                     lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
                     lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
-                    lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                    lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") ||
+                    lowerName.endsWith(".tar.z") || lowerName.endsWith(".taz") -> {
                         tarEngine.extractAll(
                             tarFile = archiveFile,
                             destinationDir = destinationDir,
@@ -789,9 +835,14 @@ class FileBrowserViewModel(
                 lowerName.endsWith(".7z") -> {
                     sevenZEngine.testArchive(file) { _testProgress.value = it }
                 }
+                lowerName.endsWith(".arj") || lowerName.endsWith(".cpio") || lowerName.endsWith(".deb") ||
+                lowerName.endsWith(".ar") || lowerName.endsWith(".a") -> {
+                    extendedArchiveEngine.testArchive(file) { _testProgress.value = it }
+                }
                 lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
                 lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
-                lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") -> {
+                lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") ||
+                lowerName.endsWith(".tar.z") || lowerName.endsWith(".taz") -> {
                     tarEngine.testArchive(file) { _testProgress.value = it }
                 }
                 else -> {

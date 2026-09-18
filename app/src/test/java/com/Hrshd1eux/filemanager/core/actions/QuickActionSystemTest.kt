@@ -147,8 +147,49 @@ class QuickActionSystemTest {
     }
 
     @Test
+    fun archiveContext_extendedArchives_omitAddAction() {
+        val nonAppendableFiles = listOf(
+            "archive.arj",
+            "rootfs.cpio",
+            "archive.ar",
+            "static.a",
+            "package.deb",
+            "data.tar.z",
+            "data.taz"
+        )
+
+        for (fileName in nonAppendableFiles) {
+            val node = StorageNode(
+                id = "/storage/emulated/0/Download/$fileName",
+                name = fileName,
+                path = "/storage/emulated/0/Download/$fileName",
+                size = 2048L,
+                lastModified = System.currentTimeMillis(),
+                isDirectory = false
+            )
+
+            val context = QuickActionContext.fromNode(node)
+            assertEquals("Expected ARCHIVE context for $fileName", QuickActionContext.ARCHIVE, context)
+
+            val actions = context.getActions(node)
+            val expectedActions = listOf(
+                QuickActionType.OPEN_ARCHIVE,
+                QuickActionType.EXTRACT,
+                QuickActionType.TEST,
+                QuickActionType.ENCRYPT,
+                QuickActionType.PROPERTIES
+            )
+            assertEquals("Actions mismatch for $fileName", expectedActions, actions)
+            org.junit.Assert.assertFalse("Should not have ADD for $fileName", actions.contains(QuickActionType.ADD))
+        }
+    }
+
+    @Test
     fun contextDetection_variousArchiveExtensions() {
-        val extensions = listOf("zip", "rar", "iso", "7z", "tar", "tar.gz", "tgz", "tar.bz2", "tbz2", "tar.xz", "txz")
+        val extensions = listOf(
+            "zip", "rar", "iso", "7z", "tar", "tar.gz", "tgz",
+            "tar.bz2", "tbz2", "tar.xz", "txz", "arj", "cpio", "ar", "deb", "tar.z", "taz"
+        )
         for (ext in extensions) {
             val node = StorageNode(
                 id = "/test/file.$ext",

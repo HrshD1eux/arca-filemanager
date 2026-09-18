@@ -20,6 +20,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream
 import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream
+import org.apache.commons.compress.compressors.z.ZCompressorInputStream
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -33,7 +34,8 @@ enum class TarCompressionType(val extension: String, val displayName: String) {
     NONE(".tar", "TAR"),
     GZIP(".tar.gz", "TAR.GZ"),
     XZ(".tar.xz", "TAR.XZ"),
-    BZIP2(".tar.bz2", "TAR.BZ2");
+    BZIP2(".tar.bz2", "TAR.BZ2"),
+    Z(".tar.Z", "TAR.Z");
 
     companion object {
         fun fromFileName(fileName: String): TarCompressionType {
@@ -42,6 +44,7 @@ enum class TarCompressionType(val extension: String, val displayName: String) {
                 lower.endsWith(".tar.gz") || lower.endsWith(".tgz") -> GZIP
                 lower.endsWith(".tar.xz") || lower.endsWith(".txz") -> XZ
                 lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2") -> BZIP2
+                lower.endsWith(".tar.z") || lower.endsWith(".taz") -> Z
                 lower.endsWith(".tar") -> NONE
                 else -> NONE
             }
@@ -489,6 +492,7 @@ class TarEngine(
             TarCompressionType.GZIP -> GzipCompressorInputStream(rawInput)
             TarCompressionType.XZ -> XZCompressorInputStream(rawInput)
             TarCompressionType.BZIP2 -> BZip2CompressorInputStream(rawInput)
+            TarCompressionType.Z -> ZCompressorInputStream(rawInput)
         }
         return TarArchiveInputStream(compressedStream)
     }
@@ -500,6 +504,9 @@ class TarEngine(
             TarCompressionType.GZIP -> GzipCompressorOutputStream(rawOutput)
             TarCompressionType.XZ -> XZCompressorOutputStream(rawOutput)
             TarCompressionType.BZIP2 -> BZip2CompressorOutputStream(rawOutput)
+            TarCompressionType.Z -> throw UnsupportedOperationException(
+                "Creating Unix Compress (.tar.Z) archives is not supported. Use GZIP (.tar.gz), BZIP2 (.tar.bz2), or XZ (.tar.xz) instead."
+            )
         }
         return TarArchiveOutputStream(compressedStream)
     }
