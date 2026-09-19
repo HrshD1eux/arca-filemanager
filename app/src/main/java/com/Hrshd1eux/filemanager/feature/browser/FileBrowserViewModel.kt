@@ -11,8 +11,11 @@ import com.Hrshd1eux.filemanager.core.dragdrop.DragDropManager
 import com.Hrshd1eux.filemanager.core.dragdrop.DragDropPayload
 import com.Hrshd1eux.filemanager.core.archive.engine.TarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
+import com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
+import com.Hrshd1eux.filemanager.core.archive.model.CompressionMethodOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionProfile
+import org.apache.commons.compress.archivers.sevenz.SevenZMethod
 import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
 import com.Hrshd1eux.filemanager.core.display.preferences.DisplayPreferencesRepository
@@ -623,10 +626,9 @@ class FileBrowserViewModel(
 
     fun compressFiles(
         sources: List<StorageNode>,
+        profile: CompressionProfile,
         archiveName: String,
-        compressionLevel: Int = java.util.zip.Deflater.DEFAULT_COMPRESSION,
         password: CharArray? = null,
-        splitSizeBytes: Long? = null,
         hasPermission: Boolean
     ) {
         val currentState = _uiState.value as? BrowserUiState.Success ?: return
@@ -634,6 +636,7 @@ class FileBrowserViewModel(
         val destFile = File(destDir, archiveName)
 
         clearSelection()
+        val splitSizeBytes = profile.customSplitSizeBytes ?: profile.splitSize.sizeBytes
         val opTitle = if (splitSizeBytes != null && splitSizeBytes > 0) {
             "Compressing split archive $archiveName"
         } else {
@@ -669,11 +672,23 @@ class FileBrowserViewModel(
                 }
 
                 if (splitSizeBytes != null && splitSizeBytes > 0) {
-                    if (lowerName.endsWith(".7z") || lowerName.contains(".7z.")) {
+                    if (lowerName.endsWith(".7z") || lowerName.contains(".7z.") || profile.format == ArchiveFormatOption.SEVEN_Z) {
+                        val sevenZMethod = when (profile.method) {
+                            CompressionMethodOption.COPY -> SevenZMethod.COPY
+                            CompressionMethodOption.DEFLATE -> SevenZMethod.DEFLATE
+                            CompressionMethodOption.BZIP2 -> SevenZMethod.BZIP2
+                            CompressionMethodOption.LZMA -> SevenZMethod.LZMA
+                            else -> SevenZMethod.LZMA2
+                        }
                         val createdParts = sevenZEngine.createSplit7z(
                             sources = sourceFiles,
                             destinationBase7z = destFile,
                             splitSizeBytes = splitSizeBytes,
+                            method = sevenZMethod,
+                            compressionLevel = profile.compressionLevel,
+                            dictionarySizeMb = profile.dictionarySizeMb,
+                            isSolid = profile.isSolid,
+                            threads = profile.threads,
                             password = password,
                             onProgress = onProgress
                         ).getOrThrow()
@@ -695,10 +710,22 @@ class FileBrowserViewModel(
                             onProgress = onProgress
                         ).getOrThrow()
                     }
-                    lowerName.endsWith(".7z") -> {
+                    lowerName.endsWith(".7z") || profile.format == ArchiveFormatOption.SEVEN_Z -> {
+                        val sevenZMethod = when (profile.method) {
+                            CompressionMethodOption.COPY -> SevenZMethod.COPY
+                            CompressionMethodOption.DEFLATE -> SevenZMethod.DEFLATE
+                            CompressionMethodOption.BZIP2 -> SevenZMethod.BZIP2
+                            CompressionMethodOption.LZMA -> SevenZMethod.LZMA
+                            else -> SevenZMethod.LZMA2
+                        }
                         sevenZEngine.create7z(
                             sources = sourceFiles,
                             destination7z = destFile,
+                            method = sevenZMethod,
+                            compressionLevel = profile.compressionLevel,
+                            dictionarySizeMb = profile.dictionarySizeMb,
+                            isSolid = profile.isSolid,
+                            threads = profile.threads,
                             password = password,
                             onProgress = onProgress
                         ).getOrThrow()
@@ -706,7 +733,8 @@ class FileBrowserViewModel(
                     lowerName.endsWith(".tar") || lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tgz") ||
                     lowerName.endsWith(".tar.xz") || lowerName.endsWith(".txz") ||
                     lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tbz2") ||
-                    lowerName.endsWith(".tar.z") || lowerName.endsWith(".taz") -> {
+                    lowerName.endsWith(".tar.z") || lowerName.endsWith(".taz") ||
+                    profile.format.isTarFamily -> {
                         tarEngine.createTar(
                             sources = sourceFiles,
                             destinationTar = destFile,
@@ -717,7 +745,7 @@ class FileBrowserViewModel(
                         zipEngine.createZip(
                             sources = sourceFiles,
                             destinationZip = destFile,
-                            compressionLevel = compressionLevel,
+                            compressionLevel = profile.compressionLevel,
                             onProgress = onProgress
                         ).getOrThrow()
                     }
@@ -730,6 +758,30 @@ class FileBrowserViewModel(
                 }
             }
         }
+    }
+
+    fun compressFiles(
+        sources: List<StorageNode>,
+        archiveName: String,
+        compressionLevel: Int = java.util.zip.Deflater.DEFAULT_COMPRESSION,
+        password: CharArray? = null,
+        splitSizeBytes: Long? = null,
+        hasPermission: Boolean
+    ) {
+        val format = when {
+            archiveName.endsWith(".7z", ignoreCase = true) || archiveName.contains(".7z.", ignoreCase = true) -> ArchiveFormatOption.SEVEN_Z
+            archiveName.endsWith(".tar.gz", ignoreCase = true) || archiveName.endsWith(".tgz", ignoreCase = true) -> ArchiveFormatOption.TAR_GZ
+            archiveName.endsWith(".tar.xz", ignoreCase = true) || archiveName.endsWith(".txz", ignoreCase = true) -> ArchiveFormatOption.TAR_XZ
+            archiveName.endsWith(".tar.bz2", ignoreCase = true) || archiveName.endsWith(".tbz2", ignoreCase = true) -> ArchiveFormatOption.TAR_BZ2
+            archiveName.endsWith(".tar", ignoreCase = true) -> ArchiveFormatOption.TAR
+            else -> ArchiveFormatOption.ZIP
+        }
+        val profile = CompressionProfile(
+            format = format,
+            compressionLevel = compressionLevel,
+            customSplitSizeBytes = splitSizeBytes
+        )
+        compressFiles(sources, profile, archiveName, password, hasPermission)
     }
 
     fun extractArchive(

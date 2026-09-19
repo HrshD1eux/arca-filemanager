@@ -44,6 +44,39 @@ enum class SplitSizePreset(val displayName: String, val sizeBytes: Long?) {
     CUSTOM("Custom", -1L)
 }
 
+enum class CompressionDialogMode(val displayName: String) {
+    SIMPLE("Simple"),
+    ADVANCED("Advanced")
+}
+
+enum class DictionarySizePreset(val displayName: String, val sizeMb: Int, val memoryEstimateMb: Int) {
+    MB_4("4 MB", 4, 40),
+    MB_16("16 MB", 16, 160),
+    MB_32("32 MB", 32, 340),
+    MB_64("64 MB", 64, 660),
+    MB_128("128 MB", 128, 1300);
+
+    companion object {
+        fun fromSizeMb(sizeMb: Int): DictionarySizePreset {
+            return entries.firstOrNull { it.sizeMb == sizeMb } ?: MB_32
+        }
+    }
+}
+
+enum class ThreadCountPreset(val displayName: String, val count: Int) {
+    AUTO("Auto", 0),
+    THREADS_1("1", 1),
+    THREADS_2("2", 2),
+    THREADS_4("4", 4),
+    THREADS_8("8", 8);
+
+    companion object {
+        fun fromCount(count: Int): ThreadCountPreset {
+            return entries.firstOrNull { it.count == count } ?: AUTO
+        }
+    }
+}
+
 data class CompressionProfile(
     val format: ArchiveFormatOption = ArchiveFormatOption.ZIP,
     val levelPreset: CompressionLevelPreset = CompressionLevelPreset.NORMAL,

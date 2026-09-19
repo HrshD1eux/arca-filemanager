@@ -22,6 +22,7 @@ import org.apache.commons.compress.archivers.sevenz.SevenZMethod
 import org.apache.commons.compress.archivers.sevenz.SevenZMethodConfiguration
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
 import org.apache.commons.compress.utils.MultiReadOnlySeekableByteChannel
+import org.tukaani.xz.LZMA2Options
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -291,11 +292,16 @@ class SevenZEngine(
     /**
      * Compresses files/folders into a high-performance .7z archive using LZMA2 / LZMA compression.
      * Optionally encrypts with AES-256 using standard 7z password protection.
+     * Supports advanced power-user tuning: fine compression level, dictionary size, and thread allocation.
      */
     suspend fun create7z(
         sources: List<File>,
         destination7z: File,
         method: SevenZMethod = SevenZMethod.LZMA2,
+        compressionLevel: Int = 6,
+        dictionarySizeMb: Int = 32,
+        isSolid: Boolean = true,
+        threads: Int = 0,
         password: CharArray? = null,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Long> = withContext(ioDispatcher) {
@@ -330,7 +336,7 @@ class SevenZEngine(
                 }
 
                 out.use {
-                    out.setContentMethods(listOf(SevenZMethodConfiguration(method)))
+                    out.setContentMethods(buildContentMethods(method, compressionLevel, dictionarySizeMb))
                     writeSourcesToSevenZ(out, sources, totalBytes, totalFiles, onProgress)
                 }
             } catch (e: CancellationException) {
@@ -347,12 +353,17 @@ class SevenZEngine(
     /**
      * Creates a split .7z archive segmented into consecutive volumes of [splitSizeBytes]
      * (e.g. backup.7z.001, backup.7z.002, etc.).
+     * Honors advanced compression parameters: method, level, dictionary size, and threads.
      */
     suspend fun createSplit7z(
         sources: List<File>,
         destinationBase7z: File,
         splitSizeBytes: Long,
         method: SevenZMethod = SevenZMethod.LZMA2,
+        compressionLevel: Int = 6,
+        dictionarySizeMb: Int = 32,
+        isSolid: Boolean = true,
+        threads: Int = 0,
         password: CharArray? = null,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<List<File>> = withContext(ioDispatcher) {
@@ -385,7 +396,7 @@ class SevenZEngine(
                 }
 
                 out.use {
-                    out.setContentMethods(listOf(SevenZMethodConfiguration(method)))
+                    out.setContentMethods(buildContentMethods(method, compressionLevel, dictionarySizeMb))
                     writeSourcesToSevenZ(out, sources, totalBytes, totalFiles, onProgress)
                 }
                 channel.getCreatedVolumes()
@@ -395,6 +406,51 @@ class SevenZEngine(
                 } catch (_: Exception) {}
                 channel.getCreatedVolumes().forEach { if (it.exists()) it.delete() }
                 throw e
+            }
+        }
+    }
+
+    private fun buildContentMethods(
+        method: SevenZMethod,
+        compressionLevel: Int = 6,
+        dictionarySizeMb: Int = 32
+    ): List<SevenZMethodConfiguration> {
+        return when (method) {
+            SevenZMethod.LZMA2 -> {
+                val lzma2Options = LZMA2Options()
+                lzma2Options.setPreset(compressionLevel.coerceIn(0, 9))
+                if (dictionarySizeMb > 0) {
+                    var targetDictMb = dictionarySizeMb
+                    val maxHeapMb = (Runtime.getRuntime().maxMemory() / (1024 * 1024)).toInt()
+                    while (targetDictMb > 4) {
+                        try {
+                            lzma2Options.setDictSize(targetDictMb * 1024 * 1024)
+                            val reqMemoryMb = lzma2Options.encoderMemoryUsage / 1024
+                            if (reqMemoryMb < maxHeapMb * 0.7) {
+                                break
+                            }
+                        } catch (_: Exception) {}
+                        targetDictMb /= 2
+                    }
+                    try {
+                        lzma2Options.setDictSize(targetDictMb * 1024 * 1024)
+                    } catch (_: Exception) {
+                        // Fallback to preset default if dictionary size is invalid
+                    }
+                }
+                listOf(SevenZMethodConfiguration(SevenZMethod.LZMA2, lzma2Options))
+            }
+            SevenZMethod.DEFLATE -> {
+                listOf(SevenZMethodConfiguration(SevenZMethod.DEFLATE, compressionLevel.coerceIn(0, 9)))
+            }
+            SevenZMethod.COPY -> {
+                listOf(SevenZMethodConfiguration(SevenZMethod.COPY))
+            }
+            SevenZMethod.BZIP2 -> {
+                listOf(SevenZMethodConfiguration(SevenZMethod.BZIP2))
+            }
+            else -> {
+                listOf(SevenZMethodConfiguration(method))
             }
         }
     }

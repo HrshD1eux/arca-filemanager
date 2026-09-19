@@ -1,6 +1,7 @@
 package com.Hrshd1eux.filemanager.feature.archive.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,12 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -49,7 +46,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -64,23 +61,29 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption
+import com.Hrshd1eux.filemanager.core.archive.model.CompressionDialogMode
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionLevelPreset
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionMethodOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionProfile
+import com.Hrshd1eux.filemanager.core.archive.model.DictionarySizePreset
 import com.Hrshd1eux.filemanager.core.archive.model.SplitSizePreset
+import com.Hrshd1eux.filemanager.core.archive.model.ThreadCountPreset
 import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
-import java.util.zip.Deflater
 
 @Composable
 fun CompressDialog(
     sources: List<StorageNode>,
     defaultName: String,
-    onConfirmCreate: (archiveName: String, compressionLevel: Int, password: CharArray?, splitSizeBytes: Long?) -> Unit,
+    onConfirmCreate: (profile: CompressionProfile, archiveName: String, password: CharArray?) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Mode: Simple (default) vs Advanced (power-user)
+    var dialogMode by remember { mutableStateOf(CompressionDialogMode.SIMPLE) }
+
+    // Advanced / Simple configuration states
     var selectedFormat by remember { mutableStateOf(ArchiveFormatOption.ZIP) }
     var selectedPreset by remember { mutableStateOf(CompressionLevelPreset.NORMAL) }
     var customLevel by remember { mutableIntStateOf(6) }
@@ -88,7 +91,6 @@ fun CompressDialog(
     var selectedThreads by remember { mutableIntStateOf(0) } // 0 = Auto
     var isSolid by remember { mutableStateOf(true) }
     var dictionarySizeMb by remember { mutableIntStateOf(32) }
-    var showAdvanced by remember { mutableStateOf(false) }
 
     // Split size state
     var selectedSplitSize by remember { mutableStateOf(SplitSizePreset.NO_SPLIT) }
@@ -121,6 +123,35 @@ fun CompressDialog(
         ext
     }
 
+    val isPasswordValid = !isEncryptEnabled || (password.isNotEmpty() && password == confirmPassword)
+    val canCreate = isNameValid && isPasswordValid
+
+    fun triggerCreate() {
+        if (canCreate) {
+            val finalSplitBytes = when (selectedSplitSize) {
+                SplitSizePreset.NO_SPLIT -> null
+                SplitSizePreset.CUSTOM -> (customSplitMb.toLongOrNull() ?: 100L).coerceAtLeast(1L) * 1024 * 1024
+                else -> selectedSplitSize.sizeBytes
+            }
+            val profile = CompressionProfile(
+                format = selectedFormat,
+                levelPreset = selectedPreset,
+                compressionLevel = customLevel,
+                method = selectedMethod,
+                threads = selectedThreads,
+                isSolid = isSolid,
+                dictionarySizeMb = dictionarySizeMb,
+                splitSize = selectedSplitSize,
+                customSplitSizeBytes = finalSplitBytes
+            )
+            val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
+            val passChars = if (isEncryptEnabled && password.isNotEmpty()) password.toCharArray() else null
+            password = ""
+            confirmPassword = ""
+            onConfirmCreate(profile, finalName, passChars)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -145,31 +176,113 @@ fun CompressDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
+                // Segmented Mode Selector: [ Simple ] [ Advanced ]
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                ) {
+                    Row(modifier = Modifier.padding(3.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    if (dialogMode == CompressionDialogMode.SIMPLE) MaterialTheme.colorScheme.primary
+                                    else Color.Transparent
+                                )
+                                .clickable { dialogMode = CompressionDialogMode.SIMPLE }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Simple",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (dialogMode == CompressionDialogMode.SIMPLE) FontWeight.Bold else FontWeight.Medium,
+                                color = if (dialogMode == CompressionDialogMode.SIMPLE) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    if (dialogMode == CompressionDialogMode.ADVANCED) MaterialTheme.colorScheme.primary
+                                    else Color.Transparent
+                                )
+                                .clickable {
+                                    dialogMode = CompressionDialogMode.ADVANCED
+                                    // Power user defaults: 7z, Ultra, LZMA2, 64 MB dict
+                                    if (selectedFormat == ArchiveFormatOption.ZIP) {
+                                        selectedFormat = ArchiveFormatOption.SEVEN_Z
+                                        selectedPreset = CompressionLevelPreset.ULTRA
+                                        customLevel = 9
+                                        selectedMethod = CompressionMethodOption.LZMA2
+                                        selectedThreads = 4
+                                        dictionarySizeMb = 64
+                                        isSolid = true
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (dialogMode == CompressionDialogMode.ADVANCED) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Advanced",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (dialogMode == CompressionDialogMode.ADVANCED) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (dialogMode == CompressionDialogMode.ADVANCED) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Selection Summary Banner
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "${sources.size} item(s) selected • ${FileFormatter.formatFileSize(totalBytes)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Format Selector (ZIP, 7Z, TAR, TAR.GZ, TAR.XZ, TAR.BZ2)
-                Text(
-                    text = "Format",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (dialogMode == CompressionDialogMode.SIMPLE) {
+                    // ==========================================
+                    // SIMPLE MODE (Default)
+                    // ==========================================
+
+                    // Format Selector (Primary formats)
+                    Text(
+                        text = "Format",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -178,120 +291,305 @@ fun CompressDialog(
                         FormatChip(ArchiveFormatOption.SEVEN_Z, selectedFormat) { selectedFormat = it }
                         FormatChip(ArchiveFormatOption.TAR, selectedFormat) { selectedFormat = it }
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Compression Level Preset
+                    Text(
+                        text = "Level",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        FormatChip(ArchiveFormatOption.TAR_GZ, selectedFormat) { selectedFormat = it }
-                        FormatChip(ArchiveFormatOption.TAR_XZ, selectedFormat) { selectedFormat = it }
-                        FormatChip(ArchiveFormatOption.TAR_BZ2, selectedFormat) { selectedFormat = it }
+                        LevelPresetChip("Store", CompressionLevelPreset.STORE, selectedPreset) {
+                            selectedPreset = it
+                            customLevel = it.level
+                        }
+                        LevelPresetChip("Fast", CompressionLevelPreset.FAST, selectedPreset) {
+                            selectedPreset = it
+                            customLevel = it.level
+                        }
+                        LevelPresetChip("Normal", CompressionLevelPreset.NORMAL, selectedPreset) {
+                            selectedPreset = it
+                            customLevel = it.level
+                        }
+                        LevelPresetChip("Max", CompressionLevelPreset.MAXIMUM, selectedPreset) {
+                            selectedPreset = it
+                            customLevel = it.level
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                // Compression Level Preset Selector
-                Text(
-                    text = "Level",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    LevelPresetChip("Store", CompressionLevelPreset.STORE, selectedPreset) {
-                        selectedPreset = it
-                        customLevel = it.level
-                    }
-                    LevelPresetChip("Fast", CompressionLevelPreset.FAST, selectedPreset) {
-                        selectedPreset = it
-                        customLevel = it.level
-                    }
-                    LevelPresetChip("Normal", CompressionLevelPreset.NORMAL, selectedPreset) {
-                        selectedPreset = it
-                        customLevel = it.level
-                    }
-                    LevelPresetChip("Max", CompressionLevelPreset.MAXIMUM, selectedPreset) {
-                        selectedPreset = it
-                        customLevel = it.level
-                    }
-                    LevelPresetChip("Ultra", CompressionLevelPreset.ULTRA, selectedPreset) {
-                        selectedPreset = it
-                        customLevel = it.level
-                    }
-                }
+                    // Split size selector
+                    SplitSizeSelector(
+                        selectedSplitSize = selectedSplitSize,
+                        splitDropdownExpanded = splitDropdownExpanded,
+                        customSplitMb = customSplitMb,
+                        onDropdownToggle = { splitDropdownExpanded = it },
+                        onSelectPreset = { preset ->
+                            selectedSplitSize = preset
+                            splitDropdownExpanded = false
+                            if (preset != SplitSizePreset.NO_SPLIT && selectedFormat != ArchiveFormatOption.SEVEN_Z) {
+                                selectedFormat = ArchiveFormatOption.SEVEN_Z
+                            }
+                        },
+                        onCustomMbChange = { customSplitMb = it }
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Split Size Selector
-                Text(
-                    text = "Split size",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedCard(
-                        onClick = { splitDropdownExpanded = true },
-                        shape = RoundedCornerShape(8.dp),
+                } else {
+                    // ==========================================
+                    // ADVANCED MODE (Power-User Interface)
+                    // ==========================================
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            // Format (7z, ZIP, TAR, TAR.GZ, TAR.XZ, TAR.BZ2)
                             Text(
-                                text = selectedSplitSize.displayName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                                text = "Format",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
-                            Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = "Select split size"
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    FormatChip(ArchiveFormatOption.SEVEN_Z, selectedFormat) {
+                                        selectedFormat = it
+                                        selectedMethod = CompressionMethodOption.LZMA2
+                                        selectedPreset = CompressionLevelPreset.ULTRA
+                                        customLevel = 9
+                                        dictionarySizeMb = 64
+                                    }
+                                    FormatChip(ArchiveFormatOption.ZIP, selectedFormat) {
+                                        selectedFormat = it
+                                        selectedMethod = CompressionMethodOption.DEFLATE
+                                    }
+                                    FormatChip(ArchiveFormatOption.TAR, selectedFormat) { selectedFormat = it }
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    FormatChip(ArchiveFormatOption.TAR_GZ, selectedFormat) { selectedFormat = it }
+                                    FormatChip(ArchiveFormatOption.TAR_XZ, selectedFormat) { selectedFormat = it }
+                                    FormatChip(ArchiveFormatOption.TAR_BZ2, selectedFormat) { selectedFormat = it }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Level (Store, Fast, Normal, Max, Ultra)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Level",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "${selectedPreset.displayName} (Level $customLevel)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                LevelPresetChip("Store", CompressionLevelPreset.STORE, selectedPreset) {
+                                    selectedPreset = it
+                                    customLevel = it.level
+                                }
+                                LevelPresetChip("Fast", CompressionLevelPreset.FAST, selectedPreset) {
+                                    selectedPreset = it
+                                    customLevel = it.level
+                                }
+                                LevelPresetChip("Normal", CompressionLevelPreset.NORMAL, selectedPreset) {
+                                    selectedPreset = it
+                                    customLevel = it.level
+                                }
+                                LevelPresetChip("Max", CompressionLevelPreset.MAXIMUM, selectedPreset) {
+                                    selectedPreset = it
+                                    customLevel = it.level
+                                }
+                                LevelPresetChip("Ultra", CompressionLevelPreset.ULTRA, selectedPreset) {
+                                    selectedPreset = it
+                                    customLevel = it.level
+                                    if (selectedFormat == ArchiveFormatOption.SEVEN_Z) {
+                                        dictionarySizeMb = 64
+                                    }
+                                }
+                            }
+                            Slider(
+                                value = customLevel.toFloat(),
+                                onValueChange = { customLevel = it.toInt() },
+                                valueRange = 0f..9f,
+                                steps = 8,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                        }
-                    }
-                    DropdownMenu(
-                        expanded = splitDropdownExpanded,
-                        onDismissRequest = { splitDropdownExpanded = false }
-                    ) {
-                        for (preset in SplitSizePreset.entries) {
-                            DropdownMenuItem(
-                                text = { Text(preset.displayName) },
-                                onClick = {
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Method
+                            Text(
+                                text = "Method",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                MethodChip(CompressionMethodOption.LZMA2, selectedMethod) { selectedMethod = it }
+                                MethodChip(CompressionMethodOption.LZMA, selectedMethod) { selectedMethod = it }
+                                MethodChip(CompressionMethodOption.DEFLATE, selectedMethod) { selectedMethod = it }
+                                MethodChip(CompressionMethodOption.COPY, selectedMethod) { selectedMethod = it }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Threads
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Threads",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = if (selectedThreads == 0) "Auto (${Runtime.getRuntime().availableProcessors()} cores)" else "$selectedThreads thread(s)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                for (tp in ThreadCountPreset.entries) {
+                                    ThreadChip(tp.displayName, tp.count, selectedThreads) { selectedThreads = it }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Dictionary (LZMA2 / 7z)
+                            val is7zSelected = selectedFormat == ArchiveFormatOption.SEVEN_Z
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (is7zSelected) "Dictionary" else "Dictionary (7z only)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (is7zSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                                if (is7zSelected) {
+                                    val dictPreset = DictionarySizePreset.fromSizeMb(dictionarySizeMb)
+                                    Text(
+                                        text = "~${dictPreset.memoryEstimateMb} MB RAM",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (dictionarySizeMb >= 64) ZipOrange else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                for (dp in DictionarySizePreset.entries) {
+                                    DictChip(dp.displayName, dp.sizeMb, dictionarySizeMb, enabled = is7zSelected) {
+                                        dictionarySizeMb = it
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Solid Archive Switch
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = if (is7zSelected) "Solid" else "Solid (7z only)",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (is7zSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                    Text(
+                                        text = "Single compression stream for maximum ratio",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                                Switch(
+                                    checked = isSolid && is7zSelected,
+                                    onCheckedChange = { isSolid = it },
+                                    enabled = is7zSelected
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Split Selector in Advanced
+                            Text(
+                                text = "Split",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            SplitSizeSelector(
+                                selectedSplitSize = selectedSplitSize,
+                                splitDropdownExpanded = splitDropdownExpanded,
+                                customSplitMb = customSplitMb,
+                                onDropdownToggle = { splitDropdownExpanded = it },
+                                onSelectPreset = { preset ->
                                     selectedSplitSize = preset
                                     splitDropdownExpanded = false
-                                }
+                                    if (preset != SplitSizePreset.NO_SPLIT && selectedFormat != ArchiveFormatOption.SEVEN_Z) {
+                                        selectedFormat = ArchiveFormatOption.SEVEN_Z
+                                    }
+                                },
+                                onCustomMbChange = { customSplitMb = it }
                             )
                         }
                     }
-                }
-
-                if (selectedSplitSize == SplitSizePreset.CUSTOM) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = customSplitMb,
-                        onValueChange = { if (it.all { c -> c.isDigit() }) customSplitMb = it },
-                        label = { Text("Volume Size") },
-                        suffix = { Text("MB", fontWeight = FontWeight.Bold) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-
-                val isPasswordValid = !isEncryptEnabled || (password.isNotEmpty() && password == confirmPassword)
-                val canCreate = isNameValid && isPasswordValid
 
                 // Archive Name Input Field
                 OutlinedTextField(
@@ -314,25 +612,11 @@ fun CompressDialog(
                         }
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            if (canCreate) {
-                                val finalSplitBytes = when (selectedSplitSize) {
-                                    SplitSizePreset.NO_SPLIT -> null
-                                    SplitSizePreset.CUSTOM -> (customSplitMb.toLongOrNull() ?: 100L).coerceAtLeast(1L) * 1024 * 1024
-                                    else -> selectedSplitSize.sizeBytes
-                                }
-                                val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
-                                val passChars = if (isEncryptEnabled && password.isNotEmpty()) password.toCharArray() else null
-                                password = ""
-                                confirmPassword = ""
-                                onConfirmCreate(finalName, customLevel, passChars, finalSplitBytes)
-                            }
-                        }
-                    ),
+                    keyboardActions = KeyboardActions(onDone = { triggerCreate() }),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Encryption & Password Section Card
@@ -438,141 +722,11 @@ fun CompressDialog(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Advanced Options Toggle Card
-                Card(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showAdvanced = !showAdvanced },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Tune,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Advanced",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Icon(
-                                imageVector = if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = if (showAdvanced) "Collapse" else "Expand"
-                            )
-                        }
-
-                        AnimatedVisibility(visible = showAdvanced) {
-                            Column(modifier = Modifier.padding(top = 10.dp)) {
-                                HorizontalDivider()
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                // Fine-grained Compression Level (0 - 9)
-                                Text(
-                                    text = "Compression level: $customLevel",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Slider(
-                                    value = customLevel.toFloat(),
-                                    onValueChange = { customLevel = it.toInt() },
-                                    valueRange = 0f..9f,
-                                    steps = 8,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Compression Method
-                                Text(
-                                    text = "Method",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    MethodChip(CompressionMethodOption.DEFAULT, selectedMethod) { selectedMethod = it }
-                                    MethodChip(CompressionMethodOption.DEFLATE, selectedMethod) { selectedMethod = it }
-                                    MethodChip(CompressionMethodOption.LZMA2, selectedMethod) { selectedMethod = it }
-                                    MethodChip(CompressionMethodOption.COPY, selectedMethod) { selectedMethod = it }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Threads Selector
-                                Text(
-                                    text = "Threads",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    ThreadChip("Auto", 0, selectedThreads) { selectedThreads = it }
-                                    ThreadChip("1", 1, selectedThreads) { selectedThreads = it }
-                                    ThreadChip("2", 2, selectedThreads) { selectedThreads = it }
-                                    ThreadChip("4", 4, selectedThreads) { selectedThreads = it }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Solid Archive Toggle
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Solid Archive",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Switch(
-                                        checked = isSolid,
-                                        onCheckedChange = { isSolid = it }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
-            val isPasswordValid = !isEncryptEnabled || (password.isNotEmpty() && password == confirmPassword)
-            val canCreate = isNameValid && isPasswordValid
-
             Button(
-                onClick = {
-                    if (canCreate) {
-                        val finalSplitBytes = when (selectedSplitSize) {
-                            SplitSizePreset.NO_SPLIT -> null
-                            SplitSizePreset.CUSTOM -> (customSplitMb.toLongOrNull() ?: 100L).coerceAtLeast(1L) * 1024 * 1024
-                            else -> selectedSplitSize.sizeBytes
-                        }
-                        val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
-                        val passChars = if (isEncryptEnabled && password.isNotEmpty()) password.toCharArray() else null
-                        password = ""
-                        confirmPassword = ""
-                        onConfirmCreate(finalName, customLevel, passChars, finalSplitBytes)
-                    }
-                },
+                onClick = { triggerCreate() },
                 enabled = canCreate,
                 shape = RoundedCornerShape(8.dp)
             ) {
@@ -593,6 +747,67 @@ fun CompressDialog(
         },
         modifier = modifier
     )
+}
+
+@Composable
+private fun SplitSizeSelector(
+    selectedSplitSize: SplitSizePreset,
+    splitDropdownExpanded: Boolean,
+    customSplitMb: String,
+    onDropdownToggle: (Boolean) -> Unit,
+    onSelectPreset: (SplitSizePreset) -> Unit,
+    onCustomMbChange: (String) -> Unit
+) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedCard(
+            onClick = { onDropdownToggle(true) },
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = selectedSplitSize.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Select split size"
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = splitDropdownExpanded,
+            onDismissRequest = { onDropdownToggle(false) }
+        ) {
+            for (preset in SplitSizePreset.entries) {
+                DropdownMenuItem(
+                    text = { Text(preset.displayName) },
+                    onClick = { onSelectPreset(preset) }
+                )
+            }
+        }
+    }
+
+    if (selectedSplitSize == SplitSizePreset.CUSTOM) {
+        Spacer(modifier = Modifier.height(6.dp))
+        OutlinedTextField(
+            value = customSplitMb,
+            onValueChange = { if (it.all { c -> c.isDigit() }) onCustomMbChange(it) },
+            label = { Text("Volume Size") },
+            suffix = { Text("MB", fontWeight = FontWeight.Bold) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
+        )
+    }
 }
 
 @Composable
@@ -666,11 +881,13 @@ private fun DictChip(
     label: String,
     sizeMb: Int,
     selectedSizeMb: Int,
+    enabled: Boolean = true,
     onSelect: (Int) -> Unit
 ) {
     FilterChip(
         selected = selectedSizeMb == sizeMb,
-        onClick = { onSelect(sizeMb) },
+        onClick = { if (enabled) onSelect(sizeMb) },
+        enabled = enabled,
         label = { Text(label, style = MaterialTheme.typography.labelSmall) }
     )
 }
