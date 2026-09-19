@@ -649,6 +649,14 @@ class FileBrowserViewModel(
             try {
                 val sourceFiles = sources.map { File(it.path) }
                 val lowerName = archiveName.lowercase()
+
+                if (password != null && password.isNotEmpty()) {
+                    val isSevenZ = profile.format == ArchiveFormatOption.SEVEN_Z || lowerName.endsWith(".7z")
+                    if (!isSevenZ) {
+                        _userMessage.emit("Archive encryption (AES-256) is only supported for 7Z format in ARCA.")
+                        return@enqueue
+                    }
+                }
                 if (lowerName.endsWith(".iso")) {
                     isoEngine.createIso(sourceFiles, destFile)
                 }

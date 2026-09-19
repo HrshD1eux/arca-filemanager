@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.core.archive.engine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
+import com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredException
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
@@ -43,9 +44,12 @@ class RarEngine(
         val entries = mutableListOf<ArchiveEntry>()
         val passwordStr = password?.let { String(it) }
 
-        runCatching {
+        try {
             val archive = if (passwordStr != null) Archive(rarFile, passwordStr) else Archive(rarFile)
             archive.use { arc ->
+                if (arc.isEncrypted && password == null) {
+                    throw ArchivePasswordRequiredException("RAR archive is encrypted. Password required.")
+                }
                 val fileHeaders = arc.fileHeaders
                 ArchiveSafetyGuard.validateArchiveHeader(fileHeaders.size)
 
@@ -76,6 +80,13 @@ class RarEngine(
                         )
                     )
                 }
+            }
+        } catch (e: ArchivePasswordRequiredException) {
+            throw e
+        } catch (e: Throwable) {
+            if (e.message?.contains("password", ignoreCase = true) == true ||
+                e.message?.contains("encrypted", ignoreCase = true) == true) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password for RAR archive.", e)
             }
         }
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
@@ -190,6 +201,13 @@ class RarEngine(
             }
 
             extractedFilesCount
+        }.recoverCatching { e ->
+            if (e is ArchivePasswordRequiredException) throw e
+            if (e.message?.contains("password", ignoreCase = true) == true ||
+                e.message?.contains("encrypted", ignoreCase = true) == true) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password to extract RAR archive.", e)
+            }
+            throw e
         }
     }
 
@@ -310,6 +328,13 @@ class RarEngine(
             }
 
             extractedFilesCount
+        }.recoverCatching { e ->
+            if (e is ArchivePasswordRequiredException) throw e
+            if (e.message?.contains("password", ignoreCase = true) == true ||
+                e.message?.contains("encrypted", ignoreCase = true) == true) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password to extract RAR archive.", e)
+            }
+            throw e
         }
     }
 
@@ -372,6 +397,13 @@ class RarEngine(
                 corruptedEntries = corruptedEntries,
                 elapsedMs = elapsed
             )
+        }.recoverCatching { e ->
+            if (e is ArchivePasswordRequiredException) throw e
+            if (e.message?.contains("password", ignoreCase = true) == true ||
+                e.message?.contains("encrypted", ignoreCase = true) == true) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password to test RAR archive.", e)
+            }
+            throw e
         }
     }
 

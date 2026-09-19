@@ -29,10 +29,12 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.outlined.Info
+import com.Hrshd1eux.filemanager.feature.archive.components.PasswordPromptDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -269,6 +271,58 @@ fun ArchiveViewerScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = ZipOrange)
+                    }
+                }
+                is ArchiveViewerUiState.PasswordRequired -> {
+                    var showPrompt by remember { mutableStateOf(true) }
+                    if (showPrompt) {
+                        PasswordPromptDialog(
+                            archiveName = state.archiveName,
+                            onUnlock = { password ->
+                                showPrompt = false
+                                viewModel.unlockArchive(password)
+                            },
+                            onDismiss = {
+                                showPrompt = false
+                                onNavigateBack()
+                            }
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = ZipOrange,
+                                modifier = Modifier.size(56.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Encrypted Archive",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = state.message ?: "This archive is password-protected.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { showPrompt = true },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Enter Password")
+                            }
+                        }
                     }
                 }
                 is ArchiveViewerUiState.Error -> {

@@ -96,13 +96,48 @@ class EncryptedArchiveTest {
         )
         assertTrue(createResult.isSuccess)
 
-        // Extract with wrong password must fail
+        // Extract with wrong password must fail with ArchivePasswordRequiredException
         val extractResult = sevenZEngine.extractAll(
             sevenZFile = archive7z,
             destinationDir = extractDir,
             password = wrongPassword
         )
         assertFalse(extractResult.isSuccess)
+        assertTrue(
+            "Expected ArchivePasswordRequiredException or decryption failure, got ${extractResult.exceptionOrNull()}",
+            extractResult.exceptionOrNull() is com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredException ||
+            extractResult.exceptionOrNull() is java.io.IOException
+        )
+    }
+
+    @Test
+    fun extract7z_withoutPassword_failsWithArchivePasswordRequiredException() = runTest {
+        val workDir = tempFolder.newFolder("enc_nopass_source")
+        val secretFile = File(workDir, "data.txt").apply { writeText("Confidential") }
+        val archive7z = File(tempFolder.root, "nopass.7z")
+        val extractDir = tempFolder.newFolder("enc_nopass_dest")
+
+        sevenZEngine.create7z(
+            sources = listOf(secretFile),
+            destination7z = archive7z,
+            password = "SecretPassword123".toCharArray()
+        )
+
+        val extractResult = sevenZEngine.extractAll(
+            sevenZFile = archive7z,
+            destinationDir = extractDir,
+            password = null
+        )
+        assertFalse(extractResult.isSuccess)
+        assertTrue(extractResult.exceptionOrNull() is com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredException)
+    }
+
+    @Test
+    fun archiveFormatOptions_encryptionCapabilities_areTruthful() {
+        assertTrue(com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption.SEVEN_Z.supportsEncryption)
+        assertFalse(com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption.ZIP.supportsEncryption)
+        assertFalse(com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption.TAR.supportsEncryption)
+        assertFalse(com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption.TAR_GZ.supportsEncryption)
     }
 
     @Test

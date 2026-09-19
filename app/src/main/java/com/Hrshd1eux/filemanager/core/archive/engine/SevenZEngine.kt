@@ -16,12 +16,14 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import org.apache.commons.compress.PasswordRequiredException
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.archivers.sevenz.SevenZMethod
 import org.apache.commons.compress.archivers.sevenz.SevenZMethodConfiguration
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
 import org.apache.commons.compress.utils.MultiReadOnlySeekableByteChannel
+import com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredException
 import org.tukaani.xz.LZMA2Options
 import java.io.File
 import java.io.FileInputStream
@@ -73,7 +75,7 @@ class SevenZEngine(
         if (!sevenZFile.exists() || !sevenZFile.isFile) return@withContext emptyList()
 
         val entries = mutableListOf<ArchiveEntry>()
-        runCatching {
+        try {
             openSevenZFile(sevenZFile, password).use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
                 while (entry != null) {
@@ -100,10 +102,16 @@ class SevenZEngine(
                     entry = szf.nextEntry
                 }
             }
-        }.onFailure {
-            if (it is MissingSplitVolumeException) {
-                throw it
+        } catch (e: PasswordRequiredException) {
+            throw ArchivePasswordRequiredException("Archive headers are encrypted. Password required to view contents.", e)
+        } catch (e: MissingSplitVolumeException) {
+            throw e
+        } catch (e: Throwable) {
+            if (e.message?.contains("password", ignoreCase = true) == true ||
+                e.message?.contains("encrypted", ignoreCase = true) == true) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password for encrypted archive.", e)
             }
+            // Other read failure
         }
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
     }
@@ -192,6 +200,11 @@ class SevenZEngine(
                 }
             }
             extractedFilesCount
+        }.recoverCatching { e ->
+            if (e is PasswordRequiredException || e.message?.contains("password", ignoreCase = true) == true) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password to extract 7z archive.", e)
+            }
+            throw e
         }
     }
 
@@ -286,6 +299,11 @@ class SevenZEngine(
                 }
             }
             extractedFilesCount
+        }.recoverCatching { e ->
+            if (e is PasswordRequiredException || e.message?.contains("password", ignoreCase = true) == true) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password to extract 7z archive.", e)
+            }
+            throw e
         }
     }
 
@@ -583,6 +601,11 @@ class SevenZEngine(
                 corruptedEntries = corruptedEntries,
                 elapsedMs = elapsed
             )
+        }.recoverCatching { e ->
+            if (e is PasswordRequiredException || e.message?.contains("password", ignoreCase = true) == true) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password to test 7z archive.", e)
+            }
+            throw e
         }
     }
 

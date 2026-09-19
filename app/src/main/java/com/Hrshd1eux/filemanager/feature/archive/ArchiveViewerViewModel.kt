@@ -19,6 +19,7 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -40,6 +41,10 @@ sealed interface ArchiveViewerUiState {
         val totalFilesCount: Int,
         val isReadOnly: Boolean = false,
         val formatBadge: String? = null
+    ) : ArchiveViewerUiState
+    data class PasswordRequired(
+        val archiveName: String,
+        val message: String? = null
     ) : ArchiveViewerUiState
     data class Error(val message: String) : ArchiveViewerUiState
 }
@@ -75,6 +80,7 @@ class ArchiveViewerViewModel(
     private var archiveFile: File? = null
     private var allEntries: List<ArchiveEntry> = emptyList()
     private var currentVirtualPath: String = ""
+    private var currentPassword: CharArray? = null
 
     private fun isExtendedArchive(file: File?): Boolean {
         val ext = file?.extension?.lowercase() ?: return false
@@ -122,12 +128,29 @@ class ArchiveViewerViewModel(
                     isTar(file) -> tarEngine.listEntries(file)
                     else -> zipEngine.listEntries(file)
                 }
+                currentPassword = password
                 currentVirtualPath = ""
                 updateVisibleState()
+            } catch (e: ArchivePasswordRequiredException) {
+                _uiState.value = ArchiveViewerUiState.PasswordRequired(
+                    archiveName = file.name,
+                    message = e.localizedMessage
+                )
             } catch (e: Exception) {
                 _uiState.value = ArchiveViewerUiState.Error("Failed to open archive: ${e.localizedMessage}")
             }
         }
+    }
+
+    fun unlockArchive(password: CharArray) {
+        val path = archiveFile?.absolutePath ?: return
+        loadArchive(path, password)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        currentPassword?.let { java.util.Arrays.fill(it, '\u0000') }
+        currentPassword = null
     }
 
     fun navigateInto(entry: ArchiveEntry) {
@@ -186,6 +209,7 @@ class ArchiveViewerViewModel(
         onComplete: () -> Unit = {}
     ) {
         val file = archiveFile ?: return
+        val effectivePassword = password ?: currentPassword
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
             val result = when {
@@ -207,7 +231,7 @@ class ArchiveViewerViewModel(
                     rarFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
-                    password = password,
+                    password = effectivePassword,
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -215,7 +239,7 @@ class ArchiveViewerViewModel(
                     sevenZFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
-                    password = password,
+                    password = effectivePassword,
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -258,6 +282,7 @@ class ArchiveViewerViewModel(
         val file = archiveFile ?: return
         val selected = _selectedEntryPaths.value
         if (selected.isEmpty()) return
+        val effectivePassword = password ?: currentPassword
 
         activeJob = viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = selected.size)
@@ -283,7 +308,7 @@ class ArchiveViewerViewModel(
                     entryPaths = selected,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
-                    password = password,
+                    password = effectivePassword,
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -292,7 +317,7 @@ class ArchiveViewerViewModel(
                     entryPaths = selected,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
-                    password = password,
+                    password = effectivePassword,
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -330,6 +355,7 @@ class ArchiveViewerViewModel(
 
     fun testArchive(password: CharArray? = null) {
         val file = archiveFile ?: return
+        val effectivePassword = password ?: currentPassword
         viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = allEntries.size)
             val result = when {
@@ -343,12 +369,12 @@ class ArchiveViewerViewModel(
                 )
                 isRar(file) -> rarEngine.testArchive(
                     rarFile = file,
-                    password = password,
+                    password = effectivePassword,
                     onProgress = { _activeProgress.value = it }
                 )
                 is7z(file) -> sevenZEngine.testArchive(
                     sevenZFile = file,
-                    password = password,
+                    password = effectivePassword,
                     onProgress = { _activeProgress.value = it }
                 )
                 isTar(file) -> tarEngine.testArchive(
@@ -375,11 +401,12 @@ class ArchiveViewerViewModel(
 
     fun loadArchiveProperties(password: CharArray? = null) {
         val file = archiveFile ?: return
+        val effectivePassword = password ?: currentPassword
         viewModelScope.launch {
             _archiveProperties.value = when {
                 isExtendedArchive(file) -> extendedArchiveEngine.getArchiveProperties(file)
                 isIso(file) -> isoEngine.getArchiveProperties(file)
-                isRar(file) -> rarEngine.getArchiveProperties(file, password)
+                isRar(file) -> rarEngine.getArchiveProperties(file, effectivePassword)
                 is7z(file) -> sevenZEngine.getArchiveProperties(file)
                 isTar(file) -> tarEngine.getArchiveProperties(file)
                 else -> zipEngine.getArchiveProperties(file)
@@ -471,8 +498,8 @@ class ArchiveViewerViewModel(
         val resolution = SplitArchiveResolver.resolveSplitParts(file)
         val splitSuccess = resolution as? SplitResolution.Success
         val isSplit = splitSuccess?.isSplit == true
-        val displayName = if (isSplit && splitSuccess != null) {
-            "${splitSuccess.baseName} (${splitSuccess.parts.size} parts)"
+        val displayName = if (isSplit) {
+            "${splitSuccess!!.baseName} (${splitSuccess.parts.size} parts)"
         } else {
             file.name
         }
@@ -480,7 +507,7 @@ class ArchiveViewerViewModel(
         val isIsoFormat = isIso(file)
         val ext = file.extension.lowercase()
         val formatBadge = when {
-            isSplit && splitSuccess != null -> "7Z Split Archive (${splitSuccess.parts.size} volumes)"
+            isSplit -> "7Z Split Archive (${splitSuccess!!.parts.size} volumes)"
             isIsoFormat -> "ISO Disc Image (Extraction & Viewing only)"
             isRarFormat -> "RAR (Extraction & Viewing only)"
             ext == "arj" -> "ARJ Archive (Extraction & Viewing only)"

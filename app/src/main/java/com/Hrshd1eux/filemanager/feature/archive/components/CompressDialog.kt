@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,9 +22,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,6 +42,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -44,6 +51,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSecurityEvaluator
+import com.Hrshd1eux.filemanager.core.archive.security.PasswordStrength
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -102,6 +113,13 @@ fun CompressDialog(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    var encryptFileNames by remember { mutableStateOf(false) }
+    var copyFeedback by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+
+    val passwordStrength = remember(password) {
+        ArchiveSecurityEvaluator.evaluatePassword(password)
+    }
 
     var rawName by remember {
         val baseName = defaultName
@@ -142,7 +160,8 @@ fun CompressDialog(
                 isSolid = isSolid,
                 dictionarySizeMb = dictionarySizeMb,
                 splitSize = selectedSplitSize,
-                customSplitSizeBytes = finalSplitBytes
+                customSplitSizeBytes = finalSplitBytes,
+                encryptFileNames = encryptFileNames
             )
             val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
             val passChars = if (isEncryptEnabled && password.isNotEmpty()) password.toCharArray() else null
@@ -631,7 +650,18 @@ fun CompressDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { isEncryptEnabled = !isEncryptEnabled },
+                                .clickable {
+                                    val newEnabled = !isEncryptEnabled
+                                    isEncryptEnabled = newEnabled
+                                    if (newEnabled && selectedFormat != ArchiveFormatOption.SEVEN_Z) {
+                                        selectedFormat = ArchiveFormatOption.SEVEN_Z
+                                        selectedPreset = CompressionLevelPreset.NORMAL
+                                        customLevel = 6
+                                        selectedMethod = CompressionMethodOption.LZMA2
+                                        isSolid = true
+                                        dictionarySizeMb = 32
+                                    }
+                                },
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -651,7 +681,17 @@ fun CompressDialog(
                             }
                             Switch(
                                 checked = isEncryptEnabled,
-                                onCheckedChange = { isEncryptEnabled = it }
+                                onCheckedChange = { enabled ->
+                                    isEncryptEnabled = enabled
+                                    if (enabled && selectedFormat != ArchiveFormatOption.SEVEN_Z) {
+                                        selectedFormat = ArchiveFormatOption.SEVEN_Z
+                                        selectedPreset = CompressionLevelPreset.NORMAL
+                                        customLevel = 6
+                                        selectedMethod = CompressionMethodOption.LZMA2
+                                        isSolid = true
+                                        dictionarySizeMb = 32
+                                    }
+                                }
                             )
                         }
 
@@ -660,14 +700,87 @@ fun CompressDialog(
                                 HorizontalDivider()
                                 Spacer(modifier = Modifier.height(10.dp))
 
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "7Z Format • AES-256 Payload Encryption",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    TextButton(
+                                        onClick = {
+                                            val generated = ArchiveSecurityEvaluator.generateSecurePassword(16)
+                                            password = generated
+                                            confirmPassword = generated
+                                            showPassword = true
+                                            copyFeedback = false
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Generate Strong Password", style = MaterialTheme.typography.labelMedium)
+                                    }
+
+                                    if (password.isNotEmpty()) {
+                                        TextButton(
+                                            onClick = {
+                                                clipboardManager.setText(AnnotatedString(password))
+                                                copyFeedback = true
+                                            },
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(if (copyFeedback) "Copied!" else "Copy", style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                }
+
                                 OutlinedTextField(
                                     value = password,
-                                    onValueChange = { password = it },
+                                    onValueChange = {
+                                        password = it
+                                        copyFeedback = false
+                                    },
                                     label = { Text("Password") },
                                     placeholder = { Text("••••••••••") },
                                     singleLine = true,
                                     isError = isEncryptEnabled && password.isEmpty() && confirmPassword.isNotEmpty(),
                                     visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                    trailingIcon = {
+                                        IconButton(onClick = { showPassword = !showPassword }) {
+                                            Icon(
+                                                imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = if (showPassword) "Hide password" else "Show password"
+                                            )
+                                        }
+                                    },
                                     keyboardOptions = KeyboardOptions(
                                         keyboardType = KeyboardType.Password,
                                         imeAction = ImeAction.Next
@@ -676,20 +789,78 @@ fun CompressDialog(
                                     shape = RoundedCornerShape(8.dp)
                                 )
 
+                                if (password.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    val strengthColor = when (passwordStrength.strength) {
+                                        PasswordStrength.VERY_WEAK, PasswordStrength.WEAK -> MaterialTheme.colorScheme.error
+                                        PasswordStrength.FAIR -> Color(0xFFE6A700)
+                                        PasswordStrength.STRONG, PasswordStrength.VERY_STRONG -> Color(0xFF2E7D32)
+                                    }
+                                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Strength: ${passwordStrength.label}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = strengthColor,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        LinearProgressIndicator(
+                                            progress = { passwordStrength.score },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(4.dp)
+                                                .clip(RoundedCornerShape(2.dp)),
+                                            color = strengthColor,
+                                            trackColor = strengthColor.copy(alpha = 0.2f),
+                                        )
+                                        if (passwordStrength.warningMessage != null) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Warning,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(13.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = passwordStrength.warningMessage,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 val passwordsMismatch = isEncryptEnabled && confirmPassword.isNotEmpty() && password != confirmPassword
                                 OutlinedTextField(
                                     value = confirmPassword,
                                     onValueChange = { confirmPassword = it },
-                                    label = { Text("Confirm") },
+                                    label = { Text("Confirm Password") },
                                     placeholder = { Text("••••••••••") },
                                     singleLine = true,
                                     isError = passwordsMismatch,
                                     supportingText = if (passwordsMismatch) {
-                                        { Text("Passwords do not match") }
+                                        { Text("Passwords do not match", color = MaterialTheme.colorScheme.error) }
                                     } else null,
                                     visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                    trailingIcon = {
+                                        IconButton(onClick = { showPassword = !showPassword }) {
+                                            Icon(
+                                                imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = if (showPassword) "Hide password" else "Show password"
+                                            )
+                                        }
+                                    },
                                     keyboardOptions = KeyboardOptions(
                                         keyboardType = KeyboardType.Password,
                                         imeAction = ImeAction.Done
@@ -698,24 +869,34 @@ fun CompressDialog(
                                     shape = RoundedCornerShape(8.dp)
                                 )
 
+                                Spacer(modifier = Modifier.height(8.dp))
+                                HorizontalDivider()
                                 Spacer(modifier = Modifier.height(6.dp))
 
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(6.dp))
-                                        .clickable { showPassword = !showPassword }
+                                        .clickable { encryptFileNames = !encryptFileNames }
                                         .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Checkbox(
-                                        checked = showPassword,
-                                        onCheckedChange = { showPassword = it }
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Show password",
-                                        style = MaterialTheme.typography.bodyMedium
+                                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                        Text(
+                                            text = "Encrypt file names",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = "Supported when inspecting/extracting archives. Writer encrypts all data payloads with AES-256.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Switch(
+                                        checked = encryptFileNames,
+                                        onCheckedChange = { encryptFileNames = it }
                                     )
                                 }
                             }

@@ -15,6 +15,9 @@ enum class ArchiveFormatOption(
     val isTarFamily: Boolean get() = this in setOf(TAR, TAR_GZ, TAR_XZ, TAR_BZ2)
     val is7z: Boolean get() = this == SEVEN_Z
     val isZip: Boolean get() = this == ZIP
+    val supportsEncryption: Boolean get() = this == SEVEN_Z
+    val supportsEncryptedFileNamesReading: Boolean get() = this == SEVEN_Z
+    val supportsEncryptedFileNamesCreation: Boolean get() = false
 }
 
 enum class CompressionLevelPreset(val displayName: String, val level: Int) {
@@ -86,7 +89,8 @@ data class CompressionProfile(
     val isSolid: Boolean = true,
     val dictionarySizeMb: Int = 32,
     val splitSize: SplitSizePreset = SplitSizePreset.NO_SPLIT,
-    val customSplitSizeBytes: Long? = null
+    val customSplitSizeBytes: Long? = null,
+    val encryptFileNames: Boolean = false
 ) {
     companion object {
         fun defaultFor(format: ArchiveFormatOption): CompressionProfile {
