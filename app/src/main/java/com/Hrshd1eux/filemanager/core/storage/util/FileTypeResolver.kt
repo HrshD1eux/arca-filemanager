@@ -47,6 +47,11 @@ object FileTypeResolver {
     fun resolveType(fileName: String, mimeType: String? = null): FileType {
         val lowerName = fileName.lowercase()
 
+        // Split archive check (backup.7z.001, archive.001, etc.)
+        if (com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver.isSplitArchiveName(fileName)) {
+            return FileType.ARCHIVE
+        }
+
         // Compound archive check (.tar.gz, .tar.bz2, .tar.xz, .tar.z)
         if (lowerName.endsWith(".tar.gz") || lowerName.endsWith(".tar.bz2") || lowerName.endsWith(".tar.xz") || lowerName.endsWith(".tar.z")) {
             return FileType.ARCHIVE
@@ -95,11 +100,12 @@ object FileTypeResolver {
     fun resolveArchiveFormat(fileName: String): ArchiveFormat? {
         val lower = fileName.lowercase()
         return when {
+            com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver.is7zSplit(fileName) -> ArchiveFormat.SEVEN_ZIP
             lower.endsWith(".tar.gz") || lower.endsWith(".tgz") -> ArchiveFormat.TAR_GZ
             lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2") -> ArchiveFormat.TAR_BZ2
             lower.endsWith(".tar.xz") || lower.endsWith(".txz") -> ArchiveFormat.TAR_XZ
             lower.endsWith(".tar.z") || lower.endsWith(".taz") -> ArchiveFormat.TAR_Z
-            lower.endsWith(".zip") -> ArchiveFormat.ZIP
+            lower.endsWith(".zip") || lower.matches(Regex("""^.*\.z\d{2}$""")) -> ArchiveFormat.ZIP
             lower.endsWith(".tar") -> ArchiveFormat.TAR
             lower.endsWith(".7z") -> ArchiveFormat.SEVEN_ZIP
             lower.endsWith(".rar") -> ArchiveFormat.RAR
@@ -112,6 +118,7 @@ object FileTypeResolver {
             lower.endsWith(".xz") -> ArchiveFormat.XZ
             lower.endsWith(".zst") -> ArchiveFormat.ZSTD
             lower.endsWith(".iso") -> ArchiveFormat.ISO
+            com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver.isSplitArchiveName(fileName) -> ArchiveFormat.SEVEN_ZIP
             isArchive(fileName) -> ArchiveFormat.OTHER
             else -> null
         }
@@ -125,7 +132,17 @@ object FileTypeResolver {
         val lower = fileName.lowercase()
         return lower.endsWith(".tar.gz") || lower.endsWith(".tar.bz2") || lower.endsWith(".tar.xz") ||
                 lower.endsWith(".tar.z") || lower.endsWith(".taz") ||
+                com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver.isSplitArchiveName(fileName) ||
                 lower.substringAfterLast('.', "") in archiveExtensions
+    }
+
+    fun isSplitArchive(fileName: String): Boolean {
+        return com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver.isSplitArchiveName(fileName)
+    }
+
+    fun is7z(fileName: String): Boolean {
+        val lower = fileName.lowercase()
+        return lower.endsWith(".7z") || com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver.is7zSplit(fileName)
     }
 
     fun isRar(fileName: String): Boolean {

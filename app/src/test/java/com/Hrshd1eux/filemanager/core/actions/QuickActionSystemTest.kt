@@ -185,6 +185,26 @@ class QuickActionSystemTest {
     }
 
     @Test
+    fun archiveContext_splitArchives_omitAddAction() {
+        val splitFiles = listOf("backup.7z.001", "backup.7z.002", "archive.001", "data.z01")
+        for (fileName in splitFiles) {
+            val node = StorageNode(
+                id = "/storage/emulated/0/Download/$fileName",
+                name = fileName,
+                path = "/storage/emulated/0/Download/$fileName",
+                size = 2048L,
+                lastModified = System.currentTimeMillis(),
+                isDirectory = false
+            )
+            val context = QuickActionContext.fromNode(node)
+            assertEquals("Expected ARCHIVE context for $fileName", QuickActionContext.ARCHIVE, context)
+
+            val actions = context.getActions(node)
+            org.junit.Assert.assertFalse("Split archive $fileName must not support ADD action", actions.contains(QuickActionType.ADD))
+        }
+    }
+
+    @Test
     fun contextDetection_variousArchiveExtensions() {
         val extensions = listOf(
             "zip", "rar", "iso", "7z", "tar", "tar.gz", "tgz",

@@ -96,6 +96,7 @@ enum class QuickActionContext {
                     FileTypeResolver.isDeb(node.name) ||
                     FileTypeResolver.isTarZ(node.name) ||
                     FileTypeResolver.isCpio(node.name) ||
+                    FileTypeResolver.isSplitArchive(node.name) ||
                     node.name.endsWith(".7z", ignoreCase = true) ||
                     node.name.contains(".tar", ignoreCase = true)
                 )

@@ -955,7 +955,7 @@ fun FileBrowserScreen(
         CompressDialog(
             sources = listOf(targetToCompress),
             defaultName = "${targetToCompress.name}.zip",
-            onConfirmCreate = { archiveName, level, password ->
+            onConfirmCreate = { archiveName, level, password, splitSizeBytes ->
                 nodeToCompress = null
                 activeOperationTitle = "Compressing to $archiveName"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -964,6 +964,7 @@ fun FileBrowserScreen(
                     archiveName = archiveName,
                     compressionLevel = level,
                     password = password,
+                    splitSizeBytes = splitSizeBytes,
                     hasPermission = hasPermission
                 )
             },
@@ -982,7 +983,7 @@ fun FileBrowserScreen(
         CompressDialog(
             sources = targetBulkCompress,
             defaultName = defaultZipName,
-            onConfirmCreate = { archiveName, level, password ->
+            onConfirmCreate = { archiveName, level, password, splitSizeBytes ->
                 bulkNodesToCompress = null
                 activeOperationTitle = "Compressing ${targetBulkCompress.size} Items"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
@@ -991,6 +992,7 @@ fun FileBrowserScreen(
                     archiveName = archiveName,
                     compressionLevel = level,
                     password = password,
+                    splitSizeBytes = splitSizeBytes,
                     hasPermission = hasPermission
                 )
             },

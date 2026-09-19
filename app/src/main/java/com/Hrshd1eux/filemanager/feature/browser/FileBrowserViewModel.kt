@@ -32,6 +32,7 @@ import com.Hrshd1eux.filemanager.core.storage.preferences.LastDestinationReposit
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.provider.StorageProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.util.SmartDestinationResolver
 import com.Hrshd1eux.filemanager.feature.browser.model.BreadcrumbItem
 import com.Hrshd1eux.filemanager.feature.browser.model.BrowserTab
@@ -450,7 +451,7 @@ class FileBrowserViewModel(
                                 onProgress = onProgress
                             )
                         }
-                        lowerName.endsWith(".7z") -> {
+                        lowerName.endsWith(".7z") || FileTypeResolver.is7z(lowerName) -> {
                             sevenZEngine.extractEntries(
                                 sevenZFile = archiveFile,
                                 entryPaths = setOf(payload.entryPath),
@@ -625,6 +626,7 @@ class FileBrowserViewModel(
         archiveName: String,
         compressionLevel: Int = java.util.zip.Deflater.DEFAULT_COMPRESSION,
         password: CharArray? = null,
+        splitSizeBytes: Long? = null,
         hasPermission: Boolean
     ) {
         val currentState = _uiState.value as? BrowserUiState.Success ?: return
@@ -632,8 +634,13 @@ class FileBrowserViewModel(
         val destFile = File(destDir, archiveName)
 
         clearSelection()
+        val opTitle = if (splitSizeBytes != null && splitSizeBytes > 0) {
+            "Compressing split archive $archiveName"
+        } else {
+            "Compressing $archiveName"
+        }
         operationManager.enqueue(
-            title = "Compressing $archiveName",
+            title = opTitle,
             type = OperationType.COMPRESS
         ) { onProgress ->
             try {
@@ -660,6 +667,26 @@ class FileBrowserViewModel(
                 if (lowerName.endsWith(".zst")) {
                     extendedArchiveEngine.rejectZstd()
                 }
+
+                if (splitSizeBytes != null && splitSizeBytes > 0) {
+                    if (lowerName.endsWith(".7z") || lowerName.contains(".7z.")) {
+                        val createdParts = sevenZEngine.createSplit7z(
+                            sources = sourceFiles,
+                            destinationBase7z = destFile,
+                            splitSizeBytes = splitSizeBytes,
+                            password = password,
+                            onProgress = onProgress
+                        ).getOrThrow()
+                        val totalVolSize = createdParts.sumOf { it.length() }
+                        val encSuffix = if (password != null && password.isNotEmpty()) " (Encrypted 🔒)" else ""
+                        _userMessage.emit("Created split archive: ${createdParts.size} volumes (${FileFormatter.formatFileSize(totalVolSize)})$encSuffix")
+                        return@enqueue
+                    } else {
+                        _userMessage.emit("Split archive creation is supported for 7Z format.")
+                        return@enqueue
+                    }
+                }
+
                 val size = when {
                     lowerName.endsWith(".cpio") -> {
                         extendedArchiveEngine.createCpio(
@@ -746,7 +773,7 @@ class FileBrowserViewModel(
                             onProgress = onProgress
                         ).getOrThrow()
                     }
-                    lowerName.endsWith(".7z") -> {
+                    lowerName.endsWith(".7z") || FileTypeResolver.is7z(lowerName) -> {
                         sevenZEngine.extractAll(
                             sevenZFile = archiveFile,
                             destinationDir = destinationDir,
@@ -832,7 +859,7 @@ class FileBrowserViewModel(
                 lowerName.endsWith(".rar") -> {
                     rarEngine.testArchive(file) { _testProgress.value = it }
                 }
-                lowerName.endsWith(".7z") -> {
+                lowerName.endsWith(".7z") || FileTypeResolver.is7z(lowerName) -> {
                     sevenZEngine.testArchive(file) { _testProgress.value = it }
                 }
                 lowerName.endsWith(".arj") || lowerName.endsWith(".cpio") || lowerName.endsWith(".deb") ||

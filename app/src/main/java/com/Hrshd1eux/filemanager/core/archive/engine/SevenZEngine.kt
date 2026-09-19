@@ -4,6 +4,10 @@ import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
+import com.Hrshd1eux.filemanager.core.archive.split.MissingSplitVolumeException
+import com.Hrshd1eux.filemanager.core.archive.split.MultiVolumeWritableByteChannel
+import com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver
+import com.Hrshd1eux.filemanager.core.archive.split.SplitResolution
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
@@ -17,6 +21,7 @@ import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.archivers.sevenz.SevenZMethod
 import org.apache.commons.compress.archivers.sevenz.SevenZMethodConfiguration
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
+import org.apache.commons.compress.utils.MultiReadOnlySeekableByteChannel
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -30,6 +35,37 @@ class SevenZEngine(
 ) {
 
     /**
+     * Opens a [SevenZFile], automatically discovering and concatenating split archive volumes
+     * (e.g. backup.7z.001, backup.7z.002) or throwing [MissingSplitVolumeException] if a volume is missing.
+     */
+    private fun openSevenZFile(sevenZFile: File, password: CharArray? = null): SevenZFile {
+        val resolution = SplitArchiveResolver.resolveSplitParts(sevenZFile)
+        val builder = when (resolution) {
+            is SplitResolution.MissingParts -> {
+                throw MissingSplitVolumeException(
+                    "Split archive incomplete: Part ${resolution.expectedPartIndex} (${resolution.missingPartName}) is missing."
+                )
+            }
+            is SplitResolution.Success -> {
+                if (resolution.isSplit) {
+                    val channel = MultiReadOnlySeekableByteChannel.forFiles(*resolution.parts.toTypedArray())
+                    SevenZFile.builder().setSeekableByteChannel(channel)
+                } else {
+                    SevenZFile.builder().setFile(sevenZFile)
+                }
+            }
+            is SplitResolution.NotSplit -> {
+                SevenZFile.builder().setFile(sevenZFile)
+            }
+        }
+
+        if (password != null && password.isNotEmpty()) {
+            builder.setPassword(password)
+        }
+        return builder.get()
+    }
+
+    /**
      * Lists all entries inside a .7z archive with path sanitization and safety checks.
      */
     suspend fun listEntries(sevenZFile: File, password: CharArray? = null): List<ArchiveEntry> = withContext(ioDispatcher) {
@@ -37,11 +73,7 @@ class SevenZEngine(
 
         val entries = mutableListOf<ArchiveEntry>()
         runCatching {
-            val builder = SevenZFile.builder().setFile(sevenZFile)
-            if (password != null && password.isNotEmpty()) {
-                builder.setPassword(password)
-            }
-            builder.get().use { szf ->
+            openSevenZFile(sevenZFile, password).use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
                 while (entry != null) {
                     val rawName = entry.name.removeSuffix("/").replace('\\', '/')
@@ -67,6 +99,10 @@ class SevenZEngine(
                     entry = szf.nextEntry
                 }
             }
+        }.onFailure {
+            if (it is MissingSplitVolumeException) {
+                throw it
+            }
         }
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
     }
@@ -91,11 +127,7 @@ class SevenZEngine(
             var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
-            val builder = SevenZFile.builder().setFile(sevenZFile)
-            if (password != null && password.isNotEmpty()) {
-                builder.setPassword(password)
-            }
-            builder.get().use { szf ->
+            openSevenZFile(sevenZFile, password).use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
 
                 while (entry != null) {
@@ -183,11 +215,7 @@ class SevenZEngine(
             var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
-            val builder = SevenZFile.builder().setFile(sevenZFile)
-            if (password != null && password.isNotEmpty()) {
-                builder.setPassword(password)
-            }
-            builder.get().use { szf ->
+            openSevenZFile(sevenZFile, password).use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
 
                 while (entry != null) {
@@ -303,66 +331,7 @@ class SevenZEngine(
 
                 out.use {
                     out.setContentMethods(listOf(SevenZMethodConfiguration(method)))
-
-                    for (source in sources) {
-                        coroutineContext.ensureActive()
-
-                        if (source.isDirectory) {
-                            val baseDir = source.parentFile ?: source
-                            source.walkTopDown().forEach { file ->
-                                coroutineContext.ensureActive()
-                                val relPath = file.relativeTo(baseDir).path.replace('\\', '/')
-                                val entry = out.createArchiveEntry(file, relPath)
-                                out.putArchiveEntry(entry)
-
-                                if (file.isFile) {
-                                    FileInputStream(file).use { fis ->
-                                        var len: Int
-                                        while (fis.read(buffer).also { len = it } != -1) {
-                                            coroutineContext.ensureActive()
-                                            out.write(buffer, 0, len)
-                                            bytesProcessed += len
-                                        }
-                                    }
-                                    filesProcessed++
-                                }
-                                out.closeArchiveEntry()
-
-                                onProgress?.invoke(
-                                    OperationProgress(
-                                        bytesProcessed = bytesProcessed,
-                                        totalBytes = totalBytes,
-                                        filesProcessed = filesProcessed,
-                                        totalFiles = totalFiles,
-                                        currentFileName = file.name
-                                    )
-                                )
-                            }
-                        } else if (source.isFile) {
-                            val entry = out.createArchiveEntry(source, source.name)
-                            out.putArchiveEntry(entry)
-                            FileInputStream(source).use { fis ->
-                                var len: Int
-                                while (fis.read(buffer).also { len = it } != -1) {
-                                    coroutineContext.ensureActive()
-                                    out.write(buffer, 0, len)
-                                    bytesProcessed += len
-                                }
-                            }
-                            out.closeArchiveEntry()
-                            filesProcessed++
-
-                            onProgress?.invoke(
-                                OperationProgress(
-                                    bytesProcessed = bytesProcessed,
-                                    totalBytes = totalBytes,
-                                    filesProcessed = filesProcessed,
-                                    totalFiles = totalFiles,
-                                    currentFileName = source.name
-                                )
-                            )
-                        }
-                    }
+                    writeSourcesToSevenZ(out, sources, totalBytes, totalFiles, onProgress)
                 }
             } catch (e: CancellationException) {
                 if (destination7z.exists()) {
@@ -372,6 +341,133 @@ class SevenZEngine(
             }
 
             destination7z.length()
+        }
+    }
+
+    /**
+     * Creates a split .7z archive segmented into consecutive volumes of [splitSizeBytes]
+     * (e.g. backup.7z.001, backup.7z.002, etc.).
+     */
+    suspend fun createSplit7z(
+        sources: List<File>,
+        destinationBase7z: File,
+        splitSizeBytes: Long,
+        method: SevenZMethod = SevenZMethod.LZMA2,
+        password: CharArray? = null,
+        onProgress: ((OperationProgress) -> Unit)? = null
+    ): Result<List<File>> = withContext(ioDispatcher) {
+        runCatching {
+            require(splitSizeBytes > 0) { "Split size must be greater than 0: $splitSizeBytes" }
+            destinationBase7z.parentFile?.mkdirs()
+
+            var totalBytes = 0L
+            var totalFiles = 0
+            sources.forEach { source ->
+                if (source.isDirectory) {
+                    source.walkTopDown().forEach { f ->
+                        if (!f.isDirectory) {
+                            totalBytes += f.length()
+                            totalFiles++
+                        }
+                    }
+                } else if (source.isFile) {
+                    totalBytes += source.length()
+                    totalFiles++
+                }
+            }
+
+            val channel = MultiVolumeWritableByteChannel(destinationBase7z, splitSizeBytes)
+            try {
+                val out = if (password != null && password.isNotEmpty()) {
+                    SevenZOutputFile(channel, password)
+                } else {
+                    SevenZOutputFile(channel)
+                }
+
+                out.use {
+                    out.setContentMethods(listOf(SevenZMethodConfiguration(method)))
+                    writeSourcesToSevenZ(out, sources, totalBytes, totalFiles, onProgress)
+                }
+                channel.getCreatedVolumes()
+            } catch (e: Throwable) {
+                try {
+                    channel.close()
+                } catch (_: Exception) {}
+                channel.getCreatedVolumes().forEach { if (it.exists()) it.delete() }
+                throw e
+            }
+        }
+    }
+
+    private suspend fun writeSourcesToSevenZ(
+        out: SevenZOutputFile,
+        sources: List<File>,
+        totalBytes: Long,
+        totalFiles: Int,
+        onProgress: ((OperationProgress) -> Unit)?
+    ) {
+        var bytesProcessed = 0L
+        var filesProcessed = 0
+        val buffer = ByteArray(BUFFER_SIZE)
+
+        for (source in sources) {
+            coroutineContext.ensureActive()
+
+            if (source.isDirectory) {
+                val baseDir = source.parentFile ?: source
+                source.walkTopDown().forEach { file ->
+                    coroutineContext.ensureActive()
+                    val relPath = file.relativeTo(baseDir).path.replace('\\', '/')
+                    val entry = out.createArchiveEntry(file, relPath)
+                    out.putArchiveEntry(entry)
+
+                    if (file.isFile) {
+                        FileInputStream(file).use { fis ->
+                            var len: Int
+                            while (fis.read(buffer).also { len = it } != -1) {
+                                coroutineContext.ensureActive()
+                                out.write(buffer, 0, len)
+                                bytesProcessed += len
+                            }
+                        }
+                        filesProcessed++
+                    }
+                    out.closeArchiveEntry()
+
+                    onProgress?.invoke(
+                        OperationProgress(
+                            bytesProcessed = bytesProcessed,
+                            totalBytes = totalBytes,
+                            filesProcessed = filesProcessed,
+                            totalFiles = totalFiles,
+                            currentFileName = file.name
+                        )
+                    )
+                }
+            } else if (source.isFile) {
+                val entry = out.createArchiveEntry(source, source.name)
+                out.putArchiveEntry(entry)
+                FileInputStream(source).use { fis ->
+                    var len: Int
+                    while (fis.read(buffer).also { len = it } != -1) {
+                        coroutineContext.ensureActive()
+                        out.write(buffer, 0, len)
+                        bytesProcessed += len
+                    }
+                }
+                out.closeArchiveEntry()
+                filesProcessed++
+
+                onProgress?.invoke(
+                    OperationProgress(
+                        bytesProcessed = bytesProcessed,
+                        totalBytes = totalBytes,
+                        filesProcessed = filesProcessed,
+                        totalFiles = totalFiles,
+                        currentFileName = source.name
+                    )
+                )
+            }
         }
     }
 
@@ -390,11 +486,7 @@ class SevenZEngine(
             var totalEntries = 0
             val buffer = ByteArray(BUFFER_SIZE)
 
-            val builder = SevenZFile.builder().setFile(sevenZFile)
-            if (password != null && password.isNotEmpty()) {
-                builder.setPassword(password)
-            }
-            builder.get().use { szf ->
+            openSevenZFile(sevenZFile, password).use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
 
                 while (entry != null) {
@@ -454,12 +546,24 @@ class SevenZEngine(
             )
         }
 
+        val resolution = SplitArchiveResolver.resolveSplitParts(sevenZFile)
+        val (displayName, displaySize) = when (resolution) {
+            is SplitResolution.Success -> {
+                if (resolution.isSplit) {
+                    "${resolution.baseName} (${resolution.parts.size} volumes)" to resolution.totalSize
+                } else {
+                    sevenZFile.name to sevenZFile.length()
+                }
+            }
+            else -> sevenZFile.name to sevenZFile.length()
+        }
+
         var totalFiles = 0
         var totalFolders = 0
         var uncompressedSize = 0L
 
         runCatching {
-            SevenZFile.builder().setFile(sevenZFile).get().use { szf ->
+            openSevenZFile(sevenZFile).use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
                 while (entry != null) {
                     if (entry.isDirectory) {
@@ -471,15 +575,19 @@ class SevenZEngine(
                     entry = szf.nextEntry
                 }
             }
+        }.onFailure {
+            if (it is MissingSplitVolumeException) {
+                throw it
+            }
         }
 
         ArchiveProperties(
-            archiveName = sevenZFile.name,
+            archiveName = displayName,
             archivePath = sevenZFile.absolutePath,
             totalFiles = totalFiles,
             totalFolders = totalFolders,
             uncompressedSize = uncompressedSize,
-            compressedSize = sevenZFile.length(),
+            compressedSize = displaySize,
             lastModified = sevenZFile.lastModified()
         )
     }

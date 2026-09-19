@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.feature.archive.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -30,12 +32,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -62,6 +67,7 @@ import com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionLevelPreset
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionMethodOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionProfile
+import com.Hrshd1eux.filemanager.core.archive.model.SplitSizePreset
 import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
@@ -71,7 +77,7 @@ import java.util.zip.Deflater
 fun CompressDialog(
     sources: List<StorageNode>,
     defaultName: String,
-    onConfirmCreate: (archiveName: String, compressionLevel: Int, password: CharArray?) -> Unit,
+    onConfirmCreate: (archiveName: String, compressionLevel: Int, password: CharArray?, splitSizeBytes: Long?) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -83,6 +89,11 @@ fun CompressDialog(
     var isSolid by remember { mutableStateOf(true) }
     var dictionarySizeMb by remember { mutableIntStateOf(32) }
     var showAdvanced by remember { mutableStateOf(false) }
+
+    // Split size state
+    var selectedSplitSize by remember { mutableStateOf(SplitSizePreset.NO_SPLIT) }
+    var splitDropdownExpanded by remember { mutableStateOf(false) }
+    var customSplitMb by remember { mutableStateOf("100") }
 
     // Encryption & Password States
     var isEncryptEnabled by remember { mutableStateOf(false) }
@@ -104,6 +115,11 @@ fun CompressDialog(
     val totalBytes = remember(sources) { sources.sumOf { it.size } }
     val isNameValid = rawName.isNotBlank() && !rawName.contains('/') && !rawName.contains('\\')
     val ext = selectedFormat.defaultExtension
+    val displaySuffix = if (selectedSplitSize != SplitSizePreset.NO_SPLIT && selectedFormat == ArchiveFormatOption.SEVEN_Z) {
+        ".7z.001"
+    } else {
+        ext
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -210,6 +226,70 @@ fun CompressDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Split Size Selector
+                Text(
+                    text = "Split size",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedCard(
+                        onClick = { splitDropdownExpanded = true },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = selectedSplitSize.displayName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Select split size"
+                            )
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = splitDropdownExpanded,
+                        onDismissRequest = { splitDropdownExpanded = false }
+                    ) {
+                        for (preset in SplitSizePreset.entries) {
+                            DropdownMenuItem(
+                                text = { Text(preset.displayName) },
+                                onClick = {
+                                    selectedSplitSize = preset
+                                    splitDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (selectedSplitSize == SplitSizePreset.CUSTOM) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = customSplitMb,
+                        onValueChange = { if (it.all { c -> c.isDigit() }) customSplitMb = it },
+                        label = { Text("Volume Size") },
+                        suffix = { Text("MB", fontWeight = FontWeight.Bold) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 val isPasswordValid = !isEncryptEnabled || (password.isNotEmpty() && password == confirmPassword)
                 val canCreate = isNameValid && isPasswordValid
 
@@ -218,7 +298,7 @@ fun CompressDialog(
                     value = rawName,
                     onValueChange = { rawName = it },
                     label = { Text("Archive Name") },
-                    suffix = { Text(ext, color = ZipOrange, fontWeight = FontWeight.Bold) },
+                    suffix = { Text(displaySuffix, color = ZipOrange, fontWeight = FontWeight.Bold) },
                     singleLine = true,
                     isError = !isNameValid && rawName.isNotBlank(),
                     supportingText = {
@@ -237,11 +317,16 @@ fun CompressDialog(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             if (canCreate) {
+                                val finalSplitBytes = when (selectedSplitSize) {
+                                    SplitSizePreset.NO_SPLIT -> null
+                                    SplitSizePreset.CUSTOM -> (customSplitMb.toLongOrNull() ?: 100L).coerceAtLeast(1L) * 1024 * 1024
+                                    else -> selectedSplitSize.sizeBytes
+                                }
                                 val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
                                 val passChars = if (isEncryptEnabled && password.isNotEmpty()) password.toCharArray() else null
                                 password = ""
                                 confirmPassword = ""
-                                onConfirmCreate(finalName, customLevel, passChars)
+                                onConfirmCreate(finalName, customLevel, passChars, finalSplitBytes)
                             }
                         }
                     ),
@@ -476,11 +561,16 @@ fun CompressDialog(
             Button(
                 onClick = {
                     if (canCreate) {
+                        val finalSplitBytes = when (selectedSplitSize) {
+                            SplitSizePreset.NO_SPLIT -> null
+                            SplitSizePreset.CUSTOM -> (customSplitMb.toLongOrNull() ?: 100L).coerceAtLeast(1L) * 1024 * 1024
+                            else -> selectedSplitSize.sizeBytes
+                        }
                         val finalName = if (rawName.endsWith(ext, ignoreCase = true)) rawName else "$rawName$ext"
                         val passChars = if (isEncryptEnabled && password.isNotEmpty()) password.toCharArray() else null
                         password = ""
                         confirmPassword = ""
-                        onConfirmCreate(finalName, customLevel, passChars)
+                        onConfirmCreate(finalName, customLevel, passChars, finalSplitBytes)
                     }
                 },
                 enabled = canCreate,

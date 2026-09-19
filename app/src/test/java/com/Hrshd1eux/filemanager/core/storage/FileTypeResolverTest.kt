@@ -143,6 +143,26 @@ class FileTypeResolverTest {
         assertTrue(FileTypeResolver.isTarZ("DATA.TAZ"))
         assertFalse(FileTypeResolver.isTarZ("archive.tar.gz"))
 
+        // Split archives
+        assertTrue(FileTypeResolver.isArchive("backup.7z.001"))
+        assertTrue(FileTypeResolver.isArchive("backup.7z.002"))
+        assertTrue(FileTypeResolver.isArchive("archive.001"))
+        assertTrue(FileTypeResolver.isArchive("split.z01"))
+        assertTrue(FileTypeResolver.isSplitArchive("backup.7z.001"))
+        assertTrue(FileTypeResolver.isSplitArchive("archive.001"))
+        assertTrue(FileTypeResolver.isSplitArchive("split.z01"))
+        assertFalse(FileTypeResolver.isSplitArchive("backup.7z"))
+        assertFalse(FileTypeResolver.isSplitArchive("archive.zip"))
+
+        assertTrue(FileTypeResolver.is7z("backup.7z.001"))
+        assertTrue(FileTypeResolver.is7z("archive.7z"))
+        assertFalse(FileTypeResolver.is7z("backup.zip"))
+
+        assertEquals(ArchiveFormat.SEVEN_ZIP, FileTypeResolver.resolveArchiveFormat("backup.7z.001"))
+        assertEquals(ArchiveFormat.ZIP, FileTypeResolver.resolveArchiveFormat("backup.z01"))
+        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("backup.7z.001"))
+        assertEquals(FileType.ARCHIVE, FileTypeResolver.resolveType("archive.001"))
+
         assertFalse(FileTypeResolver.isArchive("document.pdf"))
         assertFalse(FileTypeResolver.isArchive("image.png"))
         assertFalse(FileTypeResolver.isArchive("video.mp4"))

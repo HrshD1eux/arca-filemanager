@@ -34,6 +34,16 @@ enum class CompressionMethodOption(val displayName: String) {
     COPY("Copy / Store")
 }
 
+enum class SplitSizePreset(val displayName: String, val sizeBytes: Long?) {
+    NO_SPLIT("No split", null),
+    MB_10("10 MB", 10L * 1024 * 1024),
+    MB_100("100 MB", 100L * 1024 * 1024),
+    MB_700("700 MB (CD)", 700L * 1024 * 1024),
+    GB_2("2 GB", 2L * 1024 * 1024 * 1024),
+    GB_4("4 GB (FAT32)", 4L * 1024 * 1024 * 1024),
+    CUSTOM("Custom", -1L)
+}
+
 data class CompressionProfile(
     val format: ArchiveFormatOption = ArchiveFormatOption.ZIP,
     val levelPreset: CompressionLevelPreset = CompressionLevelPreset.NORMAL,
@@ -41,7 +51,9 @@ data class CompressionProfile(
     val method: CompressionMethodOption = CompressionMethodOption.DEFAULT,
     val threads: Int = 0, // 0 = Auto
     val isSolid: Boolean = true,
-    val dictionarySizeMb: Int = 32
+    val dictionarySizeMb: Int = 32,
+    val splitSize: SplitSizePreset = SplitSizePreset.NO_SPLIT,
+    val customSplitSizeBytes: Long? = null
 ) {
     companion object {
         fun defaultFor(format: ArchiveFormatOption): CompressionProfile {

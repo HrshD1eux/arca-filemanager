@@ -11,9 +11,12 @@ import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
+import com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver
+import com.Hrshd1eux.filemanager.core.archive.split.SplitResolution
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -87,7 +90,9 @@ class ArchiveViewerViewModel(
     }
 
     private fun is7z(file: File?): Boolean {
-        return file?.extension?.equals("7z", ignoreCase = true) == true
+        if (file == null) return false
+        val lower = file.name.lowercase()
+        return lower.endsWith(".7z") || FileTypeResolver.is7z(lower)
     }
 
     private fun isTar(file: File?): Boolean {
@@ -415,6 +420,13 @@ class ArchiveViewerViewModel(
             return
         }
 
+        if (FileTypeResolver.isSplitArchive(file.name)) {
+            viewModelScope.launch {
+                _userMessage.emit("Appending to split archives in-place is not supported. Please recreate the archive.")
+            }
+            return
+        }
+
         if (is7z(file) || isTar(file)) {
             viewModelScope.launch {
                 _userMessage.emit("Appending to existing archives is only supported for ZIP files. Please recreate the archive.")
@@ -456,10 +468,19 @@ class ArchiveViewerViewModel(
         val totalUncompressed = allEntries.filter { !it.isDirectory }.sumOf { it.uncompressedSize }
         val totalCompressed = allEntries.filter { !it.isDirectory }.sumOf { it.compressedSize }
         val totalFiles = allEntries.count { !it.isDirectory }
+        val resolution = SplitArchiveResolver.resolveSplitParts(file)
+        val splitSuccess = resolution as? SplitResolution.Success
+        val isSplit = splitSuccess?.isSplit == true
+        val displayName = if (isSplit && splitSuccess != null) {
+            "${splitSuccess.baseName} (${splitSuccess.parts.size} parts)"
+        } else {
+            file.name
+        }
         val isRarFormat = isRar(file)
         val isIsoFormat = isIso(file)
         val ext = file.extension.lowercase()
         val formatBadge = when {
+            isSplit && splitSuccess != null -> "7Z Split Archive (${splitSuccess.parts.size} volumes)"
             isIsoFormat -> "ISO Disc Image (Extraction & Viewing only)"
             isRarFormat -> "RAR (Extraction & Viewing only)"
             ext == "arj" -> "ARJ Archive (Extraction & Viewing only)"
@@ -469,10 +490,10 @@ class ArchiveViewerViewModel(
             file.name.lowercase().endsWith(".tar.z") || file.name.lowercase().endsWith(".taz") -> "TAR.Z (Extraction & Viewing only)"
             else -> null
         }
-        val isReadOnly = isIsoFormat || isRarFormat || is7z(file) || isTar(file) || (isExtendedArchive(file) && ext != "cpio")
+        val isReadOnly = isIsoFormat || isRarFormat || is7z(file) || isTar(file) || isSplit || (isExtendedArchive(file) && ext != "cpio")
 
         _uiState.value = ArchiveViewerUiState.Success(
-            archiveName = file.name,
+            archiveName = displayName,
             currentVirtualPath = currentVirtualPath,
             breadcrumbs = breadcrumbs,
             items = directChildren,
