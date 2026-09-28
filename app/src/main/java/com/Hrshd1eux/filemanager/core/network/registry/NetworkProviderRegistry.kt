@@ -21,12 +21,15 @@ object NetworkProviderRegistry {
     /**
      * Factory method creating the appropriate concrete NetworkProvider for a given server configuration.
      */
-    fun createProvider(config: NetworkServerConfig): NetworkProvider {
+    fun createProvider(
+        config: NetworkServerConfig,
+        ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
+    ): NetworkProvider {
         config.validate()
         return when (config.protocol) {
             NetworkProtocol.FTP -> FtpNetworkProvider(config)
             NetworkProtocol.FTPS -> FtpsNetworkProvider(config)
-            NetworkProtocol.SFTP -> SftpNetworkProvider(config)
+            NetworkProtocol.SFTP -> SftpNetworkProvider(config, ioDispatcher)
             NetworkProtocol.SMB -> SmbNetworkProvider(config)
             NetworkProtocol.WEBDAV -> WebDavNetworkProvider(config)
         }

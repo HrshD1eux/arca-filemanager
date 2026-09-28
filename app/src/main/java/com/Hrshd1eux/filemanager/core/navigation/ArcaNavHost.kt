@@ -18,6 +18,7 @@ import com.Hrshd1eux.filemanager.feature.cleaner.duplicates.DuplicateFinderScree
 import com.Hrshd1eux.filemanager.feature.cleaner.largefiles.LargeFilesScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
 import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
+import com.Hrshd1eux.filemanager.feature.network.browser.NetworkFileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
 import com.Hrshd1eux.filemanager.feature.vault.VaultScreen
 import java.io.File
@@ -54,6 +55,9 @@ fun ArcaNavHost(
                 },
                 onNavigateToVault = {
                     navController.navigate(Screen.Vault)
+                },
+                onNavigateToNetworkBrowser = { connectionId, title ->
+                    navController.navigate(Screen.NetworkBrowser(connectionId = connectionId, title = title))
                 },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) }
@@ -167,6 +171,21 @@ fun ArcaNavHost(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) {
             VaultScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.NetworkBrowser>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.NetworkBrowser>()
+            NetworkFileBrowserScreen(
+                connectionId = route.connectionId,
+                initialPath = route.initialPath,
+                title = route.title,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

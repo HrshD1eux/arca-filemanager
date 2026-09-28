@@ -5,6 +5,8 @@ import com.Hrshd1eux.filemanager.core.network.model.NetworkConnectionState
 import com.Hrshd1eux.filemanager.core.network.model.NetworkException
 import com.Hrshd1eux.filemanager.core.network.model.NetworkProtocol
 import com.Hrshd1eux.filemanager.core.network.model.NetworkServerConfig
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +18,8 @@ import kotlinx.coroutines.flow.asStateFlow
 abstract class BaseNetworkProvider(
     final override val config: NetworkServerConfig,
     final override val protocol: NetworkProtocol,
-    final override val capabilities: NetworkCapabilities
+    final override val capabilities: NetworkCapabilities,
+    protected val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : NetworkProvider {
 
     protected val _connectionState = MutableStateFlow<NetworkConnectionState>(NetworkConnectionState.Disconnected)

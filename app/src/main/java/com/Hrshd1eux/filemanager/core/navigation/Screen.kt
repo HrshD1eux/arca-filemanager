@@ -45,4 +45,11 @@ sealed interface Screen {
 
     @Serializable
     data object Vault : Screen
+
+    @Serializable
+    data class NetworkBrowser(
+        val connectionId: String,
+        val initialPath: String? = null,
+        val title: String = "Remote Server"
+    ) : Screen
 }

@@ -8,6 +8,7 @@ import com.Hrshd1eux.filemanager.core.network.model.NetworkException
 import com.Hrshd1eux.filemanager.core.network.model.NetworkNode
 import com.Hrshd1eux.filemanager.core.network.model.NetworkProtocol
 import com.Hrshd1eux.filemanager.core.network.model.NetworkServerConfig
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
@@ -26,15 +27,18 @@ import java.io.OutputStream
  * - Resumable file transfers and random-access seeking
  */
 class SftpNetworkProvider(
-    config: NetworkServerConfig
+    config: NetworkServerConfig,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : BaseNetworkProvider(
     config = config,
     protocol = NetworkProtocol.SFTP,
-    capabilities = NetworkCapabilities.SFTP
+    capabilities = NetworkCapabilities.SFTP,
+    ioDispatcher = ioDispatcher
 ) {
     private val virtualNodes = mutableMapOf<String, NetworkNode>()
+    private val virtualFileContents = mutableMapOf<String, ByteArray>()
 
-    override suspend fun connect(): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun connect(): Result<Unit> = withContext(ioDispatcher) {
         runCatching {
             _connectionState.value = NetworkConnectionState.Connecting
             _connectionState.value = NetworkConnectionState.Connected
@@ -73,13 +77,14 @@ class SftpNetworkProvider(
         }
     }
 
-    override suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {
+    override suspend fun disconnect(): Unit = withContext(ioDispatcher) {
         _connectionState.value = NetworkConnectionState.Disconnecting
         virtualNodes.clear()
+        virtualFileContents.clear()
         _connectionState.value = NetworkConnectionState.Disconnected
     }
 
-    override suspend fun testConnection(): Result<NetworkConnectionTestResult> = withContext(Dispatchers.IO) {
+    override suspend fun testConnection(): Result<NetworkConnectionTestResult> = withContext(ioDispatcher) {
         runCatching {
             val start = System.currentTimeMillis()
             if (config.host.isBlank()) {
@@ -95,7 +100,7 @@ class SftpNetworkProvider(
         }
     }
 
-    override suspend fun listChildren(remotePath: String): Result<List<NetworkNode>> = withContext(Dispatchers.IO) {
+    override suspend fun listChildren(remotePath: String): Result<List<NetworkNode>> = withContext(ioDispatcher) {
         runCatching {
             checkReady()
             val target = normalizePath(remotePath)
@@ -106,7 +111,7 @@ class SftpNetworkProvider(
         }
     }
 
-    override suspend fun getNode(remotePath: String): Result<NetworkNode> = withContext(Dispatchers.IO) {
+    override suspend fun getNode(remotePath: String): Result<NetworkNode> = withContext(ioDispatcher) {
         runCatching {
             checkReady()
             val target = normalizePath(remotePath)
@@ -114,36 +119,43 @@ class SftpNetworkProvider(
         }
     }
 
-    override suspend fun openInputStream(remotePath: String): Result<InputStream> = withContext(Dispatchers.IO) {
+    override suspend fun openInputStream(remotePath: String): Result<InputStream> = withContext(ioDispatcher) {
         runCatching {
             checkReady()
             val target = normalizePath(remotePath)
             val node = virtualNodes[target] ?: throw NetworkException.RemoteFileNotFoundException(target)
             if (node.isDirectory) throw NetworkException.ProtocolViolationException(protocol, "Cannot read directory as file stream: '$target'")
-            ByteArrayInputStream(ByteArray(0))
+            val bytes = virtualFileContents[target] ?: ByteArray(0)
+            ByteArrayInputStream(bytes)
         }
     }
 
-    override suspend fun openOutputStream(remotePath: String, append: Boolean): Result<OutputStream> = withContext(Dispatchers.IO) {
+    override suspend fun openOutputStream(remotePath: String, append: Boolean): Result<OutputStream> = withContext(ioDispatcher) {
         runCatching {
             checkReady()
             val target = normalizePath(remotePath)
             val name = target.substringAfterLast('/')
-            virtualNodes[target] = NetworkNode(
-                path = target,
-                name = name,
-                isDirectory = false,
-                size = 0L,
-                permissions = "rw-r--r--",
-                lastModified = System.currentTimeMillis(),
-                protocol = protocol,
-                serverConfigId = config.id
-            )
-            ByteArrayOutputStream()
+            object : ByteArrayOutputStream() {
+                override fun close() {
+                    super.close()
+                    val bytes = toByteArray()
+                    virtualFileContents[target] = bytes
+                    virtualNodes[target] = NetworkNode(
+                        path = target,
+                        name = name,
+                        isDirectory = false,
+                        size = bytes.size.toLong(),
+                        permissions = "rw-r--r--",
+                        lastModified = System.currentTimeMillis(),
+                        protocol = protocol,
+                        serverConfigId = config.id
+                    )
+                }
+            }
         }
     }
 
-    override suspend fun createDirectory(remotePath: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun createDirectory(remotePath: String): Result<Unit> = withContext(ioDispatcher) {
         runCatching {
             checkReady()
             val target = normalizePath(remotePath)
@@ -160,7 +172,7 @@ class SftpNetworkProvider(
         }
     }
 
-    override suspend fun delete(remotePath: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun delete(remotePath: String): Result<Unit> = withContext(ioDispatcher) {
         runCatching {
             checkReady()
             val target = normalizePath(remotePath)
@@ -170,7 +182,7 @@ class SftpNetworkProvider(
         }
     }
 
-    override suspend fun rename(remotePath: String, newName: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun rename(remotePath: String, newName: String): Result<Unit> = withContext(ioDispatcher) {
         runCatching {
             checkReady()
             val target = normalizePath(remotePath)
@@ -178,6 +190,10 @@ class SftpNetworkProvider(
             val parent = target.substringBeforeLast('/').ifEmpty { "/" }
             val newPath = if (parent == "/") "/$newName" else "$parent/$newName"
             virtualNodes[newPath] = node.copy(path = newPath, name = newName)
+            val content = virtualFileContents.remove(target)
+            if (content != null) {
+                virtualFileContents[newPath] = content
+            }
         }
     }
 

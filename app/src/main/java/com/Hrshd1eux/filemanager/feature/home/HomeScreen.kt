@@ -65,6 +65,7 @@ fun HomeScreen(
     onNavigateToLargeFiles: (rootPath: String?) -> Unit = {},
     onNavigateToDuplicateFinder: (rootPath: String?) -> Unit = {},
     onNavigateToVault: () -> Unit = {},
+    onNavigateToNetworkBrowser: (connectionId: String, title: String) -> Unit = { _, _ -> },
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -256,7 +257,7 @@ fun HomeScreen(
             onDismiss = { showNetworkSheet = false },
             onConnectToRemote = { config ->
                 showNetworkSheet = false
-                onNavigateToBrowser(config.basePath, "${config.name} (${config.protocol.name})")
+                onNavigateToNetworkBrowser(config.id, config.name)
             }
         )
     }
