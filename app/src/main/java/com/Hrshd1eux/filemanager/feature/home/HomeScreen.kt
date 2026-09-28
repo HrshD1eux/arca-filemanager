@@ -54,6 +54,7 @@ import com.Hrshd1eux.filemanager.feature.home.components.HomeStorageCard
 import com.Hrshd1eux.filemanager.feature.home.components.HomeStorageFoldersList
 import com.Hrshd1eux.filemanager.feature.home.components.NetworkStatusDialog
 import com.Hrshd1eux.filemanager.feature.home.components.RecentsSheet
+import com.Hrshd1eux.filemanager.feature.network.components.NetworkConnectionsSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +73,7 @@ fun HomeScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showFavoritesSheet by remember { mutableStateOf(false) }
     var showRecentsSheet by remember { mutableStateOf(false) }
-    var showNetworkDialog by remember { mutableStateOf(false) }
+    var showNetworkSheet by remember { mutableStateOf(false) }
     var showClearRecentsDialog by remember { mutableStateOf(false) }
 
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
@@ -183,7 +184,7 @@ fun HomeScreen(
                     onFavoritesClick = { showFavoritesSheet = true },
                     onRecentsClick = { showRecentsSheet = true },
                     onVaultClick = onNavigateToVault,
-                    onNetworkClick = { showNetworkDialog = true }
+                    onNetworkClick = { showNetworkSheet = true }
                 )
             }
 
@@ -249,10 +250,14 @@ fun HomeScreen(
         )
     }
 
-    // Network Status Dialog
-    if (showNetworkDialog) {
-        NetworkStatusDialog(
-            onDismiss = { showNetworkDialog = false }
+    // Network Connections Sheet
+    if (showNetworkSheet) {
+        NetworkConnectionsSheet(
+            onDismiss = { showNetworkSheet = false },
+            onConnectToRemote = { config ->
+                showNetworkSheet = false
+                onNavigateToBrowser(config.basePath, "${config.name} (${config.protocol.name})")
+            }
         )
     }
 
