@@ -322,7 +322,7 @@ fun RecentsSheet(
 }
 
 /**
- * Informative dialog for Network navigation item.
+ * Informative dialog displaying the NetworkProvider architecture and offline isolation guarantee.
  */
 @Composable
 fun NetworkStatusDialog(
@@ -340,12 +340,13 @@ fun NetworkStatusDialog(
         },
         title = {
             Text(
-                text = "Network Storage",
+                text = "Network Architecture",
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Isolation guarantee header
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Security,
@@ -355,22 +356,74 @@ fun NetworkStatusDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "100% Offline & Private",
+                        text = "Isolated from Offline Core",
                         fontWeight = FontWeight.Bold,
                         color = VaultEmerald
                     )
                 }
 
                 Text(
-                    text = "ARCA operates strictly offline with zero remote telemetry or internet permissions.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                Text(
-                    text = "Local LAN storage protocols (SMB / Samba, FTP, and WebDAV) are planned for the 1.2 series to enable private network shares without cloud exposure.",
+                    text = "ARCA's network subsystem is strictly isolated from local storage engines. Zero telemetry, zero analytics, and zero cloud tracking.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                // 5 Network Protocols
+                Text(
+                    text = "Supported Protocols:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                val protocols = listOf(
+                    Triple("FTP", "Port 21 • Plaintext LAN", "RFC 959"),
+                    Triple("FTPS", "Port 21/990 • TLS Encrypted", "RFC 4217"),
+                    Triple("SFTP", "Port 22 • SSHv2 Encrypted", "SSH Subsystem"),
+                    Triple("SMB", "Port 445 • SMB2/SMB3 Mandated", "Windows / Samba"),
+                    Triple("WebDAV", "Port 80/443 • HTTP/HTTPS", "RFC 4918")
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    protocols.forEach { (name, details, spec) ->
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = details,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Text(
+                                    text = spec,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
