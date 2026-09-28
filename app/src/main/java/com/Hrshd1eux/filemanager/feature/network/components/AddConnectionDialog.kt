@@ -1,6 +1,7 @@
 package com.Hrshd1eux.filemanager.feature.network.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +22,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.NetworkCheck
+import androidx.compose.material.icons.filled.NoEncryption
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -30,6 +33,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,12 +64,12 @@ import com.Hrshd1eux.filemanager.core.network.model.NetworkAuthType
 import com.Hrshd1eux.filemanager.core.network.model.NetworkConnectionTestResult
 import com.Hrshd1eux.filemanager.core.network.model.NetworkProtocol
 import com.Hrshd1eux.filemanager.core.network.model.NetworkServerConfig
-import com.Hrshd1eux.filemanager.core.network.provider.SftpNetworkProvider
+import com.Hrshd1eux.filemanager.core.network.registry.NetworkProviderRegistry
 import kotlinx.coroutines.launch
 
 /**
  * Dialog for adding a new remote network connection.
- * Prioritizes SFTP over unencrypted FTP.
+ * Prioritizes SFTP and FTPS, with explicit warnings when unencrypted FTP is selected.
  */
 @Composable
 fun AddConnectionDialog(
@@ -84,6 +88,12 @@ fun AddConnectionDialog(
     var passphrase by remember { mutableStateOf("") }
     var basePath by remember { mutableStateOf("/") }
 
+    // Protocol Specific Options
+    var isPassiveMode by remember { mutableStateOf(true) }
+    var isImplicitTls by remember { mutableStateOf(false) }
+    var allowSelfSignedCert by remember { mutableStateOf(false) }
+    var isAnonymousFtp by remember { mutableStateOf(false) }
+
     var showPassword by remember { mutableStateOf(false) }
     var showPassphrase by remember { mutableStateOf(false) }
 
@@ -92,24 +102,39 @@ fun AddConnectionDialog(
     val scope = rememberCoroutineScope()
 
     val isFormValid = name.isNotBlank() && host.isNotBlank() && (portText.toIntOrNull() ?: 0) in 1..65535 &&
-            when (authType) {
-                NetworkAuthType.PASSWORD -> username.isNotBlank() && password.isNotEmpty()
-                NetworkAuthType.KEY_PAIR -> username.isNotBlank() && privateKey.isNotBlank()
+            when {
+                selectedProtocol == NetworkProtocol.FTP && isAnonymousFtp -> true
+                authType == NetworkAuthType.PASSWORD -> username.isNotBlank() && password.isNotEmpty()
+                authType == NetworkAuthType.KEY_PAIR -> username.isNotBlank() && privateKey.isNotBlank()
                 else -> true
             }
 
     fun buildConfig(): NetworkServerConfig {
+        val effectiveAuth = if (selectedProtocol == NetworkProtocol.FTP && isAnonymousFtp) {
+            NetworkAuthType.ANONYMOUS
+        } else {
+            authType
+        }
+        val effectiveUser = if (selectedProtocol == NetworkProtocol.FTP && isAnonymousFtp) {
+            "anonymous"
+        } else {
+            username.trim().ifEmpty { null }
+        }
+
         return NetworkServerConfig(
             name = name.trim(),
             protocol = selectedProtocol,
             host = host.trim(),
             port = portText.toIntOrNull() ?: selectedProtocol.defaultPort,
-            authType = authType,
-            username = username.trim().ifEmpty { null },
-            password = if (authType == NetworkAuthType.PASSWORD) password else null,
-            privateKey = if (authType == NetworkAuthType.KEY_PAIR) privateKey.trim() else null,
-            passphrase = if (authType == NetworkAuthType.KEY_PAIR && passphrase.isNotEmpty()) passphrase else null,
-            basePath = basePath.trim().ifEmpty { "/" }
+            authType = effectiveAuth,
+            username = effectiveUser,
+            password = if (effectiveAuth == NetworkAuthType.PASSWORD) password else null,
+            privateKey = if (effectiveAuth == NetworkAuthType.KEY_PAIR) privateKey.trim() else null,
+            passphrase = if (effectiveAuth == NetworkAuthType.KEY_PAIR && passphrase.isNotEmpty()) passphrase else null,
+            basePath = basePath.trim().ifEmpty { "/" },
+            isPassiveMode = isPassiveMode,
+            isImplicitTls = isImplicitTls,
+            allowSelfSignedCert = allowSelfSignedCert
         )
     }
 
@@ -138,7 +163,7 @@ fun AddConnectionDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Protocol Priority Selector (SFTP Prioritized)
+                // Protocol Priority Selector (SFTP / FTPS / FTP)
                 Text(
                     text = "Protocol",
                     style = MaterialTheme.typography.labelMedium,
@@ -147,9 +172,9 @@ fun AddConnectionDialog(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // 1. SFTP (Prioritized)
+                    // 1. SFTP (Default & Prioritized)
                     Card(
                         modifier = Modifier
                             .weight(1f)
@@ -171,7 +196,7 @@ fun AddConnectionDialog(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(10.dp),
+                            modifier = Modifier.padding(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -189,14 +214,59 @@ fun AddConnectionDialog(
                                 )
                             }
                             Text(
-                                text = "Encrypted SSH (Port 22)",
+                                text = "SSH (22)",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    // 2. FTP (Legacy LAN)
+                    // 2. FTPS (TLS Encrypted)
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                selectedProtocol = NetworkProtocol.FTPS
+                                portText = if (isImplicitTls) "990" else "21"
+                                authType = NetworkAuthType.PASSWORD
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedProtocol == NetworkProtocol.FTPS) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            }
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = VaultEmerald,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "FTPS",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                            }
+                            Text(
+                                text = "TLS (21/990)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // 3. FTP (Plaintext - Warned)
                     Card(
                         modifier = Modifier
                             .weight(1f)
@@ -208,7 +278,7 @@ fun AddConnectionDialog(
                             },
                         colors = CardDefaults.cardColors(
                             containerColor = if (selectedProtocol == NetworkProtocol.FTP) {
-                                MaterialTheme.colorScheme.primaryContainer
+                                Color(0xFFFFECB3)
                             } else {
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                             }
@@ -216,14 +286,14 @@ fun AddConnectionDialog(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(10.dp),
+                            modifier = Modifier.padding(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = Icons.Default.Warning,
                                     contentDescription = null,
-                                    tint = Color(0xFFE6A700),
+                                    tint = Color(0xFFE65100),
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -234,9 +304,75 @@ fun AddConnectionDialog(
                                 )
                             }
                             Text(
-                                text = "Plaintext LAN (Port 21)",
+                                text = "Plain (21)",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = Color(0xFFBF360C)
+                            )
+                        }
+                    }
+                }
+
+                // EXPLICIT WARNING: Whenever FTP is selected
+                if (selectedProtocol == NetworkProtocol.FTP) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFFFF3E0),
+                        border = BorderStroke(1.dp, Color(0xFFFFB74D)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Warning",
+                                tint = Color(0xFFE65100),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "⚠ FTP is not encrypted.",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFFBF360C)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Use SFTP or FTPS when possible. Passwords and file transfers travel in cleartext over the network.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF5D4037)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // FTPS Encryption Information Badge
+                if (selectedProtocol == NetworkProtocol.FTPS) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = VaultEmerald.copy(alpha = 0.10f),
+                        border = BorderStroke(1.dp, VaultEmerald.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = VaultEmerald,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "FTPS encrypts control and data channels using TLS (PROT P).",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = VaultEmerald,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
@@ -274,93 +410,199 @@ fun AddConnectionDialog(
                     )
                 }
 
-                // Authentication Method
-                if (selectedProtocol == NetworkProtocol.SFTP) {
+                // FTPS Mode Selector (Explicit AUTH TLS vs Implicit TLS)
+                if (selectedProtocol == NetworkProtocol.FTPS) {
                     Text(
-                        text = "Authentication Method",
+                        text = "TLS Mode",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { authType = NetworkAuthType.PASSWORD }
+                            modifier = Modifier.clickable {
+                                isImplicitTls = false
+                                portText = "21"
+                            }
                         ) {
                             RadioButton(
-                                selected = authType == NetworkAuthType.PASSWORD,
-                                onClick = { authType = NetworkAuthType.PASSWORD }
+                                selected = !isImplicitTls,
+                                onClick = {
+                                    isImplicitTls = false
+                                    portText = "21"
+                                }
                             )
-                            Text("Password", style = MaterialTheme.typography.bodyMedium)
+                            Text("Explicit (AUTH TLS :21)", style = MaterialTheme.typography.bodySmall)
                         }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { authType = NetworkAuthType.KEY_PAIR }
+                            modifier = Modifier.clickable {
+                                isImplicitTls = true
+                                portText = "990"
+                            }
                         ) {
                             RadioButton(
-                                selected = authType == NetworkAuthType.KEY_PAIR,
-                                onClick = { authType = NetworkAuthType.KEY_PAIR }
+                                selected = isImplicitTls,
+                                onClick = {
+                                    isImplicitTls = true
+                                    portText = "990"
+                                }
                             )
-                            Text("SSH Key", style = MaterialTheme.typography.bodyMedium)
+                            Text("Implicit (:990)", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+
+                    // Self-signed certificate checkbox
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { allowSelfSignedCert = !allowSelfSignedCert }
+                            .padding(vertical = 2.dp)
+                    ) {
+                        Checkbox(
+                            checked = allowSelfSignedCert,
+                            onCheckedChange = { allowSelfSignedCert = it }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Column {
+                            Text("Allow self-signed certificates", style = MaterialTheme.typography.bodyMedium)
+                            Text("Bypasses standard CA chain verification for home NAS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
 
-                // Username
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Username") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // FTP Specific Options (Passive Mode & Anonymous)
+                if (selectedProtocol == NetworkProtocol.FTP) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { isPassiveMode = !isPassiveMode }
+                            .padding(vertical = 2.dp)
+                    ) {
+                        Checkbox(
+                            checked = isPassiveMode,
+                            onCheckedChange = { isPassiveMode = it }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Column {
+                            Text("Passive Mode (PASV)", style = MaterialTheme.typography.bodyMedium)
+                            Text("Recommended for connections behind NAT routers and firewalls", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
 
-                // Password or SSH Key Fields
-                if (authType == NetworkAuthType.PASSWORD) {
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Password") },
-                        singleLine = true,
-                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { showPassword = !showPassword }) {
-                                Icon(
-                                    imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = null
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { isAnonymousFtp = !isAnonymousFtp }
+                            .padding(vertical = 2.dp)
+                    ) {
+                        Checkbox(
+                            checked = isAnonymousFtp,
+                            onCheckedChange = { isAnonymousFtp = it }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Anonymous Login", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+
+                // Authentication Method (when not Anonymous FTP)
+                if (!isAnonymousFtp || selectedProtocol != NetworkProtocol.FTP) {
+                    if (selectedProtocol == NetworkProtocol.SFTP) {
+                        Text(
+                            text = "Authentication Method",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { authType = NetworkAuthType.PASSWORD }
+                            ) {
+                                RadioButton(
+                                    selected = authType == NetworkAuthType.PASSWORD,
+                                    onClick = { authType = NetworkAuthType.PASSWORD }
                                 )
+                                Text("Password", style = MaterialTheme.typography.bodyMedium)
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else if (authType == NetworkAuthType.KEY_PAIR) {
-                    OutlinedTextField(
-                        value = privateKey,
-                        onValueChange = { privateKey = it },
-                        label = { Text("Private Key (PEM / OpenSSH)") },
-                        placeholder = { Text("-----BEGIN OPENSSH PRIVATE KEY-----") },
-                        maxLines = 4,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = passphrase,
-                        onValueChange = { passphrase = it },
-                        label = { Text("Passphrase (Optional)") },
-                        singleLine = true,
-                        visualTransformation = if (showPassphrase) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { showPassphrase = !showPassphrase }) {
-                                Icon(
-                                    imageVector = if (showPassphrase) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = null
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { authType = NetworkAuthType.KEY_PAIR }
+                            ) {
+                                RadioButton(
+                                    selected = authType == NetworkAuthType.KEY_PAIR,
+                                    onClick = { authType = NetworkAuthType.KEY_PAIR }
                                 )
+                                Text("SSH Key", style = MaterialTheme.typography.bodyMedium)
                             }
-                        },
+                        }
+                    }
+
+                    // Username
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("Username") },
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // Password or SSH Key Fields
+                    if (authType == NetworkAuthType.PASSWORD) {
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Password") },
+                            singleLine = true,
+                            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { showPassword = !showPassword }) {
+                                    Icon(
+                                        imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else if (authType == NetworkAuthType.KEY_PAIR && selectedProtocol == NetworkProtocol.SFTP) {
+                        OutlinedTextField(
+                            value = privateKey,
+                            onValueChange = { privateKey = it },
+                            label = { Text("Private Key (PEM / OpenSSH)") },
+                            placeholder = { Text("-----BEGIN OPENSSH PRIVATE KEY-----") },
+                            maxLines = 4,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = passphrase,
+                            onValueChange = { passphrase = it },
+                            label = { Text("Passphrase (Optional)") },
+                            singleLine = true,
+                            visualTransformation = if (showPassphrase) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { showPassphrase = !showPassphrase }) {
+                                    Icon(
+                                        imageVector = if (showPassphrase) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
 
                 // Base Path
@@ -447,7 +689,7 @@ fun AddConnectionDialog(
                             isTesting = true
                             testResult = null
                             val config = buildConfig()
-                            val provider = SftpNetworkProvider(config)
+                            val provider = NetworkProviderRegistry.createProvider(config)
                             val res = provider.testConnection()
                             testResult = res.getOrElse {
                                 NetworkConnectionTestResult(

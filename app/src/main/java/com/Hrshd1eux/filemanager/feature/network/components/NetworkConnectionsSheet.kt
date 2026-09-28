@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -197,7 +198,7 @@ fun NetworkConnectionsSheet(
                                         connectingId = item.id
                                         statusMessage = "Connecting to ${item.name} (${item.host})..."
                                         val fullConfig = actualRepository.populateWithSecrets(item)
-                                        val provider = SftpNetworkProvider(fullConfig)
+                                        val provider = com.Hrshd1eux.filemanager.core.network.registry.NetworkProviderRegistry.createProvider(fullConfig)
                                         val connectResult = provider.connect()
                                         if (connectResult.isSuccess) {
                                             statusMessage = "Connected to ${item.name}!"
@@ -210,7 +211,11 @@ fun NetworkConnectionsSheet(
                                 },
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                                containerColor = if (item.protocol == NetworkProtocol.FTP) {
+                                    Color(0xFFFFF8E1).copy(alpha = 0.7f)
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                                }
                             )
                         ) {
                             Row(
@@ -224,13 +229,22 @@ fun NetworkConnectionsSheet(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    // 🔒 Lock Icon (Encrypted SSH indicator)
-                                    Icon(
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = "Encrypted Connection",
-                                        tint = if (item.protocol == NetworkProtocol.SFTP) VaultEmerald else Color(0xFFE6A700),
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                                    // Lock / Warning Icon
+                                    if (item.protocol == NetworkProtocol.FTP) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = "Unencrypted Connection",
+                                            tint = Color(0xFFE65100),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = "Encrypted Connection",
+                                            tint = VaultEmerald,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
                                     Spacer(modifier = Modifier.width(14.dp))
                                     Column {
                                         // Connection Name
@@ -239,11 +253,11 @@ fun NetworkConnectionsSheet(
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold
                                         )
-                                        // Host Address
+                                        // Host Address & Security note
                                         Text(
-                                            text = item.host,
+                                            text = if (item.protocol == NetworkProtocol.FTP) "${item.host} • ⚠ Plaintext" else item.host,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = if (item.protocol == NetworkProtocol.FTP) Color(0xFFBF360C) else MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
@@ -256,16 +270,22 @@ fun NetworkConnectionsSheet(
                                         )
                                     } else {
                                         // Protocol tag
+                                        val tagColor = if (item.protocol == NetworkProtocol.FTP) Color(0xFFE65100) else MaterialTheme.colorScheme.primary
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                            color = tagColor.copy(alpha = 0.12f),
                                             modifier = Modifier.padding(end = 6.dp)
                                         ) {
                                             Text(
-                                                text = item.protocol.name,
+                                                text = when (item.protocol) {
+                                                    NetworkProtocol.SFTP -> "SFTP (SSH)"
+                                                    NetworkProtocol.FTPS -> "FTPS (TLS)"
+                                                    NetworkProtocol.FTP -> "⚠ FTP"
+                                                    else -> item.protocol.name
+                                                },
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary,
+                                                color = tagColor,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
                                         }
