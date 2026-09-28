@@ -158,21 +158,49 @@ object ArchiveSecurityEvaluator {
 
     /**
      * Generates a cryptographically strong random password using CSPRNG.
-     * Guaranteed to contain at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 symbol.
+     * Guaranteed to contain at least 1 character from each active character class.
+     *
+     * @param length Desired password length (8..64, default 24).
+     * @param includeLetters Whether to include letters (both uppercase A-Z and lowercase a-z).
+     * @param includeNumbers Whether to include digits (0-9).
+     * @param includeSymbols Whether to include symbols (!@#$%^&*...).
+     * @throws IllegalArgumentException if all character classes are set to false.
      */
-    fun generateSecurePassword(length: Int = 16): String {
+    fun generateSecurePassword(
+        length: Int = 24,
+        includeLetters: Boolean = true,
+        includeNumbers: Boolean = true,
+        includeSymbols: Boolean = true
+    ): String {
+        require(includeLetters || includeNumbers || includeSymbols) {
+            "At least one character class (Letters, Numbers, or Symbols) must be enabled."
+        }
+
         val safeLen = length.coerceIn(8, 64)
         val chars = CharArray(safeLen)
+        var writeIndex = 0
 
-        // Guarantee all 4 character classes
-        chars[0] = UPPERCASE[secureRandom.nextInt(UPPERCASE.length)]
-        chars[1] = LOWERCASE[secureRandom.nextInt(LOWERCASE.length)]
-        chars[2] = DIGITS[secureRandom.nextInt(DIGITS.length)]
-        chars[3] = SYMBOLS[secureRandom.nextInt(SYMBOLS.length)]
+        // Build active alphabet pool
+        val pool = StringBuilder()
+        if (includeLetters) {
+            pool.append(UPPERCASE).append(LOWERCASE)
+            chars[writeIndex++] = UPPERCASE[secureRandom.nextInt(UPPERCASE.length)]
+            chars[writeIndex++] = LOWERCASE[secureRandom.nextInt(LOWERCASE.length)]
+        }
+        if (includeNumbers) {
+            pool.append(DIGITS)
+            chars[writeIndex++] = DIGITS[secureRandom.nextInt(DIGITS.length)]
+        }
+        if (includeSymbols) {
+            pool.append(SYMBOLS)
+            chars[writeIndex++] = SYMBOLS[secureRandom.nextInt(SYMBOLS.length)]
+        }
 
-        // Fill remaining with random characters from all sets
-        for (i in 4 until safeLen) {
-            chars[i] = ALL_CHARS[secureRandom.nextInt(ALL_CHARS.length)]
+        val poolStr = pool.toString()
+
+        // Fill remaining length from active character pool
+        for (i in writeIndex until safeLen) {
+            chars[i] = poolStr[secureRandom.nextInt(poolStr.length)]
         }
 
         // Fisher-Yates shuffle with CSPRNG

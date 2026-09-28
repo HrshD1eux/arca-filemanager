@@ -102,8 +102,91 @@ class ArchiveSecurityEvaluatorTest {
     }
 
     @Test
+    fun generateSecurePassword_defaultLength24_containsAllClasses() {
+        val pwd = ArchiveSecurityEvaluator.generateSecurePassword()
+        assertEquals(24, pwd.length)
+
+        val hasUpper = pwd.any { it in 'A'..'Z' }
+        val hasLower = pwd.any { it in 'a'..'z' }
+        val hasDigit = pwd.any { it in '0'..'9' }
+        val hasSymbol = pwd.any { "!@#$%^&*()-_=+[]{}|;:,.<>?".contains(it) }
+
+        assertTrue("Must contain uppercase", hasUpper)
+        assertTrue("Must contain lowercase", hasLower)
+        assertTrue("Must contain digit", hasDigit)
+        assertTrue("Must contain symbol", hasSymbol)
+    }
+
+    @Test
+    fun generateSecurePassword_lettersOnly_containsOnlyLetters() {
+        val pwd = ArchiveSecurityEvaluator.generateSecurePassword(
+            length = 24,
+            includeLetters = true,
+            includeNumbers = false,
+            includeSymbols = false
+        )
+        assertEquals(24, pwd.length)
+        assertTrue(pwd.all { it in 'a'..'z' || it in 'A'..'Z' })
+        assertFalse(pwd.any { it in '0'..'9' })
+        assertFalse(pwd.any { "!@#$%^&*()-_=+[]{}|;:,.<>?".contains(it) })
+    }
+
+    @Test
+    fun generateSecurePassword_numbersOnly_containsOnlyDigits() {
+        val pwd = ArchiveSecurityEvaluator.generateSecurePassword(
+            length = 24,
+            includeLetters = false,
+            includeNumbers = true,
+            includeSymbols = false
+        )
+        assertEquals(24, pwd.length)
+        assertTrue(pwd.all { it in '0'..'9' })
+        assertFalse(pwd.any { it in 'a'..'z' || it in 'A'..'Z' })
+        assertFalse(pwd.any { "!@#$%^&*()-_=+[]{}|;:,.<>?".contains(it) })
+    }
+
+    @Test
+    fun generateSecurePassword_symbolsOnly_containsOnlySymbols() {
+        val pwd = ArchiveSecurityEvaluator.generateSecurePassword(
+            length = 24,
+            includeLetters = false,
+            includeNumbers = false,
+            includeSymbols = true
+        )
+        assertEquals(24, pwd.length)
+        assertTrue(pwd.all { "!@#$%^&*()-_=+[]{}|;:,.<>?".contains(it) })
+        assertFalse(pwd.any { it in 'a'..'z' || it in 'A'..'Z' })
+        assertFalse(pwd.any { it in '0'..'9' })
+    }
+
+    @Test
+    fun generateSecurePassword_lettersAndNumbers_containsNoSymbols() {
+        val pwd = ArchiveSecurityEvaluator.generateSecurePassword(
+            length = 24,
+            includeLetters = true,
+            includeNumbers = true,
+            includeSymbols = false
+        )
+        assertEquals(24, pwd.length)
+        assertTrue(pwd.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' })
+        assertFalse(pwd.any { "!@#$%^&*()-_=+[]{}|;:,.<>?".contains(it) })
+        assertTrue(pwd.any { it in 'a'..'z' || it in 'A'..'Z' })
+        assertTrue(pwd.any { it in '0'..'9' })
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun generateSecurePassword_noClassesSelected_throwsIllegalArgumentException() {
+        ArchiveSecurityEvaluator.generateSecurePassword(
+            length = 24,
+            includeLetters = false,
+            includeNumbers = false,
+            includeSymbols = false
+        )
+    }
+
+    @Test
     fun generateSecurePassword_consecutiveGenerations_areUnique() {
-        val passwords = (1..50).map { ArchiveSecurityEvaluator.generateSecurePassword(16) }.toSet()
+        val passwords = (1..50).map { ArchiveSecurityEvaluator.generateSecurePassword(24) }.toSet()
         assertEquals("All 50 generated passwords must be distinct", 50, passwords.size)
     }
 }

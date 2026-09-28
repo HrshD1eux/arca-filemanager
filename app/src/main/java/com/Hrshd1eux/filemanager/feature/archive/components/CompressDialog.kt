@@ -115,6 +115,7 @@ fun CompressDialog(
     var showPassword by remember { mutableStateOf(false) }
     var encryptFileNames by remember { mutableStateOf(false) }
     var copyFeedback by remember { mutableStateOf(false) }
+    var showGeneratorDialog by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
 
     val passwordStrength = remember(password) {
@@ -733,18 +734,12 @@ fun CompressDialog(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     TextButton(
-                                        onClick = {
-                                            val generated = ArchiveSecurityEvaluator.generateSecurePassword(16)
-                                            password = generated
-                                            confirmPassword = generated
-                                            showPassword = true
-                                            copyFeedback = false
-                                        },
+                                        onClick = { showGeneratorDialog = true },
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                     ) {
                                         Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Generate Strong Password", style = MaterialTheme.typography.labelMedium)
+                                        Text("Generate Password...", style = MaterialTheme.typography.labelMedium)
                                     }
 
                                     if (password.isNotEmpty()) {
@@ -928,6 +923,20 @@ fun CompressDialog(
         },
         modifier = modifier
     )
+
+    if (showGeneratorDialog) {
+        PasswordGeneratorDialog(
+            initialLength = 24,
+            onDismiss = { showGeneratorDialog = false },
+            onUsePassword = { generated ->
+                password = generated
+                confirmPassword = generated
+                showPassword = true
+                copyFeedback = false
+                showGeneratorDialog = false
+            }
+        )
+    }
 }
 
 @Composable
