@@ -126,6 +126,7 @@ import com.Hrshd1eux.filemanager.feature.browser.components.EncryptChoiceDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.QuickActionBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.SelectionBottomBar
 import com.Hrshd1eux.filemanager.feature.browser.components.StagedMoveFloatingBar
+import com.Hrshd1eux.filemanager.feature.browser.components.StagedTransferFloatingBar
 import com.Hrshd1eux.filemanager.feature.properties.BulkPropertiesSheet
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -188,6 +189,7 @@ fun FileBrowserScreen(
     val isTabsMode by viewModel.isTabsMode.collectAsStateWithLifecycle()
     val tabs by viewModel.tabs.collectAsStateWithLifecycle()
     val activeTabId by viewModel.activeTabId.collectAsStateWithLifecycle()
+    val stagedTransfer by viewModel.stagedTransfer.collectAsStateWithLifecycle()
     val stagedNodesToMove by viewModel.stagedNodesToMove.collectAsStateWithLifecycle()
     val lastMoveDestination by viewModel.lastDestinationRepository.lastMoveDestination.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -332,7 +334,7 @@ fun FileBrowserScreen(
                         }
                     )
                 }
-            } else if (!isDualPaneMode && stagedNodesToMove != null && uiState is BrowserUiState.Success) {
+            } else if (!isDualPaneMode && stagedTransfer != null && uiState is BrowserUiState.Success) {
                 val successState = uiState as BrowserUiState.Success
                 val currentFolder = StorageNode(
                     id = successState.currentPath,
@@ -345,18 +347,18 @@ fun FileBrowserScreen(
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
-                    StagedMoveFloatingBar(
-                        stagedItems = stagedNodesToMove!!,
+                    StagedTransferFloatingBar(
+                        transfer = stagedTransfer!!,
                         currentFolder = currentFolder,
-                        onMoveHere = {
+                        onCommitTransfer = {
                             val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
-                            viewModel.commitMoveHere(
+                            viewModel.commitStagedTransfer(
                                 destination = currentFolder,
                                 hasPermission = hasPermission
                             )
                         },
                         onCancel = {
-                            viewModel.clearStagedMove()
+                            viewModel.clearStagedTransfer()
                         }
                     )
                 }
@@ -774,6 +776,11 @@ fun FileBrowserScreen(
             title = "Copy to...",
             confirmButtonText = "Copy Here",
             excludedPaths = if (targetToCopy.isDirectory) setOf(targetToCopy.path) else emptySet(),
+            onStageForMove = {
+                val toStage = listOf(targetToCopy)
+                nodeToCopy = null
+                viewModel.stageNodesForCopy(toStage)
+            },
             onDestinationSelected = { destination, verifyIntegrity ->
                 nodeToCopy = null
                 activeOperationTitle = "Copying Files"
@@ -799,6 +806,11 @@ fun FileBrowserScreen(
             excludedPaths = targetBulkCopy.filter { it.isDirectory }.map { it.path }.toSet(),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
+            onStageForMove = {
+                val toStage = targetBulkCopy
+                bulkNodesToCopy = null
+                viewModel.stageNodesForCopy(toStage)
+            },
             onDestinationSelected = { destination, verifyIntegrity ->
                 bulkNodesToCopy = null
                 activeOperationTitle = "Copying ${targetBulkCopy.size} Items"

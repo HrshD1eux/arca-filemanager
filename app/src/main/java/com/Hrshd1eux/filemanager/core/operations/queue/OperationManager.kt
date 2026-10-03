@@ -191,5 +191,12 @@ class OperationManager(
                 INSTANCE ?: OperationManager(ioDispatcher).also { INSTANCE = it }
             }
         }
+
+        fun resetInstance() {
+            synchronized(this) {
+                INSTANCE?.cancelAll()
+                INSTANCE = null
+            }
+        }
     }
 }

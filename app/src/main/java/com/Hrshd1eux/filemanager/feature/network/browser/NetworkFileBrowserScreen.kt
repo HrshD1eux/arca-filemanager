@@ -33,12 +33,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DensityMedium
@@ -92,7 +94,9 @@ import com.Hrshd1eux.filemanager.core.network.repository.NetworkConnectionReposi
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.feature.browser.components.CreateFolderDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.SortBottomSheet
+import com.Hrshd1eux.filemanager.feature.browser.components.StagedTransferFloatingBar
 import com.Hrshd1eux.filemanager.feature.browser.components.StorageNodeCompactItem
 import com.Hrshd1eux.filemanager.feature.browser.components.StorageNodeGridItem
 import com.Hrshd1eux.filemanager.feature.browser.components.StorageNodeItem
@@ -137,6 +141,9 @@ fun NetworkFileBrowserScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
     val isDownloading by viewModel.isDownloading.collectAsStateWithLifecycle()
+    val stagedTransfer by viewModel.stagedTransfer.collectAsStateWithLifecycle()
+    val activeOperation by viewModel.activeOperation.collectAsStateWithLifecycle()
+    val activeProgress by viewModel.activeProgress.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -354,7 +361,7 @@ fun NetworkFileBrowserScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -364,9 +371,21 @@ fun NetworkFileBrowserScreen(
                                 fontWeight = FontWeight.Bold
                             )
 
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 TextButton(onClick = { viewModel.selectAll() }) {
-                                    Text("Select All")
+                                    Text("All")
+                                }
+
+                                TextButton(onClick = { viewModel.stageNodesForCopy(selectedItems) }) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Copy")
+                                }
+
+                                TextButton(onClick = { viewModel.stageNodesForMove(selectedItems) }) {
+                                    Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Move")
                                 }
 
                                 Button(
@@ -378,17 +397,33 @@ fun NetworkFileBrowserScreen(
                                     Text("Download")
                                 }
 
-                                Button(
-                                    onClick = { bulkNodesToDelete = selectedItems },
-                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                IconButton(
+                                    onClick = { bulkNodesToDelete = selectedItems }
                                 ) {
-                                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Delete")
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         }
                     }
+                }
+            } else if (selectedNodeIds.isEmpty() && stagedTransfer != null && uiState is NetworkBrowserUiState.Success) {
+                val currentFolder = viewModel.getCurrentFolderNode()
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                ) {
+                    StagedTransferFloatingBar(
+                        transfer = stagedTransfer!!,
+                        currentFolder = currentFolder,
+                        onCommitTransfer = { viewModel.commitStagedTransfer(currentFolder) },
+                        onCancel = { viewModel.clearStagedTransfer() }
+                    )
                 }
             }
         }
@@ -645,8 +680,8 @@ fun NetworkFileBrowserScreen(
                                                 viewModel.toggleSelection(node.id)
                                             },
                                             onToggleFavorite = {},
-                                            onCopyClick = {},
-                                            onMoveClick = {},
+                                            onCopyClick = { viewModel.stageNodesForCopy(listOf(node)) },
+                                            onMoveClick = { viewModel.stageNodesForMove(listOf(node)) },
                                             onRenameClick = { nodeToRename = node },
                                             onDeleteClick = { nodeToDelete = node },
                                             onShareClick = {},
@@ -728,6 +763,17 @@ fun NetworkFileBrowserScreen(
         FilePropertiesSheet(
             node = node,
             onDismiss = { selectedNodeForProperties = null }
+        )
+    }
+
+    // Active Transfer Progress Dialog
+    val currentActiveOp = activeOperation
+    val currentProgress = activeProgress
+    if (currentActiveOp != null && currentProgress != null) {
+        OperationProgressDialog(
+            title = currentActiveOp.title,
+            progress = currentProgress,
+            onCancel = { viewModel.cancelActiveOperation() }
         )
     }
 }

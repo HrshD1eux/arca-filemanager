@@ -10,6 +10,9 @@ import com.Hrshd1eux.filemanager.core.network.model.NetworkProtocol
 import com.Hrshd1eux.filemanager.core.network.model.NetworkServerConfig
 import com.Hrshd1eux.filemanager.core.network.registry.NetworkProviderRegistry
 import com.Hrshd1eux.filemanager.core.network.repository.NetworkConnectionRepositoryImpl
+import com.Hrshd1eux.filemanager.core.operations.clipboard.OperationClipboard
+import com.Hrshd1eux.filemanager.core.operations.clipboard.StagedTransferType
+import com.Hrshd1eux.filemanager.core.operations.queue.OperationManager
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,6 +56,11 @@ class NetworkFileBrowserViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        OperationManager.resetInstance()
+        OperationClipboard.clear()
+        com.Hrshd1eux.filemanager.core.operations.engine.RemoteStorageOperatorRegistry.register(
+            com.Hrshd1eux.filemanager.core.network.bridge.NetworkStorageOperator()
+        )
         credentialsStore = SecureCredentialsStore(context = null)
         repository = NetworkConnectionRepositoryImpl(
             context = null,
@@ -63,6 +71,9 @@ class NetworkFileBrowserViewModelTest {
 
     @After
     fun tearDown() = runTest(testDispatcher) {
+        OperationClipboard.clear()
+        OperationManager.resetInstance()
+        com.Hrshd1eux.filemanager.core.operations.engine.RemoteStorageOperatorRegistry.unregister()
         NetworkProviderRegistry.disconnectAll()
         Dispatchers.resetMain()
     }
@@ -328,5 +339,59 @@ class NetworkFileBrowserViewModelTest {
         val state = viewModel.awaitSuccess()
         assertFalse("FTP MUST be flagged as unencrypted transport", state.isEncryptedTransport)
         assertEquals("Cleartext FTP", state.serverConfig.name)
+    }
+
+    @Test
+    fun stageNodesForCopy_and_stageNodesForMove_updateOperationClipboard() = runTest(testDispatcher) {
+        repository.saveConnection(defaultSftpConfig)
+        val viewModel = NetworkFileBrowserViewModel(
+            connectionId = "cfg-nas",
+            repository = repository,
+            ioDispatcher = testDispatcher
+        )
+        viewModel.awaitSuccess()
+
+        val sampleNode = StorageNode(id = "sftp://cfg-nas/data/file1.txt", name = "file1.txt", path = "/data/file1.txt")
+
+        viewModel.stageNodesForCopy(listOf(sampleNode))
+        assertEquals(StagedTransferType.COPY, OperationClipboard.stagedTransfer.value?.type)
+        assertEquals("Home NAS", OperationClipboard.stagedTransfer.value?.sourceLocationName)
+        assertEquals(1, OperationClipboard.stagedTransfer.value?.sources?.size)
+
+        viewModel.stageNodesForMove(listOf(sampleNode))
+        assertEquals(StagedTransferType.MOVE, OperationClipboard.stagedTransfer.value?.type)
+    }
+
+    @Test
+    fun commitStagedTransfer_fromPhoneToRemote_executesCopySuccessfully() = runTest(testDispatcher) {
+        repository.saveConnection(defaultSftpConfig)
+        val viewModel = NetworkFileBrowserViewModel(
+            connectionId = "cfg-nas",
+            repository = repository,
+            ioDispatcher = testDispatcher
+        )
+        viewModel.awaitSuccess()
+
+        val localTempFile = File.createTempFile("phone_upload", ".txt").apply {
+            writeText("UPLOADED_FROM_PHONE_TO_NAS")
+            deleteOnExit()
+        }
+        val localNode = StorageNode(
+            id = localTempFile.absolutePath,
+            name = localTempFile.name,
+            path = localTempFile.absolutePath,
+            size = localTempFile.length()
+        )
+
+        OperationClipboard.stage(listOf(localNode), StagedTransferType.COPY, "Phone")
+
+        viewModel.commitStagedTransfer()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(OperationClipboard.hasStagedItems())
+
+        val successState = viewModel.awaitSuccess()
+        val found = successState.items.find { it.name == localTempFile.name }
+        assertNotNull("Uploaded file must appear in remote file listing", found)
     }
 }

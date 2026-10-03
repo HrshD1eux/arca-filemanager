@@ -14,6 +14,15 @@ import com.Hrshd1eux.filemanager.core.network.provider.NetworkProvider
 import com.Hrshd1eux.filemanager.core.network.registry.NetworkProviderRegistry
 import com.Hrshd1eux.filemanager.core.network.repository.NetworkConnectionRepository
 import com.Hrshd1eux.filemanager.core.network.repository.NetworkConnectionRepositoryImpl
+import com.Hrshd1eux.filemanager.core.operations.clipboard.OperationClipboard
+import com.Hrshd1eux.filemanager.core.operations.clipboard.StagedTransfer
+import com.Hrshd1eux.filemanager.core.operations.clipboard.StagedTransferType
+import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
+import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
+import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.operations.queue.OperationManager
+import com.Hrshd1eux.filemanager.core.operations.queue.OperationType
+import com.Hrshd1eux.filemanager.core.operations.queue.QueuedOperation
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.browser.model.BreadcrumbItem
@@ -22,25 +31,33 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
 /**
  * ViewModel driving the Remote Network File Browser.
  * Interacts with remote servers via NetworkProvider and NetworkStorageBridge.
  * Provides identical state and functionality as the local FileBrowserViewModel:
  * directory listing, breadcrumbs, view modes, sorting, selection, CRUD, and downloads.
+ * Powered by the universal FileOperationEngine for cross-boundary transfers (Phone ↔ NAS ↔ Server).
  */
 class NetworkFileBrowserViewModel(
     private val connectionId: String,
     private val repository: NetworkConnectionRepository,
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val operationEngine: FileOperationEngine = FileOperationEngine(
+        ioDispatcher = ioDispatcher,
+        remoteOperator = com.Hrshd1eux.filemanager.core.network.bridge.NetworkStorageOperator()
+    ),
+    private val operationManager: OperationManager = OperationManager(ioDispatcher)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NetworkBrowserUiState>(NetworkBrowserUiState.Loading("Initializing connection..."))
@@ -65,6 +82,16 @@ class NetworkFileBrowserViewModel(
     val viewMode: StateFlow<ViewMode> = displayPreferencesRepository.viewMode
     val showHiddenFiles: StateFlow<Boolean> = displayPreferencesRepository.showHiddenFiles
 
+    val stagedTransfer: StateFlow<StagedTransfer?> = OperationClipboard.stagedTransfer
+
+    val activeOperation: StateFlow<QueuedOperation?> = operationManager.activeOperation
+    val waitingQueue: StateFlow<List<QueuedOperation>> = operationManager.waitingQueue
+    val completedHistory: StateFlow<List<QueuedOperation>> = operationManager.completedHistory
+
+    val activeProgress: StateFlow<OperationProgress?> = operationManager.activeOperation
+        .map { it?.progress }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     private var activeProvider: NetworkProvider? = null
     private var activeBridge: NetworkStorageBridge? = null
     private var serverConfig: NetworkServerConfig? = null
@@ -73,6 +100,17 @@ class NetworkFileBrowserViewModel(
 
     init {
         initialize()
+        observeOperations()
+    }
+
+    private fun observeOperations() {
+        viewModelScope.launch {
+            operationManager.operationCompletedEvents.collect {
+                if (_uiState.value is NetworkBrowserUiState.Success) {
+                    refresh()
+                }
+            }
+        }
     }
 
     fun initialize(initialPath: String? = null) {
@@ -177,6 +215,21 @@ class NetworkFileBrowserViewModel(
         )
     }
 
+    fun getCurrentFolderNode(): StorageNode {
+        val config = serverConfig
+        val provider = activeProvider
+        val scheme = provider?.protocol?.scheme ?: "sftp"
+        val configId = config?.id ?: connectionId
+        val title = (uiState.value as? NetworkBrowserUiState.Success)?.currentTitle ?: "Remote"
+        return StorageNode(
+            id = "$scheme://$configId$currentRemotePath",
+            name = title,
+            path = currentRemotePath,
+            uriString = "$scheme://$configId$currentRemotePath",
+            isDirectory = true
+        )
+    }
+
     fun navigateInto(node: StorageNode) {
         if (!node.isDirectory) return
         loadDirectory(node.path)
@@ -249,6 +302,84 @@ class NetworkFileBrowserViewModel(
         _selectedNodeIds.value = emptySet()
     }
 
+    // --- Universal Staged Transfer Actions ---
+
+    fun stageNodesForMove(nodes: List<StorageNode>) {
+        if (nodes.isEmpty()) return
+        clearSelection()
+        val locationName = serverConfig?.name ?: "Network"
+        OperationClipboard.stage(nodes, StagedTransferType.MOVE, locationName)
+        viewModelScope.launch {
+            val countText = if (nodes.size == 1) "1 item" else "${nodes.size} items"
+            _userMessage.emit("Staged $countText to move from $locationName. Navigate to destination folder and tap 'Move here'.")
+        }
+    }
+
+    fun stageNodesForCopy(nodes: List<StorageNode>) {
+        if (nodes.isEmpty()) return
+        clearSelection()
+        val locationName = serverConfig?.name ?: "Network"
+        OperationClipboard.stage(nodes, StagedTransferType.COPY, locationName)
+        viewModelScope.launch {
+            val countText = if (nodes.size == 1) "1 item" else "${nodes.size} items"
+            _userMessage.emit("Staged $countText to copy from $locationName. Navigate to destination folder and tap 'Copy here'.")
+        }
+    }
+
+    fun clearStagedTransfer() {
+        OperationClipboard.clear()
+    }
+
+    fun commitStagedTransfer(destination: StorageNode = getCurrentFolderNode()) {
+        val transfer = OperationClipboard.stagedTransfer.value ?: return
+        OperationClipboard.clear()
+        if (transfer.type == StagedTransferType.MOVE) {
+            startMove(transfer.sources, destination)
+        } else {
+            startCopy(transfer.sources, destination)
+        }
+    }
+
+    fun startCopy(
+        sources: List<StorageNode>,
+        destination: StorageNode,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO
+    ) {
+        clearSelection()
+        val title = if (sources.size == 1) "Copying ${sources.first().name}" else "Copying ${sources.size} items"
+        operationManager.enqueue(title = title, type = OperationType.COPY) { onProgress ->
+            val result = operationEngine.copy(
+                sources = sources,
+                destinationDir = destination,
+                conflictResolution = conflictResolution,
+                onProgress = onProgress
+            )
+            val opResult = result.getOrThrow()
+            _userMessage.emit("Copied ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
+            refresh()
+        }
+    }
+
+    fun startMove(
+        sources: List<StorageNode>,
+        destination: StorageNode,
+        conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO
+    ) {
+        clearSelection()
+        val title = if (sources.size == 1) "Moving ${sources.first().name}" else "Moving ${sources.size} items"
+        operationManager.enqueue(title = title, type = OperationType.MOVE) { onProgress ->
+            val result = operationEngine.move(
+                sources = sources,
+                destinationDir = destination,
+                conflictResolution = conflictResolution,
+                onProgress = onProgress
+            )
+            val opResult = result.getOrThrow()
+            _userMessage.emit("Moved ${opResult.filesProcessed} items (${FileFormatter.formatFileSize(opResult.bytesProcessed)})")
+            refresh()
+        }
+    }
+
     fun createDirectory(name: String) {
         val provider = activeProvider ?: return
         clearSelection()
@@ -281,81 +412,31 @@ class NetworkFileBrowserViewModel(
     fun delete(nodes: List<StorageNode>) {
         val provider = activeProvider ?: return
         clearSelection()
-        viewModelScope.launch {
-            var successCount = 0
-            for (node in nodes) {
-                val res = provider.delete(node.path)
-                if (res.isSuccess) successCount++
-            }
-            if (successCount == nodes.size) {
-                _userMessage.emit("Deleted $successCount item${if (successCount == 1) "" else "s"}")
-            } else {
-                _userMessage.emit("Deleted $successCount of ${nodes.size} items")
-            }
+        val title = if (nodes.size == 1) "Deleting ${nodes.first().name}" else "Deleting ${nodes.size} items"
+        operationManager.enqueue(title = title, type = OperationType.DELETE) { onProgress ->
+            val result = operationEngine.delete(nodes, onProgress)
+            val opResult = result.getOrThrow()
+            _userMessage.emit("Deleted ${opResult.filesProcessed} items.")
             refresh()
         }
     }
 
     fun downloadFile(node: StorageNode, localDir: File) {
-        val provider = activeProvider ?: return
-        if (node.isDirectory) {
-            viewModelScope.launch { _userMessage.emit("Directory download not supported directly; select individual files.") }
-            return
-        }
-
-        viewModelScope.launch {
-            _isDownloading.value = true
-            _userMessage.emit("Downloading '${node.name}'...")
-            withContext(ioDispatcher) {
-                try {
-                    val inStreamResult = provider.openInputStream(node.path)
-                    val inStream = inStreamResult.getOrThrow()
-                    val targetFile = File(localDir, node.name)
-
-                    inStream.use { input ->
-                        FileOutputStream(targetFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    _userMessage.emit("Downloaded '${node.name}' (${FileFormatter.formatFileSize(targetFile.length())}) to ${localDir.name}")
-                } catch (e: Exception) {
-                    _userMessage.emit("Download failed: ${e.localizedMessage}")
-                } finally {
-                    _isDownloading.value = false
-                }
-            }
-        }
+        downloadSelected(listOf(node), localDir)
     }
 
     fun downloadSelected(nodes: List<StorageNode>, localDir: File) {
-        val files = nodes.filterNot { it.isDirectory }
-        if (files.isEmpty()) {
-            viewModelScope.launch { _userMessage.emit("No files selected to download.") }
-            return
-        }
-        viewModelScope.launch {
-            _isDownloading.value = true
-            _userMessage.emit("Downloading ${files.size} files...")
-            withContext(ioDispatcher) {
-                var count = 0
-                for (fileNode in files) {
-                    try {
-                        val provider = activeProvider ?: break
-                        val inStream = provider.openInputStream(fileNode.path).getOrThrow()
-                        val target = File(localDir, fileNode.name)
-                        inStream.use { input ->
-                            FileOutputStream(target).use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                        count++
-                    } catch (_: Exception) {}
-                }
-                _userMessage.emit("Downloaded $count files to ${localDir.name}")
-                _isDownloading.value = false
-                clearSelection()
-            }
-        }
+        val destNode = StorageNode(
+            id = localDir.absolutePath,
+            name = localDir.name,
+            path = localDir.absolutePath,
+            isDirectory = true
+        )
+        startCopy(sources = nodes, destination = destNode)
+    }
+
+    fun cancelActiveOperation() {
+        operationManager.cancelActive()
     }
 
     fun disconnect() {

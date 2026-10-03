@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Star
@@ -540,18 +541,19 @@ fun DestinationPickerDialog(
         },
         dismissButton = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (onStageForMove != null && confirmButtonText.contains("Move", ignoreCase = true)) {
+                if (onStageForMove != null) {
+                    val isMove = confirmButtonText.contains("Move", ignoreCase = true)
                     TextButton(
                         onClick = onStageForMove,
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
+                            imageVector = if (isMove) Icons.AutoMirrored.Filled.DriveFileMove else Icons.Default.ContentCopy,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Stage & Browse")
+                        Text(if (isMove) "Stage Move" else "Stage Copy")
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                 }

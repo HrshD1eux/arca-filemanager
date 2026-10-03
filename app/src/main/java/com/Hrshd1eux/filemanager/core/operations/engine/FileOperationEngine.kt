@@ -20,14 +20,43 @@ import java.io.IOException
 import kotlin.coroutines.coroutineContext
 
 /**
- * Core engine for asynchronous, streamed, and cancellable file operations.
+ * Universal file operations engine supporting both local POSIX storage and remote network shares:
+ * - Phone → NAS
+ * - NAS → Phone
+ * - Phone → Server
+ * - Server → Phone
+ * - Local → Local
+ * - Remote → Remote
+ *
+ * ARCHITECTURAL ISOLATION:
+ * The operations engine remains 100% quarantined from network protocol/socket implementations.
+ * All remote storage interactions are performed via the abstract RemoteStorageOperator interface.
+ *
+ * All operations execute asynchronously with streamed chunking, live progress callbacks,
+ * automatic conflict resolution, and deterministic cancellation.
  */
 class FileOperationEngine(
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val remoteOperator: RemoteStorageOperator? = null
 ) {
 
+    companion object {
+        private val REMOTE_SCHEMES = setOf("sftp", "ftp", "ftps", "smb", "webdav")
+    }
+
+    private fun getOperator(): RemoteStorageOperator? = remoteOperator ?: RemoteStorageOperatorRegistry.getOperator()
+
+    private sealed class ResolvedNode {
+        data class Local(val file: File, val node: StorageNode) : ResolvedNode()
+        data class Remote(
+            val operator: RemoteStorageOperator,
+            val node: StorageNode
+        ) : ResolvedNode()
+    }
+
     /**
-     * Copies a list of files/directories into the target destination directory.
+     * Copies a list of files or directories into the target destination directory.
+     * Works seamlessly across local and network boundaries.
      */
     suspend fun copy(
         sources: List<StorageNode>,
@@ -37,27 +66,46 @@ class FileOperationEngine(
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<OperationResult> = withContext(ioDispatcher) {
         runCatching {
-            val destDirFile = File(destinationDir.path)
-            if (!destDirFile.exists() || !destDirFile.isDirectory) {
-                throw IOException("Destination is not a valid directory: ${destinationDir.path}")
-            }
+            val resolvedDest = resolveNode(destinationDir)
+            validateDestinationDirectory(resolvedDest)
 
-            // Calculate total byte count and file count for accurate progress
+            // Calculate total items and bytes for progress estimation
             var totalFiles = 0
             var totalBytes = 0L
-            sources.forEach { source ->
-                val file = File(source.path)
-                if (file.exists()) {
-                    if (file.isDirectory) {
-                        file.walkTopDown().forEach { f ->
-                            if (!f.isDirectory) {
+
+            for (source in sources) {
+                coroutineContext.ensureActive()
+                val resolvedSrc = resolveNode(source)
+                when (resolvedSrc) {
+                    is ResolvedNode.Local -> {
+                        val file = resolvedSrc.file
+                        if (file.exists()) {
+                            if (file.isDirectory) {
+                                file.walkTopDown().forEach { f ->
+                                    if (!f.isDirectory) {
+                                        totalFiles++
+                                        totalBytes += f.length()
+                                    }
+                                }
+                            } else {
                                 totalFiles++
-                                totalBytes += f.length()
+                                totalBytes += file.length()
                             }
                         }
-                    } else {
-                        totalFiles++
-                        totalBytes += file.length()
+                    }
+                    is ResolvedNode.Remote -> {
+                        if (source.isDirectory) {
+                            val tree = resolvedSrc.operator.listTree(source).getOrDefault(emptyList())
+                            for (entry in tree) {
+                                if (!entry.node.isDirectory) {
+                                    totalFiles++
+                                    totalBytes += entry.node.size
+                                }
+                            }
+                        } else {
+                            totalFiles++
+                            totalBytes += source.size
+                        }
                     }
                 }
             }
@@ -67,74 +115,221 @@ class FileOperationEngine(
 
             for (source in sources) {
                 coroutineContext.ensureActive()
-                val srcFile = File(source.path)
-                if (!srcFile.exists()) continue
+                val resolvedSrc = resolveNode(source)
 
-                if (srcFile.isDirectory) {
-                    val targetSubDir = File(destDirFile, srcFile.name)
-                    if (!targetSubDir.exists()) targetSubDir.mkdirs()
+                when {
+                    // 1. Local -> Local (Phone -> Phone)
+                    resolvedSrc is ResolvedNode.Local && resolvedDest is ResolvedNode.Local -> {
+                        val srcFile = resolvedSrc.file
+                        if (!srcFile.exists()) continue
 
-                    srcFile.walkTopDown().forEach { child ->
-                        coroutineContext.ensureActive()
-                        val relativePath = child.relativeTo(srcFile).path
-                        val targetChild = File(targetSubDir, relativePath)
+                        if (srcFile.isDirectory) {
+                            val targetSubDir = File(resolvedDest.file, srcFile.name)
+                            if (!targetSubDir.exists()) targetSubDir.mkdirs()
 
-                        if (child.isDirectory) {
-                            if (!targetChild.exists()) targetChild.mkdirs()
+                            srcFile.walkTopDown().forEach { child ->
+                                coroutineContext.ensureActive()
+                                val relativePath = child.relativeTo(srcFile).path
+                                val targetChild = File(targetSubDir, relativePath)
+
+                                if (child.isDirectory) {
+                                    if (!targetChild.exists()) targetChild.mkdirs()
+                                } else {
+                                    copyLocalSingleFile(
+                                        source = child,
+                                        destination = targetChild,
+                                        conflictResolution = conflictResolution,
+                                        verifyIntegrity = verifyIntegrity,
+                                        onChunkCopied = { chunk ->
+                                            bytesProcessed += chunk
+                                            emitProgress(onProgress, bytesProcessed, totalBytes, filesProcessed, totalFiles, child.name)
+                                        }
+                                    )
+                                    filesProcessed++
+                                }
+                            }
                         } else {
-                            copySingleFile(
-                                source = child,
-                                destination = targetChild,
+                            val targetFile = resolveLocalTargetFile(resolvedDest.file, srcFile.name, conflictResolution)
+                            if (targetFile == null) {
+                                if (conflictResolution == ConflictResolution.CANCEL) {
+                                    return@runCatching OperationResult.Cancelled(filesProcessed, bytesProcessed)
+                                }
+                                continue
+                            }
+
+                            copyLocalSingleFile(
+                                source = srcFile,
+                                destination = targetFile,
                                 conflictResolution = conflictResolution,
                                 verifyIntegrity = verifyIntegrity,
                                 onChunkCopied = { chunk ->
                                     bytesProcessed += chunk
-                                    onProgress?.invoke(
-                                        OperationProgress(
-                                            bytesProcessed = bytesProcessed,
-                                            totalBytes = totalBytes,
-                                            filesProcessed = filesProcessed,
-                                            totalFiles = totalFiles,
-                                            currentFileName = child.name
-                                        )
-                                    )
+                                    emitProgress(onProgress, bytesProcessed, totalBytes, filesProcessed, totalFiles, srcFile.name)
                                 }
                             )
                             filesProcessed++
                         }
                     }
-                } else {
-                    val targetFile = when (conflictResolution) {
-                        ConflictResolution.RENAME_AUTO -> ConflictHelper.getNonConflictingDestination(destDirFile, srcFile.name)
-                        else -> File(destDirFile, srcFile.name)
-                    }
 
-                    if (targetFile.exists() && conflictResolution == ConflictResolution.SKIP) {
-                        continue
-                    }
-                    if (targetFile.exists() && conflictResolution == ConflictResolution.CANCEL) {
-                        return@runCatching OperationResult.Cancelled(filesProcessed, bytesProcessed)
-                    }
+                    // 2. Local -> Remote (Phone -> NAS / Server)
+                    resolvedSrc is ResolvedNode.Local && resolvedDest is ResolvedNode.Remote -> {
+                        val srcFile = resolvedSrc.file
+                        if (!srcFile.exists()) continue
 
-                    copySingleFile(
-                        source = srcFile,
-                        destination = targetFile,
-                        conflictResolution = conflictResolution,
-                        verifyIntegrity = verifyIntegrity,
-                        onChunkCopied = { chunk ->
-                            bytesProcessed += chunk
-                            onProgress?.invoke(
-                                OperationProgress(
-                                    bytesProcessed = bytesProcessed,
-                                    totalBytes = totalBytes,
-                                    filesProcessed = filesProcessed,
-                                    totalFiles = totalFiles,
-                                    currentFileName = srcFile.name
-                                )
+                        if (srcFile.isDirectory) {
+                            val targetRemoteSubDir = resolvedDest.operator.resolveChild(resolvedDest.node, srcFile.name, isDirectory = true)
+                            resolvedDest.operator.createDirectory(resolvedDest.node, srcFile.name)
+
+                            srcFile.walkTopDown().forEach { child ->
+                                coroutineContext.ensureActive()
+                                val relPath = child.relativeTo(srcFile).path.replace('\\', '/')
+                                val targetChildRemote = resolvedDest.operator.resolveChild(targetRemoteSubDir, relPath, child.isDirectory)
+
+                                if (child.isDirectory) {
+                                    resolvedDest.operator.createDirectory(targetRemoteSubDir, relPath)
+                                } else {
+                                    copyLocalToRemoteSingleFile(
+                                        srcFile = child,
+                                        destOperator = resolvedDest.operator,
+                                        destNode = targetChildRemote,
+                                        onChunkCopied = { chunk ->
+                                            bytesProcessed += chunk
+                                            emitProgress(onProgress, bytesProcessed, totalBytes, filesProcessed, totalFiles, child.name)
+                                        }
+                                    )
+                                    filesProcessed++
+                                }
+                            }
+                        } else {
+                            val targetNode = resolveRemoteTargetNode(
+                                operator = resolvedDest.operator,
+                                parentDir = resolvedDest.node,
+                                desiredName = srcFile.name,
+                                conflictResolution = conflictResolution
                             )
+                            if (targetNode == null) {
+                                if (conflictResolution == ConflictResolution.CANCEL) {
+                                    return@runCatching OperationResult.Cancelled(filesProcessed, bytesProcessed)
+                                }
+                                continue
+                            }
+
+                            copyLocalToRemoteSingleFile(
+                                srcFile = srcFile,
+                                destOperator = resolvedDest.operator,
+                                destNode = targetNode,
+                                onChunkCopied = { chunk ->
+                                    bytesProcessed += chunk
+                                    emitProgress(onProgress, bytesProcessed, totalBytes, filesProcessed, totalFiles, srcFile.name)
+                                }
+                            )
+                            filesProcessed++
                         }
-                    )
-                    filesProcessed++
+                    }
+
+                    // 3. Remote -> Local (NAS / Server -> Phone)
+                    resolvedSrc is ResolvedNode.Remote && resolvedDest is ResolvedNode.Local -> {
+                        if (source.isDirectory) {
+                            val targetLocalSubDir = File(resolvedDest.file, source.name)
+                            if (!targetLocalSubDir.exists()) targetLocalSubDir.mkdirs()
+
+                            val tree = resolvedSrc.operator.listTree(source).getOrDefault(emptyList())
+                            for (entry in tree) {
+                                coroutineContext.ensureActive()
+                                val targetLocalChild = File(targetLocalSubDir, entry.relativeSubPath.replace('/', File.separatorChar))
+
+                                if (entry.node.isDirectory) {
+                                    if (!targetLocalChild.exists()) targetLocalChild.mkdirs()
+                                } else {
+                                    targetLocalChild.parentFile?.mkdirs()
+                                    copyRemoteToLocalSingleFile(
+                                        srcOperator = resolvedSrc.operator,
+                                        srcNode = entry.node,
+                                        destFile = targetLocalChild,
+                                        onChunkCopied = { chunk ->
+                                            bytesProcessed += chunk
+                                            emitProgress(onProgress, bytesProcessed, totalBytes, filesProcessed, totalFiles, targetLocalChild.name)
+                                        }
+                                    )
+                                    filesProcessed++
+                                }
+                            }
+                        } else {
+                            val targetFile = resolveLocalTargetFile(resolvedDest.file, source.name, conflictResolution)
+                            if (targetFile == null) {
+                                if (conflictResolution == ConflictResolution.CANCEL) {
+                                    return@runCatching OperationResult.Cancelled(filesProcessed, bytesProcessed)
+                                }
+                                continue
+                            }
+
+                            copyRemoteToLocalSingleFile(
+                                srcOperator = resolvedSrc.operator,
+                                srcNode = source,
+                                destFile = targetFile,
+                                onChunkCopied = { chunk ->
+                                    bytesProcessed += chunk
+                                    emitProgress(onProgress, bytesProcessed, totalBytes, filesProcessed, totalFiles, source.name)
+                                }
+                            )
+                            filesProcessed++
+                        }
+                    }
+
+                    // 4. Remote -> Remote (NAS -> Server / NAS -> NAS)
+                    resolvedSrc is ResolvedNode.Remote && resolvedDest is ResolvedNode.Remote -> {
+                        if (source.isDirectory) {
+                            val targetRemoteSubDir = resolvedDest.operator.resolveChild(resolvedDest.node, source.name, isDirectory = true)
+                            resolvedDest.operator.createDirectory(resolvedDest.node, source.name)
+
+                            val tree = resolvedSrc.operator.listTree(source).getOrDefault(emptyList())
+                            for (entry in tree) {
+                                coroutineContext.ensureActive()
+                                val targetChildRemote = resolvedDest.operator.resolveChild(targetRemoteSubDir, entry.relativeSubPath, entry.node.isDirectory)
+
+                                if (entry.node.isDirectory) {
+                                    resolvedDest.operator.createDirectory(targetRemoteSubDir, entry.relativeSubPath)
+                                } else {
+                                    copyRemoteToRemoteSingleFile(
+                                        srcOperator = resolvedSrc.operator,
+                                        srcNode = entry.node,
+                                        destOperator = resolvedDest.operator,
+                                        destNode = targetChildRemote,
+                                        onChunkCopied = { chunk ->
+                                            bytesProcessed += chunk
+                                            emitProgress(onProgress, bytesProcessed, totalBytes, filesProcessed, totalFiles, entry.node.name)
+                                        }
+                                    )
+                                    filesProcessed++
+                                }
+                            }
+                        } else {
+                            val targetNode = resolveRemoteTargetNode(
+                                operator = resolvedDest.operator,
+                                parentDir = resolvedDest.node,
+                                desiredName = source.name,
+                                conflictResolution = conflictResolution
+                            )
+                            if (targetNode == null) {
+                                if (conflictResolution == ConflictResolution.CANCEL) {
+                                    return@runCatching OperationResult.Cancelled(filesProcessed, bytesProcessed)
+                                }
+                                continue
+                            }
+
+                            copyRemoteToRemoteSingleFile(
+                                srcOperator = resolvedSrc.operator,
+                                srcNode = source,
+                                destOperator = resolvedDest.operator,
+                                destNode = targetNode,
+                                onChunkCopied = { chunk ->
+                                    bytesProcessed += chunk
+                                    emitProgress(onProgress, bytesProcessed, totalBytes, filesProcessed, totalFiles, source.name)
+                                }
+                            )
+                            filesProcessed++
+                        }
+                    }
                 }
             }
 
@@ -143,16 +338,15 @@ class FileOperationEngine(
                 bytesProcessed = bytesProcessed
             )
         }.recoverCatching { error ->
-            if (error is CancellationException) {
-                throw error
-            }
+            if (error is CancellationException) throw error
             throw error
         }
     }
 
     /**
-     * Moves a list of files/directories into the target destination directory.
-     * Uses fast POSIX rename where possible, falling back to streamed copy-verify-delete.
+     * Moves a list of files or directories into the target destination directory.
+     * Uses fast rename when moving within the same local or remote filesystem,
+     * falling back to streamed cross-boundary copy and safe source cleanup.
      */
     suspend fun move(
         sources: List<StorageNode>,
@@ -161,59 +355,80 @@ class FileOperationEngine(
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<OperationResult> = withContext(ioDispatcher) {
         runCatching {
-            val destDirFile = File(destinationDir.path)
-            if (!destDirFile.exists() || !destDirFile.isDirectory) {
-                throw IOException("Destination is not a valid directory: ${destinationDir.path}")
-            }
+            val resolvedDest = resolveNode(destinationDir)
+            validateDestinationDirectory(resolvedDest)
 
             var filesProcessed = 0
             var bytesProcessed = 0L
 
             for (source in sources) {
                 coroutineContext.ensureActive()
-                val srcFile = File(source.path)
-                if (!srcFile.exists()) continue
+                val resolvedSrc = resolveNode(source)
 
-                val targetFile = when (conflictResolution) {
-                    ConflictResolution.RENAME_AUTO -> ConflictHelper.getNonConflictingDestination(destDirFile, srcFile.name)
-                    else -> File(destDirFile, srcFile.name)
-                }
+                // Check for fast POSIX or remote rename within the same provider
+                if (resolvedSrc is ResolvedNode.Local && resolvedDest is ResolvedNode.Local) {
+                    val srcFile = resolvedSrc.file
+                    if (!srcFile.exists()) continue
 
-                if (targetFile.exists() && conflictResolution == ConflictResolution.SKIP) {
-                    continue
-                }
-                if (targetFile.exists() && conflictResolution == ConflictResolution.CANCEL) {
-                    return@runCatching OperationResult.Cancelled(filesProcessed, bytesProcessed)
-                }
-
-                // Try fast POSIX rename
-                val renamed = srcFile.renameTo(targetFile)
-                if (renamed) {
-                    filesProcessed++
-                    bytesProcessed += if (targetFile.isDirectory) 0L else targetFile.length()
-                    onProgress?.invoke(
-                        OperationProgress(
-                            bytesProcessed = bytesProcessed,
-                            totalBytes = bytesProcessed,
-                            filesProcessed = filesProcessed,
-                            totalFiles = sources.size,
-                            currentFileName = srcFile.name
-                        )
-                    )
-                } else {
-                    // Fallback to copy -> verify -> delete
-                    val copyResult = copy(
-                        sources = listOf(source),
-                        destinationDir = destinationDir,
-                        conflictResolution = conflictResolution,
-                        onProgress = onProgress
-                    ).getOrThrow()
-
-                    if (copyResult is OperationResult.Success) {
-                        srcFile.deleteRecursively()
-                        filesProcessed += copyResult.filesProcessed
-                        bytesProcessed += copyResult.bytesProcessed
+                    val targetFile = resolveLocalTargetFile(resolvedDest.file, srcFile.name, conflictResolution)
+                    if (targetFile == null) {
+                        if (conflictResolution == ConflictResolution.CANCEL) {
+                            return@runCatching OperationResult.Cancelled(filesProcessed, bytesProcessed)
+                        }
+                        continue
                     }
+
+                    val renamed = srcFile.renameTo(targetFile)
+                    if (renamed) {
+                        filesProcessed++
+                        val size = if (targetFile.isDirectory) 0L else targetFile.length()
+                        bytesProcessed += size
+                        emitProgress(onProgress, bytesProcessed, bytesProcessed, filesProcessed, sources.size, srcFile.name)
+                        continue
+                    }
+                } else if (resolvedSrc is ResolvedNode.Remote && resolvedDest is ResolvedNode.Remote &&
+                    resolvedSrc.operator.isSameServer(resolvedSrc.node, resolvedDest.node)) {
+                    // Intra-server remote rename / move
+                    val targetChild = resolvedDest.operator.resolveChild(resolvedDest.node, source.name, source.isDirectory)
+                    val renameResult = resolvedSrc.operator.rename(resolvedSrc.node, targetChild.name)
+                    if (renameResult.isSuccess) {
+                        filesProcessed++
+                        bytesProcessed += source.size
+                        emitProgress(onProgress, bytesProcessed, bytesProcessed, filesProcessed, sources.size, source.name)
+                        continue
+                    }
+                }
+
+                // Cross-boundary move: Copy first -> verify -> delete source
+                val copyResult = copy(
+                    sources = listOf(source),
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = onProgress
+                ).getOrThrow()
+
+                if (copyResult is OperationResult.Success) {
+                    // Delete source
+                    when (resolvedSrc) {
+                        is ResolvedNode.Local -> {
+                            if (resolvedSrc.file.isDirectory) {
+                                resolvedSrc.file.deleteRecursively()
+                            } else {
+                                resolvedSrc.file.delete()
+                            }
+                        }
+                        is ResolvedNode.Remote -> {
+                            if (source.isDirectory) {
+                                resolvedSrc.operator.deleteRecursive(source)
+                            } else {
+                                resolvedSrc.operator.delete(source)
+                            }
+                        }
+                    }
+                    filesProcessed += copyResult.filesProcessed
+                    bytesProcessed += copyResult.bytesProcessed
+                } else if (copyResult is OperationResult.Cancelled) {
+                    return@runCatching copyResult
                 }
             }
 
@@ -225,7 +440,7 @@ class FileOperationEngine(
     }
 
     /**
-     * Recursively deletes a list of files or directories.
+     * Recursively deletes a list of files or directories (local or remote).
      */
     suspend fun delete(
         targets: List<StorageNode>,
@@ -237,26 +452,35 @@ class FileOperationEngine(
 
             for (target in targets) {
                 coroutineContext.ensureActive()
-                val targetFile = File(target.path)
-                if (!targetFile.exists()) continue
+                val resolved = resolveNode(target)
 
-                val fileSize = if (targetFile.isDirectory) 0L else targetFile.length()
-                val deleted = targetFile.deleteRecursively()
-                if (!deleted) {
-                    throw IOException("Failed to delete file/folder: ${target.path}")
+                when (resolved) {
+                    is ResolvedNode.Local -> {
+                        val file = resolved.file
+                        if (!file.exists()) continue
+                        val size = if (file.isDirectory) 0L else file.length()
+                        val deleted = file.deleteRecursively()
+                        if (!deleted) {
+                            throw IOException("Failed to delete local file/folder: ${target.path}")
+                        }
+                        filesProcessed++
+                        bytesProcessed += size
+                    }
+                    is ResolvedNode.Remote -> {
+                        if (target.isDirectory) {
+                            resolved.operator.deleteRecursive(target)
+                        } else {
+                            val res = resolved.operator.delete(target)
+                            if (res.isFailure) {
+                                throw res.exceptionOrNull() ?: IOException("Failed to delete remote file: ${target.path}")
+                            }
+                        }
+                        filesProcessed++
+                        bytesProcessed += target.size
+                    }
                 }
 
-                filesProcessed++
-                bytesProcessed += fileSize
-                onProgress?.invoke(
-                    OperationProgress(
-                        bytesProcessed = bytesProcessed,
-                        totalBytes = bytesProcessed,
-                        filesProcessed = filesProcessed,
-                        totalFiles = targets.size,
-                        currentFileName = target.name
-                    )
-                )
+                emitProgress(onProgress, bytesProcessed, bytesProcessed, filesProcessed, targets.size, target.name)
             }
 
             OperationResult.Success(
@@ -279,22 +503,27 @@ class FileOperationEngine(
                 throw IllegalArgumentException("Invalid file name: $newName")
             }
 
-            val targetFile = File(target.path)
-            if (!targetFile.exists()) {
-                throw IOException("Target file does not exist: ${target.path}")
+            val resolved = resolveNode(target)
+            when (resolved) {
+                is ResolvedNode.Local -> {
+                    val targetFile = resolved.file
+                    if (!targetFile.exists()) {
+                        throw IOException("Target file does not exist: ${target.path}")
+                    }
+                    val destinationFile = File(targetFile.parentFile, sanitized)
+                    if (destinationFile.exists()) {
+                        throw IOException("A file or directory with name '$sanitized' already exists.")
+                    }
+                    val renamed = targetFile.renameTo(destinationFile)
+                    if (!renamed) {
+                        throw IOException("Failed to rename '${target.name}' to '$sanitized'")
+                    }
+                    destinationFile.toStorageNode()
+                }
+                is ResolvedNode.Remote -> {
+                    resolved.operator.rename(target, sanitized).getOrThrow()
+                }
             }
-
-            val destinationFile = File(targetFile.parentFile, sanitized)
-            if (destinationFile.exists()) {
-                throw IOException("A file or directory with name '$sanitized' already exists.")
-            }
-
-            val renamed = targetFile.renameTo(destinationFile)
-            if (!renamed) {
-                throw IOException("Failed to rename '${target.name}' to '$sanitized'")
-            }
-
-            destinationFile.toStorageNode()
         }
     }
 
@@ -311,22 +540,27 @@ class FileOperationEngine(
                 throw IllegalArgumentException("Invalid directory name: $dirName")
             }
 
-            val parentFile = File(parentDir.path)
-            if (!parentFile.exists() || !parentFile.isDirectory) {
-                throw IOException("Parent is not a valid directory: ${parentDir.path}")
+            val resolved = resolveNode(parentDir)
+            when (resolved) {
+                is ResolvedNode.Local -> {
+                    val parentFile = resolved.file
+                    if (!parentFile.exists() || !parentFile.isDirectory) {
+                        throw IOException("Parent is not a valid directory: ${parentDir.path}")
+                    }
+                    val newDir = File(parentFile, sanitized)
+                    if (newDir.exists()) {
+                        throw IOException("Directory '$sanitized' already exists.")
+                    }
+                    val created = newDir.mkdir()
+                    if (!created) {
+                        throw IOException("Failed to create directory: $sanitized")
+                    }
+                    newDir.toStorageNode()
+                }
+                is ResolvedNode.Remote -> {
+                    resolved.operator.createDirectory(parentDir, sanitized).getOrThrow()
+                }
             }
-
-            val newDir = File(parentFile, sanitized)
-            if (newDir.exists()) {
-                throw IOException("Directory '$sanitized' already exists.")
-            }
-
-            val created = newDir.mkdir()
-            if (!created) {
-                throw IOException("Failed to create directory: $sanitized")
-            }
-
-            newDir.toStorageNode()
         }
     }
 
@@ -343,26 +577,63 @@ class FileOperationEngine(
                 throw IllegalArgumentException("Invalid file name: $fileName")
             }
 
-            val parentFile = File(parentDir.path)
-            if (!parentFile.exists() || !parentFile.isDirectory) {
-                throw IOException("Parent is not a valid directory: ${parentDir.path}")
+            val resolved = resolveNode(parentDir)
+            when (resolved) {
+                is ResolvedNode.Local -> {
+                    val parentFile = resolved.file
+                    if (!parentFile.exists() || !parentFile.isDirectory) {
+                        throw IOException("Parent is not a valid directory: ${parentDir.path}")
+                    }
+                    val newFile = File(parentFile, sanitized)
+                    if (newFile.exists()) {
+                        throw IOException("File '$sanitized' already exists.")
+                    }
+                    val created = newFile.createNewFile()
+                    if (!created) {
+                        throw IOException("Failed to create file: $sanitized")
+                    }
+                    newFile.toStorageNode()
+                }
+                is ResolvedNode.Remote -> {
+                    resolved.operator.createFile(parentDir, sanitized).getOrThrow()
+                }
             }
-
-            val newFile = File(parentFile, sanitized)
-            if (newFile.exists()) {
-                throw IOException("File '$sanitized' already exists.")
-            }
-
-            val created = newFile.createNewFile()
-            if (!created) {
-                throw IOException("Failed to create file: $sanitized")
-            }
-
-            newFile.toStorageNode()
         }
     }
 
-    private suspend fun copySingleFile(
+    // --- Private Helper Functions ---
+
+    private fun resolveNode(node: StorageNode): ResolvedNode {
+        val op = getOperator()
+        if (op != null && op.canHandle(node)) {
+            return ResolvedNode.Remote(op, node)
+        }
+        val uri = node.uriString ?: node.id
+        val scheme = uri.substringBefore("://", "").lowercase()
+        if (scheme in REMOTE_SCHEMES) {
+            val validOp = op ?: throw IOException("Remote storage operation requested for '$uri' but no RemoteStorageOperator is registered.")
+            return ResolvedNode.Remote(validOp, node)
+        }
+        return ResolvedNode.Local(File(node.path), node)
+    }
+
+    private suspend fun validateDestinationDirectory(destination: ResolvedNode) {
+        when (destination) {
+            is ResolvedNode.Local -> {
+                if (!destination.file.exists() || !destination.file.isDirectory) {
+                    throw IOException("Destination is not a valid directory: ${destination.file.absolutePath}")
+                }
+            }
+            is ResolvedNode.Remote -> {
+                val exists = destination.operator.exists(destination.node)
+                if (!exists) {
+                    throw IOException("Remote destination directory does not exist: ${destination.node.path}")
+                }
+            }
+        }
+    }
+
+    private suspend fun copyLocalSingleFile(
         source: File,
         destination: File,
         conflictResolution: ConflictResolution,
@@ -386,6 +657,133 @@ class FileOperationEngine(
         if (verifyIntegrity) {
             FileVerifier.verifyFilePair(source, destination, ioDispatcher)
         }
+    }
+
+    private suspend fun copyLocalToRemoteSingleFile(
+        srcFile: File,
+        destOperator: RemoteStorageOperator,
+        destNode: StorageNode,
+        onChunkCopied: (chunk: Int) -> Unit
+    ) {
+        FileInputStream(srcFile).use { inStream ->
+            val outStreamResult = destOperator.openOutputStream(destNode, append = false)
+            val outStream = outStreamResult.getOrThrow()
+            outStream.use { out ->
+                StreamCopier.copyStream(
+                    source = inStream,
+                    destination = out,
+                    onBytesCopied = onChunkCopied
+                )
+            }
+        }
+    }
+
+    private suspend fun copyRemoteToLocalSingleFile(
+        srcOperator: RemoteStorageOperator,
+        srcNode: StorageNode,
+        destFile: File,
+        onChunkCopied: (chunk: Int) -> Unit
+    ) {
+        if (destFile.exists()) {
+            destFile.delete()
+        }
+        val inStreamResult = srcOperator.openInputStream(srcNode)
+        val inStream = inStreamResult.getOrThrow()
+        inStream.use { input ->
+            FileOutputStream(destFile).use { output ->
+                StreamCopier.copyStream(
+                    source = input,
+                    destination = output,
+                    onBytesCopied = onChunkCopied
+                )
+            }
+        }
+    }
+
+    private suspend fun copyRemoteToRemoteSingleFile(
+        srcOperator: RemoteStorageOperator,
+        srcNode: StorageNode,
+        destOperator: RemoteStorageOperator,
+        destNode: StorageNode,
+        onChunkCopied: (chunk: Int) -> Unit
+    ) {
+        val inStream = srcOperator.openInputStream(srcNode).getOrThrow()
+        inStream.use { input ->
+            val outStream = destOperator.openOutputStream(destNode, append = false).getOrThrow()
+            outStream.use { output ->
+                StreamCopier.copyStream(
+                    source = input,
+                    destination = output,
+                    onBytesCopied = onChunkCopied
+                )
+            }
+        }
+    }
+
+    private fun resolveLocalTargetFile(
+        parentDir: File,
+        desiredName: String,
+        conflictResolution: ConflictResolution
+    ): File? {
+        val initialFile = File(parentDir, desiredName)
+        if (!initialFile.exists()) return initialFile
+
+        return when (conflictResolution) {
+            ConflictResolution.SKIP -> null
+            ConflictResolution.CANCEL -> null
+            ConflictResolution.OVERWRITE -> initialFile
+            ConflictResolution.RENAME_AUTO -> ConflictHelper.getNonConflictingDestination(parentDir, desiredName)
+        }
+    }
+
+    private suspend fun resolveRemoteTargetNode(
+        operator: RemoteStorageOperator,
+        parentDir: StorageNode,
+        desiredName: String,
+        conflictResolution: ConflictResolution
+    ): StorageNode? {
+        val initialNode = operator.resolveChild(parentDir, desiredName)
+        val exists = operator.exists(initialNode)
+        if (!exists) {
+            return initialNode
+        }
+
+        return when (conflictResolution) {
+            ConflictResolution.SKIP -> null
+            ConflictResolution.CANCEL -> null
+            ConflictResolution.OVERWRITE -> initialNode
+            ConflictResolution.RENAME_AUTO -> {
+                val baseName = if (desiredName.contains('.')) desiredName.substringBeforeLast('.') else desiredName
+                val ext = if (desiredName.contains('.')) ".${desiredName.substringAfterLast('.')}" else ""
+                var counter = 1
+                var candidate = initialNode
+                while (operator.exists(candidate)) {
+                    val candidateName = "$baseName ($counter)$ext"
+                    candidate = operator.resolveChild(parentDir, candidateName)
+                    counter++
+                }
+                candidate
+            }
+        }
+    }
+
+    private fun emitProgress(
+        onProgress: ((OperationProgress) -> Unit)?,
+        bytesProcessed: Long,
+        totalBytes: Long,
+        filesProcessed: Int,
+        totalFiles: Int,
+        currentFileName: String
+    ) {
+        onProgress?.invoke(
+            OperationProgress(
+                bytesProcessed = bytesProcessed,
+                totalBytes = totalBytes,
+                filesProcessed = filesProcessed,
+                totalFiles = totalFiles,
+                currentFileName = currentFileName
+            )
+        )
     }
 
     private fun File.toStorageNode(): StorageNode {

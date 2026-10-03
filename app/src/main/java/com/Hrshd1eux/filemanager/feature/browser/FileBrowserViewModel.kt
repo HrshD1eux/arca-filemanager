@@ -22,6 +22,9 @@ import com.Hrshd1eux.filemanager.core.display.preferences.DisplayPreferencesRepo
 import com.Hrshd1eux.filemanager.core.display.util.NodeSorter
 import com.Hrshd1eux.filemanager.core.favorites.model.FavoriteItem
 import com.Hrshd1eux.filemanager.core.favorites.repository.FavoritesRepository
+import com.Hrshd1eux.filemanager.core.operations.clipboard.OperationClipboard
+import com.Hrshd1eux.filemanager.core.operations.clipboard.StagedTransfer
+import com.Hrshd1eux.filemanager.core.operations.clipboard.StagedTransferType
 import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
@@ -105,6 +108,7 @@ class FileBrowserViewModel(
 
     private val _stagedNodesToMove = MutableStateFlow<List<StorageNode>?>(null)
     val stagedNodesToMove: StateFlow<List<StorageNode>?> = _stagedNodesToMove.asStateFlow()
+    val stagedTransfer: StateFlow<StagedTransfer?> = OperationClipboard.stagedTransfer
 
     val sortOrder: StateFlow<SortOrder> = displayPreferencesRepository.sortOrder
     val viewMode: StateFlow<ViewMode> = displayPreferencesRepository.viewMode
@@ -355,22 +359,60 @@ class FileBrowserViewModel(
         }
     }
 
-    fun stageNodesForMove(nodes: List<StorageNode>) {
+    fun stageNodesForMove(nodes: List<StorageNode>, sourceLocationName: String = "Phone") {
         if (nodes.isEmpty()) return
         clearSelection()
         _stagedNodesToMove.value = nodes
+        OperationClipboard.stage(nodes, StagedTransferType.MOVE, sourceLocationName)
         viewModelScope.launch {
             val countText = if (nodes.size == 1) "1 item" else "${nodes.size} items"
             _userMessage.emit("Staged $countText to move. Navigate to destination folder and tap 'Move here'.")
         }
     }
 
+    fun stageNodesForCopy(nodes: List<StorageNode>, sourceLocationName: String = "Phone") {
+        if (nodes.isEmpty()) return
+        clearSelection()
+        _stagedNodesToMove.value = null
+        OperationClipboard.stage(nodes, StagedTransferType.COPY, sourceLocationName)
+        viewModelScope.launch {
+            val countText = if (nodes.size == 1) "1 item" else "${nodes.size} items"
+            _userMessage.emit("Staged $countText to copy. Navigate to destination folder and tap 'Copy here'.")
+        }
+    }
+
+    fun clearStagedTransfer() {
+        _stagedNodesToMove.value = null
+        OperationClipboard.clear()
+    }
+
     fun clearStagedMove() {
         _stagedNodesToMove.value = null
+        OperationClipboard.clear()
+    }
+
+    fun commitStagedTransfer(destination: StorageNode, hasPermission: Boolean) {
+        val transfer = OperationClipboard.stagedTransfer.value
+        val sources = transfer?.sources ?: _stagedNodesToMove.value ?: return
+        val isMove = transfer?.type != StagedTransferType.COPY
+        clearStagedTransfer()
+        if (isMove) {
+            startMove(
+                sources = sources,
+                destination = destination,
+                hasPermission = hasPermission
+            )
+        } else {
+            startCopy(
+                sources = sources,
+                destination = destination,
+                hasPermission = hasPermission
+            )
+        }
     }
 
     fun commitMoveHere(destination: StorageNode, hasPermission: Boolean) {
-        val staged = _stagedNodesToMove.value ?: return
+        val staged = _stagedNodesToMove.value ?: OperationClipboard.stagedTransfer.value?.sources ?: return
         clearStagedMove()
         startMove(
             sources = staged,
