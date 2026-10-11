@@ -30,7 +30,12 @@ data class NetworkServerConfig(
      */
     val effectivePort: Int
         get() = if (port > 0) port else {
-            if (protocol == NetworkProtocol.FTPS && isImplicitTls) 990 else protocol.defaultPort
+            when {
+                protocol == NetworkProtocol.FTPS && isImplicitTls -> 990
+                protocol == NetworkProtocol.WEBDAV && isImplicitTls -> 443
+                protocol == NetworkProtocol.WEBDAV && !isImplicitTls -> 80
+                else -> protocol.defaultPort
+            }
         }
 
     /**

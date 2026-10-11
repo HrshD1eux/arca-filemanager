@@ -31,7 +31,7 @@ object NetworkProviderRegistry {
             NetworkProtocol.FTPS -> FtpsNetworkProvider(config)
             NetworkProtocol.SFTP -> SftpNetworkProvider(config, ioDispatcher)
             NetworkProtocol.SMB -> SmbNetworkProvider(config)
-            NetworkProtocol.WEBDAV -> WebDavNetworkProvider(config)
+            NetworkProtocol.WEBDAV -> WebDavNetworkProvider(config, ioDispatcher)
         }
     }
 

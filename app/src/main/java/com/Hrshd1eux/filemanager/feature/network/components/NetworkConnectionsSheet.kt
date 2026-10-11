@@ -188,6 +188,8 @@ fun NetworkConnectionsSheet(
                 ) {
                     items(connections, key = { it.id }) { item ->
                         val isConnecting = connectingId == item.id
+                        val isUnencrypted = item.protocol == NetworkProtocol.FTP ||
+                                (item.protocol == NetworkProtocol.WEBDAV && !item.isImplicitTls && item.effectivePort != 443)
 
                         Card(
                             modifier = Modifier
@@ -210,57 +212,57 @@ fun NetworkConnectionsSheet(
                                     }
                                 },
                             shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (item.protocol == NetworkProtocol.FTP) {
-                                    Color(0xFFFFF8E1).copy(alpha = 0.7f)
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                                }
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isUnencrypted) {
+                                        Color(0xFFFFF8E1).copy(alpha = 0.7f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                                    }
+                                )
                             ) {
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Lock / Warning Icon
-                                    if (item.protocol == NetworkProtocol.FTP) {
-                                        Icon(
-                                            imageVector = Icons.Default.Warning,
-                                            contentDescription = "Unencrypted Connection",
-                                            tint = Color(0xFFE65100),
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = "Encrypted Connection",
-                                            tint = VaultEmerald,
-                                            modifier = Modifier.size(24.dp)
-                                        )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // Lock / Warning Icon
+                                        if (isUnencrypted) {
+                                            Icon(
+                                                imageVector = Icons.Default.Warning,
+                                                contentDescription = "Unencrypted Connection",
+                                                tint = Color(0xFFE65100),
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Lock,
+                                                contentDescription = "Encrypted Connection",
+                                                tint = VaultEmerald,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(14.dp))
+                                        Column {
+                                            // Connection Name
+                                            Text(
+                                                text = item.name,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            // Host Address & Security note
+                                            Text(
+                                                text = if (isUnencrypted) "${item.host} • ⚠ Plaintext" else item.host,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = if (isUnencrypted) Color(0xFFBF360C) else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
-                                    Spacer(modifier = Modifier.width(14.dp))
-                                    Column {
-                                        // Connection Name
-                                        Text(
-                                            text = item.name,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        // Host Address & Security note
-                                        Text(
-                                            text = if (item.protocol == NetworkProtocol.FTP) "${item.host} • ⚠ Plaintext" else item.host,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = if (item.protocol == NetworkProtocol.FTP) Color(0xFFBF360C) else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (isConnecting) {
@@ -270,7 +272,7 @@ fun NetworkConnectionsSheet(
                                         )
                                     } else {
                                         // Protocol tag
-                                        val tagColor = if (item.protocol == NetworkProtocol.FTP) Color(0xFFE65100) else MaterialTheme.colorScheme.primary
+                                        val tagColor = if (isUnencrypted) Color(0xFFE65100) else MaterialTheme.colorScheme.primary
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
                                             color = tagColor.copy(alpha = 0.12f),
@@ -281,7 +283,8 @@ fun NetworkConnectionsSheet(
                                                     NetworkProtocol.SFTP -> "SFTP (SSH)"
                                                     NetworkProtocol.FTPS -> "FTPS (TLS)"
                                                     NetworkProtocol.FTP -> "⚠ FTP"
-                                                    else -> item.protocol.name
+                                                    NetworkProtocol.SMB -> "SMB (Samba)"
+                                                    NetworkProtocol.WEBDAV -> if (!isUnencrypted) "WebDAV (HTTPS)" else "⚠ WebDAV (HTTP)"
                                                 },
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
