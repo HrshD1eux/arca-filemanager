@@ -28,9 +28,24 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = rootProject.file("keystore/release.jks")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = project.findProperty("ARCA_KEYSTORE_PASSWORD") as String? ?: "arca_release_vault_2026"
+                keyAlias = project.findProperty("ARCA_KEY_ALIAS") as String? ?: "arca_release"
+                keyPassword = project.findProperty("ARCA_KEY_PASSWORD") as String? ?: "arca_release_vault_2026"
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
