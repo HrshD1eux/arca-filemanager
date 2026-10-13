@@ -6,8 +6,10 @@ enum class CategoryFilter(val displayName: String) {
     VIDEOS("Videos"),
     AUDIO("Audio"),
     DOCUMENTS("Documents"),
+    DOWNLOADS("Downloads"),
     ARCHIVES("Archives"),
-    APKS("APKs")
+    APKS("APKs"),
+    OTHER("Other")
 }
 
 enum class SizeFilter(val displayName: String) {

@@ -97,8 +97,15 @@ class FileSearchEngine(
                 CategoryFilter.VIDEOS -> videoExtensions.contains(ext)
                 CategoryFilter.AUDIO -> audioExtensions.contains(ext)
                 CategoryFilter.DOCUMENTS -> docExtensions.contains(ext)
+                CategoryFilter.DOWNLOADS -> file.path.contains("/Download", ignoreCase = true)
                 CategoryFilter.ARCHIVES -> archiveExtensions.contains(ext)
                 CategoryFilter.APKS -> apkExtensions.contains(ext)
+                CategoryFilter.OTHER -> !imageExtensions.contains(ext) &&
+                        !videoExtensions.contains(ext) &&
+                        !audioExtensions.contains(ext) &&
+                        !docExtensions.contains(ext) &&
+                        !archiveExtensions.contains(ext) &&
+                        !apkExtensions.contains(ext)
             }
             if (!matchesCategory) return false
         }

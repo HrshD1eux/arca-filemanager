@@ -25,6 +25,12 @@ sealed interface Screen {
     ) : Screen
 
     @Serializable
+    data class Category(
+        val categoryName: String,
+        val rootPath: String? = null
+    ) : Screen
+
+    @Serializable
     data class Search(
         val rootPath: String? = null,
         val categoryName: String? = null

@@ -14,6 +14,7 @@ import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
 import com.Hrshd1eux.filemanager.feature.archive.ArchiveViewerScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
+import com.Hrshd1eux.filemanager.feature.category.CategoryScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.duplicates.DuplicateFinderScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.largefiles.LargeFilesScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
@@ -44,8 +45,8 @@ fun ArcaNavHost(
                 onNavigateToSearch = { rootPath ->
                     navController.navigate(Screen.Search(rootPath = rootPath))
                 },
-                onNavigateToCategorySearch = { category ->
-                    navController.navigate(Screen.Search(rootPath = null, categoryName = category.name))
+                onNavigateToCategory = { category ->
+                    navController.navigate(Screen.Category(categoryName = category.name))
                 },
                 onNavigateToLargeFiles = { rootPath ->
                     navController.navigate(Screen.LargeFiles(rootPath = rootPath))
@@ -81,6 +82,26 @@ fun ArcaNavHost(
                     navController.navigate(Screen.ArchiveViewer(archivePath = archivePath, title = title))
                 },
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.Category>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.Category>()
+            CategoryScreen(
+                categoryName = route.categoryName,
+                rootPath = route.rootPath,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToArchiveViewer = { archivePath, title ->
+                    navController.navigate(Screen.ArchiveViewer(archivePath = archivePath, title = title))
+                },
+                onNavigateToDirectory = { path ->
+                    navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))
+                }
             )
         }
 

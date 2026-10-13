@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderZip
@@ -35,18 +37,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 
 /**
- * Google Files 2x3 Category grid:
- * Images, Videos, Documents
- * Archives, APKs, Downloads
+ * 4x2 Category Grid for fast navigation:
+ * Row 1: Images, Videos, Audio, Documents
+ * Row 2: Downloads, Archives, APKs, Other
  */
 @Composable
 fun HomeCategoriesGrid(
     onCategoryClick: (CategoryFilter) -> Unit,
-    onDownloadsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDownloadsClick: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -59,10 +62,10 @@ fun HomeCategoriesGrid(
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        // Row 1: Images, Videos, Documents
+        // Row 1: Images, Videos, Audio, Documents
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             CategoryGridItem(
                 icon = Icons.Default.Image,
@@ -83,6 +86,15 @@ fun HomeCategoriesGrid(
             )
 
             CategoryGridItem(
+                icon = Icons.Default.Audiotrack,
+                label = "Audio",
+                iconTint = Color(0xFFFF7043), // Coral / Orange
+                containerColor = Color(0xFFFF7043).copy(alpha = 0.12f),
+                onClick = { onCategoryClick(CategoryFilter.AUDIO) },
+                modifier = Modifier.weight(1f)
+            )
+
+            CategoryGridItem(
                 icon = Icons.Default.Description,
                 label = "Documents",
                 iconTint = Color(0xFF1E88E5), // Blue
@@ -92,11 +104,26 @@ fun HomeCategoriesGrid(
             )
         }
 
-        // Row 2: Archives, APKs, Downloads
+        // Row 2: Downloads, Archives, APKs, Other
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            CategoryGridItem(
+                icon = Icons.Default.Download,
+                label = "Downloads",
+                iconTint = Color(0xFFE53935), // Red
+                containerColor = Color(0xFFE53935).copy(alpha = 0.12f),
+                onClick = {
+                    if (onDownloadsClick != null) {
+                        onDownloadsClick()
+                    } else {
+                        onCategoryClick(CategoryFilter.DOWNLOADS)
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+
             CategoryGridItem(
                 icon = Icons.Default.FolderZip,
                 label = "Archives",
@@ -116,11 +143,11 @@ fun HomeCategoriesGrid(
             )
 
             CategoryGridItem(
-                icon = Icons.Default.Download,
-                label = "Downloads",
-                iconTint = Color(0xFFE53935), // Red / Deep Orange
-                containerColor = Color(0xFFE53935).copy(alpha = 0.12f),
-                onClick = onDownloadsClick,
+                icon = Icons.Default.Category,
+                label = "Other",
+                iconTint = Color(0xFF78909C), // Slate
+                containerColor = Color(0xFF78909C).copy(alpha = 0.12f),
+                onClick = { onCategoryClick(CategoryFilter.OTHER) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -149,13 +176,13 @@ private fun CategoryGridItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 14.dp, horizontal = 8.dp),
+                .padding(vertical = 12.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(containerColor),
                 contentAlignment = Alignment.Center
@@ -164,15 +191,15 @@ private fun CategoryGridItem(
                     imageVector = icon,
                     contentDescription = label,
                     tint = iconTint,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,

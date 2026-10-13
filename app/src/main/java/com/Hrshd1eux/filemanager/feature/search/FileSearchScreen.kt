@@ -93,7 +93,9 @@ fun FileSearchScreen(
                 viewModel.onCategorySelect(matchedCategory)
             }
         }
-        focusRequester.requestFocus()
+        if (initialCategory == null) {
+            focusRequester.requestFocus()
+        }
     }
 
     Scaffold(

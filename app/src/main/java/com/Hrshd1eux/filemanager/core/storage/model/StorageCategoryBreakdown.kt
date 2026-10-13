@@ -13,7 +13,7 @@ enum class StorageCategory(
     AUDIO("Audio", Color(0xFFFF7043), CategoryFilter.AUDIO),
     DOCUMENTS("Documents", Color(0xFF42A5F5), CategoryFilter.DOCUMENTS),
     ARCHIVES("Archives", Color(0xFFFFA726), CategoryFilter.ARCHIVES),
-    OTHER("Other", Color(0xFF78909C), null)
+    OTHER("Other", Color(0xFF78909C), CategoryFilter.OTHER)
 }
 
 data class CategorySize(

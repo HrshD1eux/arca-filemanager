@@ -61,7 +61,7 @@ import com.Hrshd1eux.filemanager.feature.network.components.NetworkConnectionsSh
 fun HomeScreen(
     onNavigateToBrowser: (initialPath: String?, title: String) -> Unit,
     onNavigateToSearch: (rootPath: String?) -> Unit,
-    onNavigateToCategorySearch: (CategoryFilter) -> Unit = {},
+    onNavigateToCategory: (CategoryFilter) -> Unit = {},
     onNavigateToLargeFiles: (rootPath: String?) -> Unit = {},
     onNavigateToDuplicateFinder: (rootPath: String?) -> Unit = {},
     onNavigateToVault: () -> Unit = {},
@@ -189,14 +189,10 @@ fun HomeScreen(
                 )
             }
 
-            // 3. Categories 2x3 Grid: Images, Videos, Documents, Archives, APKs, Downloads
+            // 3. Categories Grid: Images, Videos, Audio, Documents, Downloads, Archives, APKs, Other
             item {
                 HomeCategoriesGrid(
-                    onCategoryClick = onNavigateToCategorySearch,
-                    onDownloadsClick = {
-                        val downloadPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)?.absolutePath ?: "/storage/emulated/0/Download"
-                        onNavigateToBrowser(downloadPath, "Download")
-                    }
+                    onCategoryClick = onNavigateToCategory
                 )
             }
 
