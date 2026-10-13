@@ -22,6 +22,7 @@ import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
 import com.Hrshd1eux.filemanager.feature.network.browser.NetworkFileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
 import com.Hrshd1eux.filemanager.feature.vault.VaultScreen
+import com.Hrshd1eux.filemanager.feature.viewer.image.ImageViewerScreen
 import java.io.File
 
 @Composable
@@ -81,6 +82,9 @@ fun ArcaNavHost(
                 onNavigateToArchiveViewer = { archivePath, title ->
                     navController.navigate(Screen.ArchiveViewer(archivePath = archivePath, title = title))
                 },
+                onNavigateToImageViewer = { imagePath, categoryName, directoryPath ->
+                    navController.navigate(Screen.ImageViewer(initialPath = imagePath, categoryName = categoryName, directoryPath = directoryPath))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -98,6 +102,9 @@ fun ArcaNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToArchiveViewer = { archivePath, title ->
                     navController.navigate(Screen.ArchiveViewer(archivePath = archivePath, title = title))
+                },
+                onNavigateToImageViewer = { imagePath, categoryName, rootPath ->
+                    navController.navigate(Screen.ImageViewer(initialPath = imagePath, categoryName = categoryName, directoryPath = rootPath))
                 },
                 onNavigateToDirectory = { path ->
                     navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))
@@ -158,6 +165,21 @@ fun ArcaNavHost(
             ArchiveViewerScreen(
                 archivePath = route.archivePath,
                 title = route.title,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.ImageViewer>(
+            enterTransition = { fadeIn() },
+            exitTransition = { fadeOut() },
+            popEnterTransition = { fadeIn() },
+            popExitTransition = { fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.ImageViewer>()
+            ImageViewerScreen(
+                initialPath = route.initialPath,
+                categoryName = route.categoryName,
+                directoryPath = route.directoryPath,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

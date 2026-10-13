@@ -168,6 +168,7 @@ fun FileBrowserScreen(
     onNavigateBack: () -> Unit,
     onNavigateToSearch: (rootPath: String?) -> Unit = {},
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
+    onNavigateToImageViewer: (imagePath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: FileBrowserViewModel = viewModel()
 ) {
@@ -646,6 +647,8 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
+                                                } else if (FileTypeResolver.isImage(node.name)) {
+                                                    onNavigateToImageViewer(node.path, null, File(node.path).parent)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
@@ -726,6 +729,8 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
+                                                } else if (FileTypeResolver.isImage(node.name)) {
+                                                    onNavigateToImageViewer(node.path, null, File(node.path).parent)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {

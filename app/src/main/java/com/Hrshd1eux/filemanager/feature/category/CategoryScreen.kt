@@ -121,6 +121,7 @@ fun CategoryScreen(
     rootPath: String? = null,
     onNavigateBack: () -> Unit,
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
+    onNavigateToImageViewer: (imagePath: String, categoryName: String?, rootPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToDirectory: (path: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CategoryViewModel = viewModel()
@@ -341,7 +342,10 @@ fun CategoryScreen(
                                         handleItemClick(
                                             context = context,
                                             node = node,
-                                            onNavigateToArchiveViewer = onNavigateToArchiveViewer
+                                            categoryName = category.name,
+                                            rootPath = rootPath,
+                                            onNavigateToArchiveViewer = onNavigateToArchiveViewer,
+                                            onNavigateToImageViewer = onNavigateToImageViewer
                                         )
                                     }
                                 },
@@ -381,7 +385,10 @@ fun CategoryScreen(
                                         handleItemClick(
                                             context = context,
                                             node = node,
-                                            onNavigateToArchiveViewer = onNavigateToArchiveViewer
+                                            categoryName = category.name,
+                                            rootPath = rootPath,
+                                            onNavigateToArchiveViewer = onNavigateToArchiveViewer,
+                                            onNavigateToImageViewer = onNavigateToImageViewer
                                         )
                                     }
                                 },
@@ -509,9 +516,14 @@ fun CategoryScreen(
 private fun handleItemClick(
     context: Context,
     node: StorageNode,
-    onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit
+    categoryName: String,
+    rootPath: String?,
+    onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit,
+    onNavigateToImageViewer: (imagePath: String, categoryName: String?, rootPath: String?) -> Unit
 ) {
-    if (FileTypeResolver.canPreviewArchive(node.name)) {
+    if (FileTypeResolver.isImage(node.name)) {
+        onNavigateToImageViewer(node.path, categoryName, rootPath)
+    } else if (FileTypeResolver.canPreviewArchive(node.name)) {
         onNavigateToArchiveViewer(node.path, node.name)
     } else {
         FileIntentDispatcher.view(context, node)
