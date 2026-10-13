@@ -15,6 +15,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.IOException
 
 class CategoryRepositoryTest {
 
@@ -117,6 +118,11 @@ class CategoryRepositoryTest {
         assertEquals("document1.pdf", docFiles.first().name)
     }
 
+    @Test(expected = IOException::class)
+    fun getFilesForCategory_inaccessibleStorageThrowsException() = runTest {
+        repository.getFilesForCategory(CategoryFilter.IMAGES, "/inaccessible/or/removed/storage/path")
+    }
+
     @Test
     fun sortItems_byName() {
         val items = listOf(
@@ -204,6 +210,23 @@ class CategoryRepositoryTest {
         val deleteResult = repository.deleteFile(updatedNode)
         assertTrue(deleteResult.isSuccess)
         assertFalse(File(rootDir, "renamed_file.txt").exists())
+    }
+
+    @Test
+    fun fileOperations_bulkDelete() = runTest {
+        val f1 = File(rootDir, "bulk_a.txt").apply { writeText("A") }
+        val f2 = File(rootDir, "bulk_b.txt").apply { writeText("B") }
+
+        val nodes = listOf(
+            createNode(f1.name, path = f1.absolutePath),
+            createNode(f2.name, path = f2.absolutePath)
+        )
+
+        val bulkResult = repository.deleteFiles(nodes)
+        assertTrue(bulkResult.isSuccess)
+        assertEquals(2, bulkResult.getOrThrow())
+        assertFalse(f1.exists())
+        assertFalse(f2.exists())
     }
 
     private fun createNode(

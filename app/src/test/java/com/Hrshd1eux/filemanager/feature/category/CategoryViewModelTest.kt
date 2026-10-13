@@ -4,17 +4,18 @@ import com.Hrshd1eux.filemanager.core.display.model.SortDirection
 import com.Hrshd1eux.filemanager.core.display.model.SortField
 import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.display.model.ViewMode
+import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -30,6 +31,7 @@ class CategoryViewModelTest {
 
     private lateinit var rootDir: File
     private lateinit var repository: CategoryRepository
+    private lateinit var operationEngine: FileOperationEngine
     private lateinit var viewModel: CategoryViewModel
     private val testDispatcher = StandardTestDispatcher()
 
@@ -38,7 +40,12 @@ class CategoryViewModelTest {
         Dispatchers.setMain(testDispatcher)
         rootDir = tempFolder.newFolder("vm_category_root")
         repository = CategoryRepository(ioDispatcher = testDispatcher)
-        viewModel = CategoryViewModel(repository = repository)
+        operationEngine = FileOperationEngine(ioDispatcher = testDispatcher)
+        viewModel = CategoryViewModel(
+            repository = repository,
+            operationEngine = operationEngine,
+            ioDispatcher = testDispatcher
+        )
     }
 
     @After
@@ -52,7 +59,20 @@ class CategoryViewModelTest {
         advanceUntilIdle()
 
         assertEquals(CategoryFilter.IMAGES, viewModel.category.value)
-        assertTrue(viewModel.uiState.value is CategoryUiState.Empty)
+        val state = viewModel.uiState.value
+        assertTrue(state is CategoryUiState.Empty)
+        assertTrue((state as CategoryUiState.Empty).message.contains("Photos and pictures"))
+    }
+
+    @Test
+    fun loadCategory_inaccessibleStorageReportsGracefulError() = runTest {
+        viewModel.loadCategory("IMAGES", "/non_existent_or_removed_usb_storage")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is CategoryUiState.Error)
+        val error = state as CategoryUiState.Error
+        assertTrue(error.message.contains("unavailable") || error.message.contains("inaccessible"))
     }
 
     @Test
@@ -68,6 +88,62 @@ class CategoryViewModelTest {
         val success = state as CategoryUiState.Success
         assertEquals(2, success.fileCount)
         assertEquals(3072L, success.totalSizeBytes)
+    }
+
+    @Test
+    fun multiSelection_toggleAndSelectAllAndClear() = runTest {
+        File(rootDir, "p1.jpg").apply { writeBytes(ByteArray(100)) }
+        File(rootDir, "p2.jpg").apply { writeBytes(ByteArray(200)) }
+        File(rootDir, "p3.jpg").apply { writeBytes(ByteArray(300)) }
+
+        viewModel.loadCategory("IMAGES", rootDir.absolutePath)
+        advanceUntilIdle()
+
+        val success = viewModel.uiState.value as CategoryUiState.Success
+        val items = success.items
+
+        assertFalse(viewModel.isSelectionMode)
+        assertEquals(0, viewModel.selectedNodes.value.size)
+
+        // Start selection with first item
+        viewModel.startSelection(items[0])
+        assertTrue(viewModel.isSelectionMode)
+        assertEquals(1, viewModel.selectedNodes.value.size)
+        assertTrue(viewModel.selectedNodes.value.contains(items[0]))
+
+        // Toggle second item
+        viewModel.toggleSelection(items[1])
+        assertEquals(2, viewModel.selectedNodes.value.size)
+
+        // Select All
+        viewModel.selectAll()
+        assertEquals(3, viewModel.selectedNodes.value.size)
+
+        // Clear Selection
+        viewModel.clearSelection()
+        assertFalse(viewModel.isSelectionMode)
+        assertEquals(0, viewModel.selectedNodes.value.size)
+    }
+
+    @Test
+    fun sortOrder_directionAndFieldControls() = runTest {
+        viewModel.loadCategory("DOCUMENTS", rootDir.absolutePath)
+        advanceUntilIdle()
+
+        assertEquals(SortField.DATE, viewModel.sortOrder.value.field)
+        assertEquals(SortDirection.DESCENDING, viewModel.sortOrder.value.direction)
+
+        // Toggle direction
+        viewModel.toggleSortDirection()
+        assertEquals(SortDirection.ASCENDING, viewModel.sortOrder.value.direction)
+
+        // Change field
+        viewModel.setSortField(SortField.NAME)
+        assertEquals(SortField.NAME, viewModel.sortOrder.value.field)
+
+        // Toggle on same field flips direction
+        viewModel.setSortField(SortField.NAME)
+        assertEquals(SortDirection.DESCENDING, viewModel.sortOrder.value.direction)
     }
 
     @Test
@@ -114,7 +190,7 @@ class CategoryViewModelTest {
     }
 
     @Test
-    fun deleteFile_updatesStateAndFileCount() = runTest {
+    fun deleteSingle_updatesStateAndFileCount() = runTest {
         val f1 = File(rootDir, "del1.jpg").apply { writeBytes(ByteArray(100)) }
         val f2 = File(rootDir, "del2.jpg").apply { writeBytes(ByteArray(200)) }
 
@@ -124,10 +200,33 @@ class CategoryViewModelTest {
         val initialSuccess = viewModel.uiState.value as CategoryUiState.Success
         assertEquals(2, initialSuccess.fileCount)
 
-        viewModel.deleteFile(initialSuccess.items[0])
+        viewModel.deleteSingle(initialSuccess.items[0])
         advanceUntilIdle()
 
         val afterDelete = viewModel.uiState.value as CategoryUiState.Success
         assertEquals(1, afterDelete.fileCount)
+    }
+
+    @Test
+    fun deleteSelected_bulkDeletion() = runTest {
+        val f1 = File(rootDir, "bulk1.jpg").apply { writeBytes(ByteArray(100)) }
+        val f2 = File(rootDir, "bulk2.jpg").apply { writeBytes(ByteArray(200)) }
+
+        viewModel.loadCategory("IMAGES", rootDir.absolutePath)
+        advanceUntilIdle()
+
+        val initialSuccess = viewModel.uiState.value as CategoryUiState.Success
+        assertEquals(2, initialSuccess.fileCount)
+
+        viewModel.selectAll()
+        assertEquals(2, viewModel.selectedNodes.value.size)
+
+        var doneCalled = false
+        viewModel.deleteSelected { doneCalled = true }
+        advanceUntilIdle()
+
+        assertTrue(doneCalled)
+        assertFalse(viewModel.isSelectionMode)
+        assertTrue(viewModel.uiState.value is CategoryUiState.Empty)
     }
 }

@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 
 class CategoryRepository(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -26,8 +27,11 @@ class CategoryRepository(
         }.getOrDefault("/storage/emulated/0")
 
         val rootFile = File(basePath)
-        if (!rootFile.exists() || !rootFile.canRead()) {
-            return@withContext emptyList()
+        if (!rootFile.exists()) {
+            throw IOException("Storage location is unavailable or removed: $basePath")
+        }
+        if (!rootFile.canRead()) {
+            throw SecurityException("Storage location is not accessible: $basePath")
         }
 
         if (category == CategoryFilter.DOWNLOADS) {
@@ -36,26 +40,29 @@ class CategoryRepository(
             }.getOrNull() ?: "$basePath/Download"
 
             val downloadDir = File(downloadPath)
-            if (downloadDir.exists() && downloadDir.canRead()) {
-                val downloadItems = mutableListOf<StorageNode>()
-                runCatching {
-                    downloadDir.walkTopDown()
-                        .onEnter { !it.name.startsWith(".") }
-                        .filter { it.isFile && !it.name.startsWith(".") }
-                        .forEach { file ->
-                            downloadItems.add(file.toStorageNode())
-                        }
-                }
-                return@withContext downloadItems
+            if (!downloadDir.exists() || !downloadDir.canRead()) {
+                return@withContext emptyList()
             }
+            val downloadItems = mutableListOf<StorageNode>()
+            runCatching {
+                downloadDir.walkTopDown()
+                    .maxDepth(10)
+                    .onEnter { !it.name.startsWith(".") }
+                    .filter { it.isFile && !it.name.startsWith(".") }
+                    .forEach { file ->
+                        downloadItems.add(file.toStorageNode())
+                    }
+            }
+            return@withContext downloadItems
         }
 
         val result = mutableListOf<StorageNode>()
         runCatching {
             rootFile.walkTopDown()
+                .maxDepth(12)
                 .onEnter { dir ->
                     if (dir.name.startsWith(".")) return@onEnter false
-                    // Skip restricted system directories on Android
+                    // Skip restricted system directories on Android (Android/data, Android/obb)
                     if (dir.name.equals("data", ignoreCase = true) || dir.name.equals("obb", ignoreCase = true)) {
                         if (dir.parentFile?.name.equals("Android", ignoreCase = true)) {
                             return@onEnter false
@@ -65,6 +72,7 @@ class CategoryRepository(
                 }
                 .filter { it.isFile && !it.name.startsWith(".") }
                 .forEach { file ->
+                    // Memory optimization: ONLY allocate StorageNode for matching files!
                     if (matchesCategory(file, category)) {
                         result.add(file.toStorageNode())
                     }
@@ -113,6 +121,19 @@ class CategoryRepository(
             val file = File(node.path)
             if (!file.exists()) error("File does not exist")
             if (!file.delete()) error("Failed to delete file")
+        }
+    }
+
+    suspend fun deleteFiles(nodes: List<StorageNode>): Result<Int> = withContext(ioDispatcher) {
+        runCatching {
+            var deletedCount = 0
+            for (node in nodes) {
+                val file = File(node.path)
+                if (file.exists() && file.delete()) {
+                    deletedCount++
+                }
+            }
+            deletedCount
         }
     }
 

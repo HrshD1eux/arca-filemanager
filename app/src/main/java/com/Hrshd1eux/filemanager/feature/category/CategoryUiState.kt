@@ -9,6 +9,6 @@ sealed interface CategoryUiState {
         val totalSizeBytes: Long,
         val fileCount: Int
     ) : CategoryUiState
-    data object Empty : CategoryUiState
+    data class Empty(val message: String = "No matching files found") : CategoryUiState
     data class Error(val message: String) : CategoryUiState
 }
