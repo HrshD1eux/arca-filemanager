@@ -75,7 +75,9 @@ class FileBrowserViewModel(
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     val favoritesRepository: FavoritesRepository = FavoritesRepository(),
     val recentsRepository: RecentsRepository = RecentsRepository(),
-    val lastDestinationRepository: LastDestinationRepository = LastDestinationRepository()
+    val lastDestinationRepository: LastDestinationRepository = LastDestinationRepository(),
+    val archivePreferencesRepository: com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository = com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository.getInstance(),
+    val appSettingsRepository: com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository = com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
@@ -691,6 +693,11 @@ class FileBrowserViewModel(
             try {
                 val sourceFiles = sources.map { File(it.path) }
                 val lowerName = archiveName.lowercase()
+
+                if (!archivePreferencesRepository.isFormatEnabled(profile.format)) {
+                    _userMessage.emit("Archive format ${profile.format.displayName} is disabled in Settings.")
+                    return@enqueue
+                }
 
                 if (password != null && password.isNotEmpty()) {
                     val isSevenZ = profile.format == ArchiveFormatOption.SEVEN_Z || lowerName.endsWith(".7z")

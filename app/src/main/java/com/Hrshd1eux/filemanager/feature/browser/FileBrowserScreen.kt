@@ -192,6 +192,10 @@ fun FileBrowserScreen(
     val stagedTransfer by viewModel.stagedTransfer.collectAsStateWithLifecycle()
     val stagedNodesToMove by viewModel.stagedNodesToMove.collectAsStateWithLifecycle()
     val lastMoveDestination by viewModel.lastDestinationRepository.lastMoveDestination.collectAsStateWithLifecycle()
+    val enabledArchiveFormats by viewModel.archivePreferencesRepository.enabledFormats.collectAsStateWithLifecycle()
+    val defaultArchiveFormat by viewModel.archivePreferencesRepository.defaultFormat.collectAsStateWithLifecycle()
+    val defaultCompressionLevel by viewModel.archivePreferencesRepository.defaultLevel.collectAsStateWithLifecycle()
+    val confirmDelete by viewModel.appSettingsRepository.confirmDelete.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showOperationsQueueSheet by remember { mutableStateOf(false) }
@@ -315,7 +319,18 @@ fun FileBrowserScreen(
                         onMove = { bulkNodesToMove = selectedItems },
                         onCopy = { bulkNodesToCopy = selectedItems },
                         onCompress = { bulkNodesToCompress = selectedItems },
-                        onDelete = { bulkNodesToDelete = selectedItems },
+                        onDelete = {
+                            if (confirmDelete) {
+                                bulkNodesToDelete = selectedItems
+                            } else {
+                                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                                activeOperationTitle = "Deleting ${selectedItems.size} Items"
+                                viewModel.startDelete(
+                                    targets = selectedItems,
+                                    hasPermission = hasPermission
+                                )
+                            }
+                        },
                         onEncrypt = {
                             if (selectedItems.size == 1) {
                                 nodeToEncrypt = selectedItems.first()
@@ -662,7 +677,13 @@ fun FileBrowserScreen(
                                                 nodeToRename = node
                                             },
                                             onDeleteClick = {
-                                                nodeToDelete = node
+                                                if (confirmDelete) {
+                                                    nodeToDelete = node
+                                                } else {
+                                                    val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                                                    activeOperationTitle = "Deleting ${node.name}"
+                                                    viewModel.startDelete(targets = listOf(node), hasPermission = hasPermission)
+                                                }
                                             },
                                             onShareClick = {
                                                 FileIntentDispatcher.share(context, node)
@@ -736,7 +757,13 @@ fun FileBrowserScreen(
                                                 nodeToRename = node
                                             },
                                             onDeleteClick = {
-                                                nodeToDelete = node
+                                                if (confirmDelete) {
+                                                    nodeToDelete = node
+                                                } else {
+                                                    val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                                                    activeOperationTitle = "Deleting ${node.name}"
+                                                    viewModel.startDelete(targets = listOf(node), hasPermission = hasPermission)
+                                                }
                                             },
                                             onShareClick = {
                                                 FileIntentDispatcher.share(context, node)
@@ -967,7 +994,10 @@ fun FileBrowserScreen(
     if (targetToCompress != null) {
         CompressDialog(
             sources = listOf(targetToCompress),
-            defaultName = "${targetToCompress.name}.zip",
+            defaultName = "${targetToCompress.name}${defaultArchiveFormat.defaultExtension}",
+            enabledFormats = enabledArchiveFormats,
+            defaultFormat = defaultArchiveFormat,
+            defaultLevel = defaultCompressionLevel,
             onConfirmCreate = { profile, archiveName, password ->
                 nodeToCompress = null
                 activeOperationTitle = "Compressing to $archiveName"
@@ -987,14 +1017,18 @@ fun FileBrowserScreen(
     // Bulk Compress Dialog
     val targetBulkCompress = bulkNodesToCompress
     if (targetBulkCompress != null) {
+        val defaultExt = defaultArchiveFormat.defaultExtension
         val defaultZipName = if (targetBulkCompress.size == 1) {
-            "${targetBulkCompress.first().name}.zip"
+            "${targetBulkCompress.first().name}$defaultExt"
         } else {
-            "archive.zip"
+            "archive$defaultExt"
         }
         CompressDialog(
             sources = targetBulkCompress,
             defaultName = defaultZipName,
+            enabledFormats = enabledArchiveFormats,
+            defaultFormat = defaultArchiveFormat,
+            defaultLevel = defaultCompressionLevel,
             onConfirmCreate = { profile, archiveName, password ->
                 bulkNodesToCompress = null
                 activeOperationTitle = "Compressing ${targetBulkCompress.size} Items"

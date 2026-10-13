@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.settings
 
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
@@ -30,12 +30,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,24 +49,46 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.Hrshd1eux.filemanager.R
-
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.Hrshd1eux.filemanager.R
+import com.Hrshd1eux.filemanager.feature.settings.components.ArchiveSettingsDialog
+import com.Hrshd1eux.filemanager.feature.settings.components.ThemeSelectionDialog
+import com.Hrshd1eux.filemanager.feature.vault.components.VaultLockSettingsDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToAbout: () -> Unit,
+    onNavigateToPrivacy: () -> Unit,
     modifier: Modifier = Modifier,
+    onNavigateToAbout: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
     val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
-    var confirmDelete by remember { mutableStateOf(true) }
+    val confirmDelete by viewModel.confirmDelete.collectAsStateWithLifecycle()
+    val enabledArchiveFormats by viewModel.enabledArchiveFormats.collectAsStateWithLifecycle()
+    val defaultArchiveFormat by viewModel.defaultArchiveFormat.collectAsStateWithLifecycle()
+    val defaultCompressionLevel by viewModel.defaultCompressionLevel.collectAsStateWithLifecycle()
+    val vaultLockSettings by viewModel.vaultLockSettings.collectAsStateWithLifecycle()
+
+    var showThemeDialog by remember { mutableStateOf(false) }
+    var showArchiveDialog by remember { mutableStateOf(false) }
+    var showVaultDialog by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.userMessage.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -102,11 +127,17 @@ fun SettingsScreen(
 
             item {
                 SettingsCard {
+                    val themeSubtitle = buildString {
+                        append(themeMode.displayName)
+                        if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            append(" • Dynamic colors")
+                        }
+                    }
                     SettingsRow(
                         title = "Theme",
-                        subtitle = "Follow system default",
+                        subtitle = themeSubtitle,
                         icon = Icons.Default.Palette,
-                        onClick = { /* Theme dialog in DataStore update */ }
+                        onClick = { showThemeDialog = true }
                     )
                 }
             }
@@ -130,7 +161,7 @@ fun SettingsScreen(
                         subtitle = "Ask for confirmation before deleting items",
                         icon = Icons.Default.DeleteOutline,
                         checked = confirmDelete,
-                        onCheckedChange = { confirmDelete = it }
+                        onCheckedChange = { viewModel.setConfirmDelete(it) }
                     )
                 }
             }
@@ -143,16 +174,16 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsRow(
                         title = "Archive Formats",
-                        subtitle = "ZIP, 7z, TAR engine defaults",
+                        subtitle = "Default: ${defaultArchiveFormat.displayName} • ${enabledArchiveFormats.size} format(s) enabled",
                         icon = Icons.Default.Archive,
-                        onClick = { /* Foundation 1.1.21 */ }
+                        onClick = { showArchiveDialog = true }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = "Private Vault",
-                        subtitle = "Hardware-backed encrypted storage",
+                        subtitle = "Auto-lock: ${vaultLockSettings.autoLockTimeout.displayName} • Screen-off lock: ${if (vaultLockSettings.lockOnScreenOff) "On" else "Off"}",
                         icon = Icons.Default.Lock,
-                        onClick = { /* Foundation 1.1.36 */ }
+                        onClick = { showVaultDialog = true }
                     )
                 }
             }
@@ -167,14 +198,7 @@ fun SettingsScreen(
                         title = "Privacy Statement",
                         subtitle = "Zero telemetry, zero ads, offline-only",
                         icon = Icons.Default.Security,
-                        onClick = onNavigateToAbout
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SettingsRow(
-                        title = "About ARCA",
-                        subtitle = "Version 1.1.1-alpha",
-                        icon = Icons.Default.Info,
-                        onClick = onNavigateToAbout
+                        onClick = onNavigateToPrivacy
                     )
                 }
             }
@@ -183,6 +207,37 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            currentThemeMode = themeMode,
+            isDynamicColorEnabled = dynamicColor,
+            onThemeModeSelected = { viewModel.setThemeMode(it) },
+            onDynamicColorToggled = { viewModel.setDynamicColor(it) },
+            onDismiss = { showThemeDialog = false }
+        )
+    }
+
+    if (showArchiveDialog) {
+        ArchiveSettingsDialog(
+            enabledFormats = enabledArchiveFormats,
+            defaultFormat = defaultArchiveFormat,
+            defaultLevel = defaultCompressionLevel,
+            onToggleFormat = { format, enabled -> viewModel.toggleArchiveFormat(format, enabled) },
+            onSelectDefaultFormat = { viewModel.setDefaultArchiveFormat(it) },
+            onSelectDefaultLevel = { viewModel.setDefaultCompressionLevel(it) },
+            onDismiss = { showArchiveDialog = false }
+        )
+    }
+
+    if (showVaultDialog) {
+        VaultLockSettingsDialog(
+            currentSettings = vaultLockSettings,
+            onSaveSettings = { viewModel.updateVaultLockSettings(it) },
+            onManualLock = { viewModel.lockVaultNow() },
+            onDismiss = { showVaultDialog = false }
+        )
     }
 }
 

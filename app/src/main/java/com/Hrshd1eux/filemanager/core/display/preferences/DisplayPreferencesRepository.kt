@@ -10,9 +10,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+import com.Hrshd1eux.filemanager.ArcaApplication
+
 class DisplayPreferencesRepository(context: Context? = null) {
 
-    private val prefs: SharedPreferences? = context?.getSharedPreferences("arca_display_prefs", Context.MODE_PRIVATE)
+    private val appContext: Context? = context?.applicationContext
+        ?: runCatching { ArcaApplication.instance?.applicationContext }.getOrNull()
+
+    private val prefs: SharedPreferences? = appContext?.getSharedPreferences("arca_display_prefs", Context.MODE_PRIVATE)
 
     private val _sortOrder = MutableStateFlow(loadSortOrder())
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()

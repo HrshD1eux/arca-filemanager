@@ -139,7 +139,7 @@ private fun AppHeader(
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "Version 1.1.40 (Build 10140) • Foundation Complete",
+            text = "Version 1.1.40 (Build 10140)",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -187,8 +187,8 @@ private fun PrivacyManifestoCard(
 
             ManifestoItem(title = "Zero Telemetry", desc = "No analytics SDKs, trackers, or usage logs.")
             ManifestoItem(title = "No Accounts", desc = "No registration, cloud sync, or profile requirements.")
-            ManifestoItem(title = "Offline-First", desc = "Your files remain exclusively on your local device.")
-            ManifestoItem(title = "No Network Permission", desc = "Internet access is not requested or declared in 1.1.x.")
+            ManifestoItem(title = "Offline-First", desc = "Your local files remain exclusively on your local device.")
+            ManifestoItem(title = "Explicit Protocols Only", desc = "Internet is exclusively utilized for user-configured remote protocols (SFTP/FTP/SMB/WebDAV).")
         }
     }
 }
@@ -265,7 +265,7 @@ private fun SystemDiagnosticsCard(
             DiagnosticRow(label = "Device", value = "${Build.MANUFACTURER} ${Build.MODEL}")
             DiagnosticRow(label = "Android Version", value = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
             DiagnosticRow(label = "Supported ABIs", value = Build.SUPPORTED_ABIS.joinToString(", "))
-            DiagnosticRow(label = "Network Permission", value = "Revoked / Not Declared")
+            DiagnosticRow(label = "Network Mode", value = "User-Initiated LAN/WAN Only")
         }
     }
 }

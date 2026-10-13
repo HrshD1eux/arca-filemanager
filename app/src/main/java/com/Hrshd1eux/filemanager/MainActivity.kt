@@ -8,11 +8,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.Hrshd1eux.filemanager.core.designsystem.ArcaTheme
 import com.Hrshd1eux.filemanager.core.navigation.ArcaNavHost
+import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
+import com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
 
 class MainActivity : ComponentActivity() {
@@ -33,7 +39,20 @@ class MainActivity : ComponentActivity() {
         registerReceiver(screenOffReceiver, filter)
 
         setContent {
-            ArcaTheme {
+            val appSettings = remember { AppSettingsRepository.getInstance(applicationContext) }
+            val themeMode by appSettings.themeMode.collectAsStateWithLifecycle()
+            val dynamicColor by appSettings.dynamicColor.collectAsStateWithLifecycle()
+
+            val isDark = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
+            ArcaTheme(
+                darkTheme = isDark,
+                dynamicColor = dynamicColor
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {

@@ -149,7 +149,18 @@ fun ArcaNavHost(
         ) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToAbout = { navController.navigate(Screen.About) }
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
+            )
+        }
+
+        composable<Screen.PrivacyStatement>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            com.Hrshd1eux.filemanager.feature.privacy.PrivacyStatementScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

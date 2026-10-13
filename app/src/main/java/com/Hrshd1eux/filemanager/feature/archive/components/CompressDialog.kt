@@ -83,21 +83,29 @@ import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 
+import com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository
+
 @Composable
 fun CompressDialog(
     sources: List<StorageNode>,
     defaultName: String,
     onConfirmCreate: (profile: CompressionProfile, archiveName: String, password: CharArray?) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabledFormats: Set<ArchiveFormatOption> = ArchivePreferencesRepository.DEFAULT_ENABLED_FORMATS,
+    defaultFormat: ArchiveFormatOption = ArchiveFormatOption.ZIP,
+    defaultLevel: CompressionLevelPreset = CompressionLevelPreset.NORMAL
 ) {
     // Mode: Simple (default) vs Advanced (power-user)
     var dialogMode by remember { mutableStateOf(CompressionDialogMode.SIMPLE) }
 
     // Advanced / Simple configuration states
-    var selectedFormat by remember { mutableStateOf(ArchiveFormatOption.ZIP) }
-    var selectedPreset by remember { mutableStateOf(CompressionLevelPreset.NORMAL) }
-    var customLevel by remember { mutableIntStateOf(6) }
+    val initialFormat = remember(enabledFormats, defaultFormat) {
+        if (defaultFormat in enabledFormats) defaultFormat else enabledFormats.firstOrNull() ?: ArchiveFormatOption.ZIP
+    }
+    var selectedFormat by remember { mutableStateOf(initialFormat) }
+    var selectedPreset by remember { mutableStateOf(defaultLevel) }
+    var customLevel by remember { mutableIntStateOf(defaultLevel.level) }
     var selectedMethod by remember { mutableStateOf(CompressionMethodOption.DEFAULT) }
     var selectedThreads by remember { mutableIntStateOf(0) } // 0 = Auto
     var isSolid by remember { mutableStateOf(true) }
@@ -303,13 +311,15 @@ fun CompressDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
+                    val simpleCandidates = listOf(ArchiveFormatOption.ZIP, ArchiveFormatOption.SEVEN_Z, ArchiveFormatOption.TAR)
+                    val simpleFormats = simpleCandidates.filter { it in enabledFormats }.ifEmpty { enabledFormats.toList() }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        FormatChip(ArchiveFormatOption.ZIP, selectedFormat) { selectedFormat = it }
-                        FormatChip(ArchiveFormatOption.SEVEN_Z, selectedFormat) { selectedFormat = it }
-                        FormatChip(ArchiveFormatOption.TAR, selectedFormat) { selectedFormat = it }
+                        simpleFormats.forEach { format ->
+                            FormatChip(format, selectedFormat) { selectedFormat = it }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -382,31 +392,27 @@ fun CompressDialog(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
+                            val advancedFormats = ArchiveFormatOption.entries.filter { it in enabledFormats }
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    FormatChip(ArchiveFormatOption.SEVEN_Z, selectedFormat) {
-                                        selectedFormat = it
-                                        selectedMethod = CompressionMethodOption.LZMA2
-                                        selectedPreset = CompressionLevelPreset.ULTRA
-                                        customLevel = 9
-                                        dictionarySizeMb = 64
+                                advancedFormats.chunked(3).forEach { rowFormats ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        rowFormats.forEach { format ->
+                                            FormatChip(format, selectedFormat) {
+                                                selectedFormat = it
+                                                if (it == ArchiveFormatOption.SEVEN_Z) {
+                                                    selectedMethod = CompressionMethodOption.LZMA2
+                                                    selectedPreset = CompressionLevelPreset.ULTRA
+                                                    customLevel = 9
+                                                    dictionarySizeMb = 64
+                                                } else if (it == ArchiveFormatOption.ZIP) {
+                                                    selectedMethod = CompressionMethodOption.DEFLATE
+                                                }
+                                            }
+                                        }
                                     }
-                                    FormatChip(ArchiveFormatOption.ZIP, selectedFormat) {
-                                        selectedFormat = it
-                                        selectedMethod = CompressionMethodOption.DEFLATE
-                                    }
-                                    FormatChip(ArchiveFormatOption.TAR, selectedFormat) { selectedFormat = it }
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    FormatChip(ArchiveFormatOption.TAR_GZ, selectedFormat) { selectedFormat = it }
-                                    FormatChip(ArchiveFormatOption.TAR_XZ, selectedFormat) { selectedFormat = it }
-                                    FormatChip(ArchiveFormatOption.TAR_BZ2, selectedFormat) { selectedFormat = it }
                                 }
                             }
 
@@ -648,10 +654,11 @@ fun CompressDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
+                        val is7zEnabled = ArchiveFormatOption.SEVEN_Z in enabledFormats
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .clickable(enabled = is7zEnabled) {
                                     val newEnabled = !isEncryptEnabled
                                     isEncryptEnabled = newEnabled
                                     if (newEnabled && selectedFormat != ArchiveFormatOption.SEVEN_Z) {
@@ -670,18 +677,29 @@ fun CompressDialog(
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = if (is7zEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Encrypt Archive",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Column {
+                                    Text(
+                                        text = "Encrypt Archive",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (is7zEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                    if (!is7zEnabled) {
+                                        Text(
+                                            text = "Requires 7Z enabled in Settings",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
                             }
                             Switch(
-                                checked = isEncryptEnabled,
+                                checked = isEncryptEnabled && is7zEnabled,
+                                enabled = is7zEnabled,
                                 onCheckedChange = { enabled ->
                                     isEncryptEnabled = enabled
                                     if (enabled && selectedFormat != ArchiveFormatOption.SEVEN_Z) {

@@ -144,6 +144,7 @@ fun NetworkFileBrowserScreen(
     val stagedTransfer by viewModel.stagedTransfer.collectAsStateWithLifecycle()
     val activeOperation by viewModel.activeOperation.collectAsStateWithLifecycle()
     val activeProgress by viewModel.activeProgress.collectAsStateWithLifecycle()
+    val confirmDelete by remember { com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance() }.confirmDelete.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -398,7 +399,13 @@ fun NetworkFileBrowserScreen(
                                 }
 
                                 IconButton(
-                                    onClick = { bulkNodesToDelete = selectedItems }
+                                    onClick = {
+                                        if (confirmDelete) {
+                                            bulkNodesToDelete = selectedItems
+                                        } else {
+                                            viewModel.delete(selectedItems)
+                                        }
+                                    }
                                 ) {
                                     Icon(
                                         Icons.Default.Delete,
@@ -648,7 +655,13 @@ fun NetworkFileBrowserScreen(
                                             onCopyClick = {},
                                             onMoveClick = {},
                                             onRenameClick = { nodeToRename = node },
-                                            onDeleteClick = { nodeToDelete = node },
+                                            onDeleteClick = {
+                                                if (confirmDelete) {
+                                                    nodeToDelete = node
+                                                } else {
+                                                    viewModel.delete(listOf(node))
+                                                }
+                                            },
                                             onShareClick = {},
                                             onInfoClick = { selectedNodeForProperties = node }
                                         )
@@ -683,7 +696,13 @@ fun NetworkFileBrowserScreen(
                                             onCopyClick = { viewModel.stageNodesForCopy(listOf(node)) },
                                             onMoveClick = { viewModel.stageNodesForMove(listOf(node)) },
                                             onRenameClick = { nodeToRename = node },
-                                            onDeleteClick = { nodeToDelete = node },
+                                            onDeleteClick = {
+                                                if (confirmDelete) {
+                                                    nodeToDelete = node
+                                                } else {
+                                                    viewModel.delete(listOf(node))
+                                                }
+                                            },
                                             onShareClick = {},
                                             onInfoClick = { selectedNodeForProperties = node },
                                             onDownloadClick = { viewModel.downloadFile(node, downloadsDir) }
