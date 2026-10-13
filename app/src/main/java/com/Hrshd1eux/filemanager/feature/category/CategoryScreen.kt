@@ -122,6 +122,7 @@ fun CategoryScreen(
     onNavigateBack: () -> Unit,
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
     onNavigateToImageViewer: (imagePath: String, categoryName: String?, rootPath: String?) -> Unit = { _, _, _ -> },
+    onNavigateToVideoViewer: (videoPath: String, categoryName: String?, rootPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToDirectory: (path: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CategoryViewModel = viewModel()
@@ -345,7 +346,8 @@ fun CategoryScreen(
                                             categoryName = category.name,
                                             rootPath = rootPath,
                                             onNavigateToArchiveViewer = onNavigateToArchiveViewer,
-                                            onNavigateToImageViewer = onNavigateToImageViewer
+                                            onNavigateToImageViewer = onNavigateToImageViewer,
+                                            onNavigateToVideoViewer = onNavigateToVideoViewer
                                         )
                                     }
                                 },
@@ -388,7 +390,8 @@ fun CategoryScreen(
                                             categoryName = category.name,
                                             rootPath = rootPath,
                                             onNavigateToArchiveViewer = onNavigateToArchiveViewer,
-                                            onNavigateToImageViewer = onNavigateToImageViewer
+                                            onNavigateToImageViewer = onNavigateToImageViewer,
+                                            onNavigateToVideoViewer = onNavigateToVideoViewer
                                         )
                                     }
                                 },
@@ -519,10 +522,13 @@ private fun handleItemClick(
     categoryName: String,
     rootPath: String?,
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit,
-    onNavigateToImageViewer: (imagePath: String, categoryName: String?, rootPath: String?) -> Unit
+    onNavigateToImageViewer: (imagePath: String, categoryName: String?, rootPath: String?) -> Unit,
+    onNavigateToVideoViewer: (videoPath: String, categoryName: String?, rootPath: String?) -> Unit
 ) {
     if (FileTypeResolver.isImage(node.name)) {
         onNavigateToImageViewer(node.path, categoryName, rootPath)
+    } else if (FileTypeResolver.isVideo(node.name)) {
+        onNavigateToVideoViewer(node.path, categoryName, rootPath)
     } else if (FileTypeResolver.canPreviewArchive(node.name)) {
         onNavigateToArchiveViewer(node.path, node.name)
     } else {

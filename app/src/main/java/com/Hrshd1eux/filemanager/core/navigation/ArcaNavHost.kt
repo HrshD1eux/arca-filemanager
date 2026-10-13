@@ -23,6 +23,7 @@ import com.Hrshd1eux.filemanager.feature.network.browser.NetworkFileBrowserScree
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
 import com.Hrshd1eux.filemanager.feature.vault.VaultScreen
 import com.Hrshd1eux.filemanager.feature.viewer.image.ImageViewerScreen
+import com.Hrshd1eux.filemanager.feature.viewer.video.VideoViewerScreen
 import java.io.File
 
 @Composable
@@ -85,6 +86,9 @@ fun ArcaNavHost(
                 onNavigateToImageViewer = { imagePath, categoryName, directoryPath ->
                     navController.navigate(Screen.ImageViewer(initialPath = imagePath, categoryName = categoryName, directoryPath = directoryPath))
                 },
+                onNavigateToVideoViewer = { videoPath, categoryName, directoryPath ->
+                    navController.navigate(Screen.VideoViewer(initialPath = videoPath, categoryName = categoryName, directoryPath = directoryPath))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -105,6 +109,9 @@ fun ArcaNavHost(
                 },
                 onNavigateToImageViewer = { imagePath, categoryName, rootPath ->
                     navController.navigate(Screen.ImageViewer(initialPath = imagePath, categoryName = categoryName, directoryPath = rootPath))
+                },
+                onNavigateToVideoViewer = { videoPath, categoryName, rootPath ->
+                    navController.navigate(Screen.VideoViewer(initialPath = videoPath, categoryName = categoryName, directoryPath = rootPath))
                 },
                 onNavigateToDirectory = { path ->
                     navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))
@@ -177,6 +184,21 @@ fun ArcaNavHost(
         ) { backStackEntry ->
             val route = backStackEntry.toRoute<Screen.ImageViewer>()
             ImageViewerScreen(
+                initialPath = route.initialPath,
+                categoryName = route.categoryName,
+                directoryPath = route.directoryPath,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.VideoViewer>(
+            enterTransition = { fadeIn() },
+            exitTransition = { fadeOut() },
+            popEnterTransition = { fadeIn() },
+            popExitTransition = { fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.VideoViewer>()
+            VideoViewerScreen(
                 initialPath = route.initialPath,
                 categoryName = route.categoryName,
                 directoryPath = route.directoryPath,
