@@ -2,6 +2,8 @@ package com.Hrshd1eux.filemanager.feature.browser
 
 import java.io.File
 import android.content.Context
+import com.Hrshd1eux.filemanager.feature.viewer.audio.model.AudioPlaybackState
+import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -198,6 +200,9 @@ fun FileBrowserScreen(
     val defaultArchiveFormat by viewModel.archivePreferencesRepository.defaultFormat.collectAsStateWithLifecycle()
     val defaultCompressionLevel by viewModel.archivePreferencesRepository.defaultLevel.collectAsStateWithLifecycle()
     val confirmDelete by viewModel.appSettingsRepository.confirmDelete.collectAsStateWithLifecycle()
+    val audioController = remember { AudioPlaybackController.getInstance(context) }
+    val audioPlaybackState by audioController.playbackState.collectAsStateWithLifecycle()
+    val isAudioActive = audioPlaybackState !is AudioPlaybackState.Idle
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showOperationsQueueSheet by remember { mutableStateOf(false) }
@@ -652,6 +657,11 @@ fun FileBrowserScreen(
                                                     onNavigateToImageViewer(node.path, null, File(node.path).parent)
                                                 } else if (FileTypeResolver.isVideo(node.name)) {
                                                     onNavigateToVideoViewer(node.path, null, File(node.path).parent)
+                                                } else if (FileTypeResolver.isAudio(node.name)) {
+                                                    val audioList = (uiState as? BrowserUiState.Success)?.items?.filter {
+                                                        !it.isDirectory && FileTypeResolver.isAudio(it.name)
+                                                    } ?: listOf(node)
+                                                    AudioPlaybackController.getInstance(context).playTrack(node, audioList)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
@@ -736,6 +746,11 @@ fun FileBrowserScreen(
                                                     onNavigateToImageViewer(node.path, null, File(node.path).parent)
                                                 } else if (FileTypeResolver.isVideo(node.name)) {
                                                     onNavigateToVideoViewer(node.path, null, File(node.path).parent)
+                                                } else if (FileTypeResolver.isAudio(node.name)) {
+                                                    val audioList = (uiState as? BrowserUiState.Success)?.items?.filter {
+                                                        !it.isDirectory && FileTypeResolver.isAudio(it.name)
+                                                    } ?: listOf(node)
+                                                    AudioPlaybackController.getInstance(context).playTrack(node, audioList)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
@@ -800,6 +815,10 @@ fun FileBrowserScreen(
                         }
                     }
                 }
+            }
+
+            if (isAudioActive) {
+                Spacer(modifier = Modifier.height(72.dp))
             }
         }
     }

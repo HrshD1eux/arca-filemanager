@@ -64,6 +64,10 @@ import com.Hrshd1eux.filemanager.core.search.model.DateFilter
 import com.Hrshd1eux.filemanager.core.search.model.SizeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import androidx.compose.ui.platform.LocalContext
+import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+import com.Hrshd1eux.filemanager.feature.viewer.audio.model.AudioPlaybackState
+import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController
 import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,6 +80,11 @@ fun FileSearchScreen(
     modifier: Modifier = Modifier,
     viewModel: FileSearchViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val audioController = remember { AudioPlaybackController.getInstance(context) }
+    val audioPlaybackState by audioController.playbackState.collectAsStateWithLifecycle()
+    val isAudioActive = audioPlaybackState !is AudioPlaybackState.Idle
+
     val query by viewModel.query.collectAsStateWithLifecycle()
     val category by viewModel.category.collectAsStateWithLifecycle()
     val sizeFilter by viewModel.sizeFilter.collectAsStateWithLifecycle()
@@ -187,12 +196,19 @@ fun FileSearchScreen(
                         onItemClick = { node ->
                             if (node.isDirectory) {
                                 onNavigateToDirectory(node.path)
+                            } else if (FileTypeResolver.isAudio(node.name)) {
+                                val audioList = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) }
+                                audioController.playTrack(node, audioList)
                             } else {
                                 selectedNodeForProperties = node
                             }
                         }
                     )
                 }
+            }
+
+            if (isAudioActive) {
+                Spacer(modifier = Modifier.height(72.dp))
             }
         }
     }

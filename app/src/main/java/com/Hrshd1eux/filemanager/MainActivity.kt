@@ -75,10 +75,12 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         VaultLockManager.getInstance(applicationContext).onAppBackgrounded()
+        com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController.getInstance(applicationContext).onAppBackgrounded()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         runCatching { unregisterReceiver(screenOffReceiver) }
+        com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController.getInstance(applicationContext).release()
     }
 }

@@ -4,8 +4,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -22,6 +30,9 @@ import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
 import com.Hrshd1eux.filemanager.feature.network.browser.NetworkFileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
 import com.Hrshd1eux.filemanager.feature.vault.VaultScreen
+import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController
+import com.Hrshd1eux.filemanager.feature.viewer.audio.ui.AudioMiniPlayer
+import com.Hrshd1eux.filemanager.feature.viewer.audio.ui.AudioPlayerModalSheet
 import com.Hrshd1eux.filemanager.feature.viewer.image.ImageViewerScreen
 import com.Hrshd1eux.filemanager.feature.viewer.video.VideoViewerScreen
 import java.io.File
@@ -31,11 +42,16 @@ fun ArcaNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController()
 ) {
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Home,
-        modifier = modifier
-    ) {
+    val context = LocalContext.current
+    val audioController = remember { AudioPlaybackController.getInstance(context) }
+    val isExpanded by audioController.isExpanded.collectAsStateWithLifecycle()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Home,
+            modifier = Modifier.fillMaxSize()
+        ) {
         composable<Screen.Home>(
             enterTransition = { fadeIn() },
             exitTransition = { fadeOut() }
@@ -263,6 +279,23 @@ fun ArcaNavHost(
                 initialPath = route.initialPath,
                 title = route.title,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+    }
+
+        // Persistent Mini Player docked at the bottom of the screen
+        AudioMiniPlayer(
+            controller = audioController,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+        )
+
+        // Full Audio Player Modal Sheet
+        if (isExpanded) {
+            AudioPlayerModalSheet(
+                controller = audioController,
+                onDismiss = { audioController.collapsePlayer() }
             )
         }
     }

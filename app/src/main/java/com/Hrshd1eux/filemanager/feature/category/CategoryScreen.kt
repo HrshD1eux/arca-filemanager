@@ -1,6 +1,8 @@
 package com.Hrshd1eux.filemanager.feature.category
 
 import android.content.Context
+import com.Hrshd1eux.filemanager.feature.viewer.audio.model.AudioPlaybackState
+import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -135,6 +137,10 @@ fun CategoryScreen(
     val selectedNodes by viewModel.selectedNodes.collectAsStateWithLifecycle()
     val operationProgress by viewModel.operationProgress.collectAsStateWithLifecycle()
     val isOperating by viewModel.isOperating.collectAsStateWithLifecycle()
+
+    val audioController = remember { AudioPlaybackController.getInstance(context) }
+    val audioPlaybackState by audioController.playbackState.collectAsStateWithLifecycle()
+    val isAudioActive = audioPlaybackState !is AudioPlaybackState.Idle
 
     val isSelectionMode = selectedNodes.isNotEmpty()
 
@@ -347,7 +353,8 @@ fun CategoryScreen(
                                             rootPath = rootPath,
                                             onNavigateToArchiveViewer = onNavigateToArchiveViewer,
                                             onNavigateToImageViewer = onNavigateToImageViewer,
-                                            onNavigateToVideoViewer = onNavigateToVideoViewer
+                                            onNavigateToVideoViewer = onNavigateToVideoViewer,
+                                            audioItems = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) }
                                         )
                                     }
                                 },
@@ -391,7 +398,8 @@ fun CategoryScreen(
                                             rootPath = rootPath,
                                             onNavigateToArchiveViewer = onNavigateToArchiveViewer,
                                             onNavigateToImageViewer = onNavigateToImageViewer,
-                                            onNavigateToVideoViewer = onNavigateToVideoViewer
+                                            onNavigateToVideoViewer = onNavigateToVideoViewer,
+                                            audioItems = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) }
                                         )
                                     }
                                 },
@@ -421,6 +429,10 @@ fun CategoryScreen(
                         }
                     }
                 }
+            }
+
+            if (isAudioActive) {
+                Spacer(modifier = Modifier.height(72.dp))
             }
         }
     }
@@ -523,12 +535,16 @@ private fun handleItemClick(
     rootPath: String?,
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit,
     onNavigateToImageViewer: (imagePath: String, categoryName: String?, rootPath: String?) -> Unit,
-    onNavigateToVideoViewer: (videoPath: String, categoryName: String?, rootPath: String?) -> Unit
+    onNavigateToVideoViewer: (videoPath: String, categoryName: String?, rootPath: String?) -> Unit,
+    audioItems: List<StorageNode> = emptyList()
 ) {
     if (FileTypeResolver.isImage(node.name)) {
         onNavigateToImageViewer(node.path, categoryName, rootPath)
     } else if (FileTypeResolver.isVideo(node.name)) {
         onNavigateToVideoViewer(node.path, categoryName, rootPath)
+    } else if (FileTypeResolver.isAudio(node.name)) {
+        val audioList = if (audioItems.isNotEmpty()) audioItems else listOf(node)
+        AudioPlaybackController.getInstance(context).playTrack(node, audioList)
     } else if (FileTypeResolver.canPreviewArchive(node.name)) {
         onNavigateToArchiveViewer(node.path, node.name)
     } else {
