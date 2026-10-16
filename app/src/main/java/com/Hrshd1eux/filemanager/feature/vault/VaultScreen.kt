@@ -86,7 +86,14 @@ import com.Hrshd1eux.filemanager.feature.vault.components.UnlockVaultView
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultLockSettingsDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultMoveDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultPreviewDialog
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,6 +127,8 @@ fun VaultScreen(
     BackHandler {
         if (isSelectionMode) {
             viewModel.clearSelection()
+        } else if (unlockedState?.isSearching == true) {
+            viewModel.toggleSearch(false)
         } else if (unlockedState != null && unlockedState.currentVirtualPath.isNotEmpty()) {
             viewModel.navigateUp()
         } else {
@@ -170,6 +179,48 @@ fun VaultScreen(
                         titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 )
+            } else if (unlockedState?.isSearching == true) {
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = unlockedState.searchQuery,
+                            onValueChange = { viewModel.onSearchQueryChange(it) },
+                            placeholder = {
+                                Text(
+                                    text = "Search vault files...",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            },
+                            trailingIcon = {
+                                if (unlockedState.searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.clearSearch() }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.toggleSearch(false) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Exit Search"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
             } else {
                 TopAppBar(
                     title = {
@@ -204,6 +255,13 @@ fun VaultScreen(
                     },
                     actions = {
                         if (isUnlocked) {
+                            IconButton(onClick = { viewModel.toggleSearch(true) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search Vault",
+                                    tint = VaultEmerald
+                                )
+                            }
                             IconButton(onClick = { showCreateFolderDialog = true }) {
                                 Icon(
                                     imageVector = Icons.Default.CreateNewFolder,
@@ -235,7 +293,7 @@ fun VaultScreen(
             }
         },
         floatingActionButton = {
-            if (isUnlocked && !isSelectionMode) {
+            if (isUnlocked && !isSelectionMode && unlockedState?.isSearching != true) {
                 FloatingActionButton(
                     onClick = { showImportPicker = true },
                     containerColor = VaultEmerald,
@@ -274,86 +332,175 @@ fun VaultScreen(
                 }
                 is VaultUiState.Unlocked -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Virtual Breadcrumbs
-                        VaultBreadcrumbsBar(
-                            currentPath = state.currentVirtualPath,
-                            onNavigateToRoot = { viewModel.navigateToBreadcrumb(-1) },
-                            onNavigateToSegment = { index -> viewModel.navigateToBreadcrumb(index) }
-                        )
+                        if (state.isSearching && state.searchQuery.isNotBlank()) {
+                            if (state.searchResults.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.SearchOff,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(64.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "No matching files in Vault",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "No vault files match \"${state.searchQuery}\". Try searching by partial name, folder, or extension.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Button(
+                                            onClick = { viewModel.clearSearch() },
+                                            colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald)
+                                        ) {
+                                            Text("Clear Search")
+                                        }
+                                    }
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    item {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "${state.searchResults.size} results for \"${state.searchQuery}\"",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = VaultEmerald,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                    }
 
-                        if (state.currentEntries.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        imageVector = Icons.Default.FolderOpen,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(64.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = if (state.currentVirtualPath.isEmpty()) "Private Vault is Empty" else "This folder is empty",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "Tap '+' to import files or '📁' to create a folder.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    items(state.searchResults, key = { it.id }) { entry ->
+                                        val isSelected = state.selectedIds.contains(entry.id)
+                                        VaultEntryRow(
+                                            entry = entry,
+                                            isSelected = isSelected,
+                                            isSelectionMode = isSelectionMode,
+                                            showPath = true,
+                                            onItemClick = {
+                                                if (isSelectionMode) {
+                                                    viewModel.toggleSelection(entry.id)
+                                                } else if (entry.isDirectory) {
+                                                    viewModel.navigateInto(entry)
+                                                } else {
+                                                    previewEntry = entry
+                                                }
+                                            },
+                                            onItemLongClick = {
+                                                viewModel.toggleSelection(entry.id)
+                                            },
+                                            onPreview = { previewEntry = entry },
+                                            onExport = { entryToExport = entry },
+                                            onMove = { entryToMove = entry },
+                                            onRename = { entryToRename = entry },
+                                            onDelete = { entryToDelete = entry }
+                                        )
+                                    }
+
+                                    item {
+                                        Spacer(modifier = Modifier.height(80.dp))
+                                    }
                                 }
                             }
                         } else {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                item {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "${state.currentEntries.size} items in folder (${FileFormatter.formatFileSize(state.totalSize)} total in Vault)",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                }
+                            // Virtual Breadcrumbs
+                            VaultBreadcrumbsBar(
+                                currentPath = state.currentVirtualPath,
+                                onNavigateToRoot = { viewModel.navigateToBreadcrumb(-1) },
+                                onNavigateToSegment = { index -> viewModel.navigateToBreadcrumb(index) }
+                            )
 
-                                items(state.currentEntries, key = { it.id }) { entry ->
-                                    val isSelected = state.selectedIds.contains(entry.id)
-                                    VaultEntryRow(
-                                        entry = entry,
-                                        isSelected = isSelected,
-                                        isSelectionMode = isSelectionMode,
-                                        onItemClick = {
-                                            if (isSelectionMode) {
+                            if (state.currentEntries.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.FolderOpen,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(64.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = if (state.currentVirtualPath.isEmpty()) "Private Vault is Empty" else "This folder is empty",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "Tap '+' to import files or '📁' to create a folder.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    item {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "${state.currentEntries.size} items in folder (${FileFormatter.formatFileSize(state.totalSize)} total in Vault)",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                    }
+
+                                    items(state.currentEntries, key = { it.id }) { entry ->
+                                        val isSelected = state.selectedIds.contains(entry.id)
+                                        VaultEntryRow(
+                                            entry = entry,
+                                            isSelected = isSelected,
+                                            isSelectionMode = isSelectionMode,
+                                            onItemClick = {
+                                                if (isSelectionMode) {
+                                                    viewModel.toggleSelection(entry.id)
+                                                } else if (entry.isDirectory) {
+                                                    viewModel.navigateInto(entry)
+                                                } else {
+                                                    previewEntry = entry
+                                                }
+                                            },
+                                            onItemLongClick = {
                                                 viewModel.toggleSelection(entry.id)
-                                            } else if (entry.isDirectory) {
-                                                viewModel.navigateInto(entry)
-                                            } else {
-                                                previewEntry = entry
-                                            }
-                                        },
-                                        onItemLongClick = {
-                                            viewModel.toggleSelection(entry.id)
-                                        },
-                                        onPreview = { previewEntry = entry },
-                                        onExport = { entryToExport = entry },
-                                        onMove = { entryToMove = entry },
-                                        onRename = { entryToRename = entry },
-                                        onDelete = { entryToDelete = entry }
-                                    )
-                                }
+                                            },
+                                            onPreview = { previewEntry = entry },
+                                            onExport = { entryToExport = entry },
+                                            onMove = { entryToMove = entry },
+                                            onRename = { entryToRename = entry },
+                                            onDelete = { entryToDelete = entry }
+                                        )
+                                    }
 
-                                item {
-                                    Spacer(modifier = Modifier.height(80.dp))
+                                    item {
+                                        Spacer(modifier = Modifier.height(80.dp))
+                                    }
                                 }
                             }
                         }
@@ -669,6 +816,7 @@ private fun VaultEntryRow(
     entry: VaultFileEntry,
     isSelected: Boolean,
     isSelectionMode: Boolean,
+    showPath: Boolean = false,
     onItemClick: () -> Unit,
     onItemLongClick: () -> Unit,
     onPreview: () -> Unit,
@@ -732,6 +880,15 @@ private fun VaultEntryRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (showPath && entry.parentVirtualPath.isNotEmpty()) {
+                    Text(
+                        text = "📁 /${entry.parentVirtualPath}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = VaultEmerald,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (entry.isDirectory) {

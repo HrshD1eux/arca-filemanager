@@ -80,6 +80,7 @@ fun HomeScreen(
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val storageBreakdown by viewModel.storageBreakdown.collectAsStateWithLifecycle()
+    val lockSettings by viewModel.lockSettings.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -182,6 +183,7 @@ fun HomeScreen(
                 HomeQuickNavGroup(
                     favoriteCount = favorites.size,
                     recentCount = recents.size,
+                    showVault = !lockSettings.isVaultHidden,
                     onFavoritesClick = { showFavoritesSheet = true },
                     onRecentsClick = { showRecentsSheet = true },
                     onVaultClick = onNavigateToVault,

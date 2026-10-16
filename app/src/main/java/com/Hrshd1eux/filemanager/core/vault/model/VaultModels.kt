@@ -45,6 +45,9 @@ sealed interface VaultUiState {
         val totalFilesCount: Int = 0,
         val totalSize: Long = 0L,
         val selectedIds: Set<String> = emptySet(),
-        val activeProgress: OperationProgress? = null
+        val activeProgress: OperationProgress? = null,
+        val isSearching: Boolean = false,
+        val searchQuery: String = "",
+        val searchResults: List<VaultFileEntry> = emptyList()
     ) : VaultUiState
 }

@@ -15,5 +15,9 @@ enum class VaultAutoLockTimeout(val durationMs: Long, val displayName: String) {
 data class VaultLockSettings(
     val autoLockTimeout: VaultAutoLockTimeout = VaultAutoLockTimeout.FIVE_MINUTES,
     val lockOnBackground: Boolean = true,
-    val lockOnScreenOff: Boolean = true
+    val lockOnScreenOff: Boolean = true,
+    val isVaultHidden: Boolean = false,
+    val secretCodeSalt: String = "",
+    val secretCodeHash: String = "",
+    val encryptedSecretCode: String = ""
 )

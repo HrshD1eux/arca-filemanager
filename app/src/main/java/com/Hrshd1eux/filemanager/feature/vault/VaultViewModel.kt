@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.vault.VaultManager
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockSettings
@@ -42,6 +43,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     private var currentPath: String = ""
     private var selectedIds = mutableSetOf<String>()
+    private var isSearching: Boolean = false
+    private var searchQuery: String = ""
     private var idleCheckJob: Job? = null
 
     init {
@@ -98,13 +101,78 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     private fun publishUnlockedState(activeProgress: OperationProgress? = null) {
         val allFiles = vaultManager.getAllFiles()
         val entriesInPath = vaultManager.getEntriesInPath(currentPath)
+        val filteredResults = if (isSearching && searchQuery.isNotBlank()) {
+            filterVaultEntries(allFiles, searchQuery)
+        } else {
+            emptyList()
+        }
         _uiState.value = VaultUiState.Unlocked(
             currentVirtualPath = currentPath,
             currentEntries = entriesInPath,
             totalFilesCount = allFiles.size,
             totalSize = allFiles.filterNot { it.isDirectory }.sumOf { it.size },
             selectedIds = selectedIds.toSet(),
-            activeProgress = activeProgress
+            activeProgress = activeProgress,
+            isSearching = isSearching,
+            searchQuery = searchQuery,
+            searchResults = filteredResults
+        )
+    }
+
+    fun toggleSearch(active: Boolean) {
+        onUserInteraction()
+        isSearching = active
+        if (!active) {
+            searchQuery = ""
+        }
+        publishUnlockedState()
+    }
+
+    fun onSearchQueryChange(newQuery: String) {
+        onUserInteraction()
+        isSearching = true
+        searchQuery = newQuery
+        publishUnlockedState()
+    }
+
+    fun clearSearch() {
+        onUserInteraction()
+        searchQuery = ""
+        publishUnlockedState()
+    }
+
+    fun filterVaultEntries(entries: List<VaultFileEntry>, query: String): List<VaultFileEntry> {
+        val tokens = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (tokens.isEmpty()) return emptyList()
+
+        return entries.filter { entry ->
+            val ext = entry.originalName.substringAfterLast('.', "")
+            val category = FileFormatter.getCategoryDescription(entry.mimeType, entry.isDirectory)
+            val sizeStr = FileFormatter.formatFileSize(entry.size)
+            val dateStr = FileFormatter.formatDateShort(entry.lastModified)
+            val fullPath = if (entry.parentVirtualPath.isEmpty()) entry.originalName else "${entry.parentVirtualPath}/${entry.originalName}"
+
+            val searchable = buildString {
+                append(entry.originalName.lowercase())
+                append(" ")
+                append(fullPath.lowercase())
+                append(" ")
+                append(ext.lowercase())
+                append(" ")
+                append(entry.mimeType.lowercase())
+                append(" ")
+                append(category.lowercase())
+                append(" ")
+                append(sizeStr.lowercase())
+                append(" ")
+                append(dateStr.lowercase())
+            }
+
+            tokens.all { token -> searchable.contains(token) }
+        }.sortedWith(
+            compareBy<VaultFileEntry> { !it.isDirectory }
+                .thenByDescending { it.originalName.lowercase().startsWith(tokens.first()) }
+                .thenBy { it.originalName.lowercase() }
         )
     }
 
@@ -114,6 +182,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             vaultManager.createVault(password).onSuccess {
                 currentPath = ""
                 selectedIds.clear()
+                isSearching = false
+                searchQuery = ""
                 vaultLockManager.onUserInteraction()
                 startIdleChecker()
                 publishUnlockedState()
@@ -132,6 +202,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             vaultManager.unlock(password).onSuccess {
                 currentPath = ""
                 selectedIds.clear()
+                isSearching = false
+                searchQuery = ""
                 vaultLockManager.onUserInteraction()
                 startIdleChecker()
                 publishUnlockedState()
@@ -150,12 +222,16 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         vaultManager.lock()
         currentPath = ""
         selectedIds.clear()
+        isSearching = false
+        searchQuery = ""
         _uiState.value = VaultUiState.Locked()
     }
 
     fun navigateInto(folder: VaultFileEntry) {
         if (!folder.isDirectory) return
         onUserInteraction()
+        isSearching = false
+        searchQuery = ""
         currentPath = if (currentPath.isEmpty()) folder.originalName else "$currentPath/${folder.originalName}"
         selectedIds.clear()
         publishUnlockedState()

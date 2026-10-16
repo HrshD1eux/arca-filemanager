@@ -21,6 +21,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultAutoLockTimeout
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockSettings
+import com.Hrshd1eux.filemanager.core.vault.stealth.VaultStealthSecurity
 
 @Composable
 fun VaultLockSettingsDialog(
@@ -50,6 +52,16 @@ fun VaultLockSettingsDialog(
     var selectedTimeout by remember { mutableStateOf(currentSettings.autoLockTimeout) }
     var lockOnBg by remember { mutableStateOf(currentSettings.lockOnBackground) }
     var lockOnScreenOff by remember { mutableStateOf(currentSettings.lockOnScreenOff) }
+    var isVaultHidden by remember { mutableStateOf(currentSettings.isVaultHidden) }
+
+    val initialCode = remember(currentSettings) {
+        if (currentSettings.encryptedSecretCode.isNotBlank() && currentSettings.secretCodeSalt.isNotBlank()) {
+            VaultStealthSecurity.decryptCode(currentSettings.encryptedSecretCode, currentSettings.secretCodeSalt)
+        } else {
+            VaultStealthSecurity.DEFAULT_TRIGGER_CODE
+        }
+    }
+    var secretCodeInput by remember { mutableStateOf(initialCode) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -176,6 +188,61 @@ fun VaultLockSettingsDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Stealth Mode",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Hide Vault toggle
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { isVaultHidden = !isVaultHidden }
+                        .padding(vertical = 4.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Hide Private Vault",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Hides vault from Home screen. Access via secret trigger code in search.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = isVaultHidden,
+                        onCheckedChange = { isVaultHidden = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = VaultEmerald)
+                    )
+                }
+
+                if (isVaultHidden) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = secretCodeInput,
+                        onValueChange = { secretCodeInput = it },
+                        label = { Text("Secret Trigger Code") },
+                        placeholder = { Text("e.g. #vault or 🔐") },
+                        supportingText = {
+                            Text("Type this code in global search to reveal the vault. Emojis and symbols supported. Encrypted with salted hash.")
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Manual Lock Action
@@ -200,10 +267,19 @@ fun VaultLockSettingsDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    val credentials = if (isVaultHidden) {
+                        VaultStealthSecurity.createStealthCredentials(secretCodeInput)
+                    } else {
+                        null
+                    }
                     val newSettings = VaultLockSettings(
                         autoLockTimeout = selectedTimeout,
                         lockOnBackground = lockOnBg,
-                        lockOnScreenOff = lockOnScreenOff
+                        lockOnScreenOff = lockOnScreenOff,
+                        isVaultHidden = isVaultHidden,
+                        secretCodeSalt = credentials?.saltHex ?: currentSettings.secretCodeSalt,
+                        secretCodeHash = credentials?.hashHex ?: currentSettings.secretCodeHash,
+                        encryptedSecretCode = credentials?.encryptedPayloadHex ?: currentSettings.encryptedSecretCode
                     )
                     onSaveSettings(newSettings)
                     onDismiss()

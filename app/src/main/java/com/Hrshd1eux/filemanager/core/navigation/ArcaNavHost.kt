@@ -155,6 +155,9 @@ fun ArcaNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDirectory = { path ->
                     navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))
+                },
+                onNavigateToVault = {
+                    navController.navigate(Screen.Vault)
                 }
             )
         }

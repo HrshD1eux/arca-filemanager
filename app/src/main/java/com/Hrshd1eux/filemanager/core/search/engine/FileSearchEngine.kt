@@ -43,7 +43,10 @@ class FileSearchEngine(
 
         try {
             rootFile.walkTopDown()
-                .onEnter { it.canRead() }
+                .onEnter { dir ->
+                    val normalized = dir.path.replace('\\', '/')
+                    dir.canRead() && !dir.name.equals("vault", ignoreCase = true) && !normalized.contains("/vault/") && !normalized.contains("/.vault/")
+                }
                 .forEach { file ->
                     currentCoroutineContext().ensureActive()
 
@@ -71,6 +74,15 @@ class FileSearchEngine(
         criteria: SearchCriteria,
         dateThreshold: Long
     ): Boolean {
+        val normalizedPath = file.path.replace('\\', '/')
+        if (file.name.equals("vault", ignoreCase = true) ||
+            normalizedPath.contains("/vault/") ||
+            normalizedPath.endsWith("/vault") ||
+            normalizedPath.contains("/.vault/")
+        ) {
+            return false
+        }
+
         if (!criteria.includeHidden && file.name.startsWith(".")) {
             return false
         }

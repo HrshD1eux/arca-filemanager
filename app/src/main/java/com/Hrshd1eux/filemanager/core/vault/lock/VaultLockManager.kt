@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.core.vault.lock
 import android.content.Context
 import android.content.SharedPreferences
 import com.Hrshd1eux.filemanager.core.vault.VaultManager
+import com.Hrshd1eux.filemanager.core.vault.stealth.VaultStealthSecurity
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -83,12 +84,26 @@ class VaultLockManager(
         _lockEvents.tryEmit(Unit)
     }
 
+    fun matchesSecretCode(query: String): Boolean {
+        val settings = _lockSettings.value
+        if (!settings.isVaultHidden) return false
+        return VaultStealthSecurity.verifyTriggerCode(
+            input = query,
+            saltHex = settings.secretCodeSalt,
+            hashHex = settings.secretCodeHash
+        )
+    }
+
     fun updateSettings(settings: VaultLockSettings) {
         _lockSettings.value = settings
         prefs?.edit()?.apply {
             putString(KEY_TIMEOUT, settings.autoLockTimeout.name)
             putBoolean(KEY_LOCK_ON_BG, settings.lockOnBackground)
             putBoolean(KEY_LOCK_ON_SCREEN_OFF, settings.lockOnScreenOff)
+            putBoolean(KEY_IS_VAULT_HIDDEN, settings.isVaultHidden)
+            putString(KEY_SECRET_SALT, settings.secretCodeSalt)
+            putString(KEY_SECRET_HASH, settings.secretCodeHash)
+            putString(KEY_SECRET_ENCRYPTED, settings.encryptedSecretCode)
             apply()
         }
     }
@@ -101,11 +116,19 @@ class VaultLockManager(
         }.getOrDefault(VaultAutoLockTimeout.FIVE_MINUTES)
         val lockOnBg = sp.getBoolean(KEY_LOCK_ON_BG, true)
         val lockOnScreenOff = sp.getBoolean(KEY_LOCK_ON_SCREEN_OFF, true)
+        val isVaultHidden = sp.getBoolean(KEY_IS_VAULT_HIDDEN, false)
+        val secretSalt = sp.getString(KEY_SECRET_SALT, "") ?: ""
+        val secretHash = sp.getString(KEY_SECRET_HASH, "") ?: ""
+        val secretEncrypted = sp.getString(KEY_SECRET_ENCRYPTED, "") ?: ""
 
         return VaultLockSettings(
             autoLockTimeout = timeout,
             lockOnBackground = lockOnBg,
-            lockOnScreenOff = lockOnScreenOff
+            lockOnScreenOff = lockOnScreenOff,
+            isVaultHidden = isVaultHidden,
+            secretCodeSalt = secretSalt,
+            secretCodeHash = secretHash,
+            encryptedSecretCode = secretEncrypted
         )
     }
 
@@ -114,6 +137,10 @@ class VaultLockManager(
         private const val KEY_TIMEOUT = "vault_auto_lock_timeout"
         private const val KEY_LOCK_ON_BG = "vault_lock_on_bg"
         private const val KEY_LOCK_ON_SCREEN_OFF = "vault_lock_on_screen_off"
+        private const val KEY_IS_VAULT_HIDDEN = "vault_is_hidden"
+        private const val KEY_SECRET_SALT = "vault_secret_code_salt"
+        private const val KEY_SECRET_HASH = "vault_secret_code_hash"
+        private const val KEY_SECRET_ENCRYPTED = "vault_secret_code_encrypted"
 
         @Volatile
         private var instance: VaultLockManager? = null

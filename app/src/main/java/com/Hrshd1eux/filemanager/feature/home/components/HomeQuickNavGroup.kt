@@ -46,7 +46,8 @@ fun HomeQuickNavGroup(
     onRecentsClick: () -> Unit,
     onVaultClick: () -> Unit,
     onNetworkClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showVault: Boolean = true
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -80,19 +81,21 @@ fun HomeQuickNavGroup(
                 onClick = onRecentsClick
             )
 
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
+            if (showVault) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
 
-            QuickNavItemRow(
-                icon = Icons.Default.Lock,
-                iconTint = VaultEmerald,
-                containerColor = VaultEmerald.copy(alpha = 0.12f),
-                title = "Private Vault",
-                badgeText = "AES-256 Encrypted",
-                onClick = onVaultClick
-            )
+                QuickNavItemRow(
+                    icon = Icons.Default.Lock,
+                    iconTint = VaultEmerald,
+                    containerColor = VaultEmerald.copy(alpha = 0.12f),
+                    title = "Private Vault",
+                    badgeText = "AES-256 Encrypted",
+                    onClick = onVaultClick
+                )
+            }
 
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = 16.dp),

@@ -66,6 +66,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import androidx.compose.ui.platform.LocalContext
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
 import com.Hrshd1eux.filemanager.feature.viewer.audio.model.AudioPlaybackState
 import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController
 import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
@@ -77,10 +78,12 @@ fun FileSearchScreen(
     initialCategory: String? = null,
     onNavigateBack: () -> Unit,
     onNavigateToDirectory: (path: String) -> Unit,
+    onNavigateToVault: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: FileSearchViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val vaultLockManager = remember { VaultLockManager.getInstance(context) }
     val audioController = remember { AudioPlaybackController.getInstance(context) }
     val audioPlaybackState by audioController.playbackState.collectAsStateWithLifecycle()
     val isAudioActive = audioPlaybackState !is AudioPlaybackState.Idle
@@ -114,7 +117,14 @@ fun FileSearchScreen(
                 title = {
                     OutlinedTextField(
                         value = query,
-                        onValueChange = { viewModel.onQueryChange(it) },
+                        onValueChange = { newQuery ->
+                            if (vaultLockManager.matchesSecretCode(newQuery)) {
+                                viewModel.clearQuery()
+                                onNavigateToVault()
+                            } else {
+                                viewModel.onQueryChange(newQuery)
+                            }
+                        },
                         placeholder = {
                             Text(
                                 text = "Search files & folders...",
