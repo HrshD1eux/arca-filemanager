@@ -34,6 +34,7 @@ import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackContro
 import com.Hrshd1eux.filemanager.feature.viewer.audio.ui.AudioMiniPlayer
 import com.Hrshd1eux.filemanager.feature.viewer.audio.ui.AudioPlayerModalSheet
 import com.Hrshd1eux.filemanager.feature.viewer.image.ImageViewerScreen
+import com.Hrshd1eux.filemanager.feature.viewer.unified.UnifiedPreviewScreen
 import com.Hrshd1eux.filemanager.feature.viewer.video.VideoViewerScreen
 import java.io.File
 
@@ -105,6 +106,9 @@ fun ArcaNavHost(
                 onNavigateToVideoViewer = { videoPath, categoryName, directoryPath ->
                     navController.navigate(Screen.VideoViewer(initialPath = videoPath, categoryName = categoryName, directoryPath = directoryPath))
                 },
+                onNavigateToPreview = { filePath, categoryName, directoryPath ->
+                    navController.navigate(Screen.Preview(initialPath = filePath, categoryName = categoryName, directoryPath = directoryPath))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -128,6 +132,9 @@ fun ArcaNavHost(
                 },
                 onNavigateToVideoViewer = { videoPath, categoryName, rootPath ->
                     navController.navigate(Screen.VideoViewer(initialPath = videoPath, categoryName = categoryName, directoryPath = rootPath))
+                },
+                onNavigateToPreview = { filePath, categoryName, rootPath ->
+                    navController.navigate(Screen.Preview(initialPath = filePath, categoryName = categoryName, directoryPath = rootPath))
                 },
                 onNavigateToDirectory = { path ->
                     navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))
@@ -192,6 +199,21 @@ fun ArcaNavHost(
             )
         }
 
+        composable<Screen.Preview>(
+            enterTransition = { fadeIn() },
+            exitTransition = { fadeOut() },
+            popEnterTransition = { fadeIn() },
+            popExitTransition = { fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.Preview>()
+            UnifiedPreviewScreen(
+                initialPath = route.initialPath,
+                categoryName = route.categoryName,
+                directoryPath = route.directoryPath,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         composable<Screen.ImageViewer>(
             enterTransition = { fadeIn() },
             exitTransition = { fadeOut() },
@@ -199,7 +221,7 @@ fun ArcaNavHost(
             popExitTransition = { fadeOut() }
         ) { backStackEntry ->
             val route = backStackEntry.toRoute<Screen.ImageViewer>()
-            ImageViewerScreen(
+            UnifiedPreviewScreen(
                 initialPath = route.initialPath,
                 categoryName = route.categoryName,
                 directoryPath = route.directoryPath,
@@ -214,7 +236,7 @@ fun ArcaNavHost(
             popExitTransition = { fadeOut() }
         ) { backStackEntry ->
             val route = backStackEntry.toRoute<Screen.VideoViewer>()
-            VideoViewerScreen(
+            UnifiedPreviewScreen(
                 initialPath = route.initialPath,
                 categoryName = route.categoryName,
                 directoryPath = route.directoryPath,

@@ -125,6 +125,7 @@ fun CategoryScreen(
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
     onNavigateToImageViewer: (imagePath: String, categoryName: String?, rootPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToVideoViewer: (videoPath: String, categoryName: String?, rootPath: String?) -> Unit = { _, _, _ -> },
+    onNavigateToPreview: (filePath: String, categoryName: String?, rootPath: String?) -> Unit = onNavigateToImageViewer,
     onNavigateToDirectory: (path: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CategoryViewModel = viewModel()
@@ -352,8 +353,7 @@ fun CategoryScreen(
                                             categoryName = category.name,
                                             rootPath = rootPath,
                                             onNavigateToArchiveViewer = onNavigateToArchiveViewer,
-                                            onNavigateToImageViewer = onNavigateToImageViewer,
-                                            onNavigateToVideoViewer = onNavigateToVideoViewer,
+                                            onNavigateToPreview = onNavigateToPreview,
                                             audioItems = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) }
                                         )
                                     }
@@ -397,8 +397,7 @@ fun CategoryScreen(
                                             categoryName = category.name,
                                             rootPath = rootPath,
                                             onNavigateToArchiveViewer = onNavigateToArchiveViewer,
-                                            onNavigateToImageViewer = onNavigateToImageViewer,
-                                            onNavigateToVideoViewer = onNavigateToVideoViewer,
+                                            onNavigateToPreview = onNavigateToPreview,
                                             audioItems = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) }
                                         )
                                     }
@@ -534,21 +533,16 @@ private fun handleItemClick(
     categoryName: String,
     rootPath: String?,
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit,
-    onNavigateToImageViewer: (imagePath: String, categoryName: String?, rootPath: String?) -> Unit,
-    onNavigateToVideoViewer: (videoPath: String, categoryName: String?, rootPath: String?) -> Unit,
+    onNavigateToPreview: (filePath: String, categoryName: String?, rootPath: String?) -> Unit,
     audioItems: List<StorageNode> = emptyList()
 ) {
-    if (FileTypeResolver.isImage(node.name)) {
-        onNavigateToImageViewer(node.path, categoryName, rootPath)
-    } else if (FileTypeResolver.isVideo(node.name)) {
-        onNavigateToVideoViewer(node.path, categoryName, rootPath)
-    } else if (FileTypeResolver.isAudio(node.name)) {
+    if (FileTypeResolver.canPreviewArchive(node.name)) {
+        onNavigateToArchiveViewer(node.path, node.name)
+    } else if (FileTypeResolver.isAudio(node.name) && categoryName.equals("AUDIO", ignoreCase = true)) {
         val audioList = if (audioItems.isNotEmpty()) audioItems else listOf(node)
         AudioPlaybackController.getInstance(context).playTrack(node, audioList)
-    } else if (FileTypeResolver.canPreviewArchive(node.name)) {
-        onNavigateToArchiveViewer(node.path, node.name)
     } else {
-        FileIntentDispatcher.view(context, node)
+        onNavigateToPreview(node.path, categoryName, rootPath)
     }
 }
 

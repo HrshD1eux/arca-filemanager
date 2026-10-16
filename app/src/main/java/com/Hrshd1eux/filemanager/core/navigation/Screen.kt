@@ -53,6 +53,13 @@ sealed interface Screen {
     ) : Screen
 
     @Serializable
+    data class Preview(
+        val initialPath: String,
+        val categoryName: String? = null,
+        val directoryPath: String? = null
+    ) : Screen
+
+    @Serializable
     data class ImageViewer(
         val initialPath: String,
         val categoryName: String? = null,

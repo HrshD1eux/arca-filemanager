@@ -172,6 +172,7 @@ fun FileBrowserScreen(
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
     onNavigateToImageViewer: (imagePath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToVideoViewer: (videoPath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
+    onNavigateToPreview: (filePath: String, categoryName: String?, directoryPath: String?) -> Unit = onNavigateToImageViewer,
     modifier: Modifier = Modifier,
     viewModel: FileBrowserViewModel = viewModel()
 ) {
@@ -618,10 +619,10 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
-                                                } else if (node.extension.equals("zip", ignoreCase = true)) {
+                                                } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
-                                                    FileIntentDispatcher.view(context, node)
+                                                    onNavigateToPreview(node.path, null, File(node.path).parent)
                                                 }
                                             },
                                             onToggleSelection = {
@@ -653,19 +654,10 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
-                                                } else if (FileTypeResolver.isImage(node.name)) {
-                                                    onNavigateToImageViewer(node.path, null, File(node.path).parent)
-                                                } else if (FileTypeResolver.isVideo(node.name)) {
-                                                    onNavigateToVideoViewer(node.path, null, File(node.path).parent)
-                                                } else if (FileTypeResolver.isAudio(node.name)) {
-                                                    val audioList = (uiState as? BrowserUiState.Success)?.items?.filter {
-                                                        !it.isDirectory && FileTypeResolver.isAudio(it.name)
-                                                    } ?: listOf(node)
-                                                    AudioPlaybackController.getInstance(context).playTrack(node, audioList)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
-                                                    FileIntentDispatcher.view(context, node)
+                                                    onNavigateToPreview(node.path, null, File(node.path).parent)
                                                 }
                                             },
                                             onToggleSelection = {
@@ -742,19 +734,10 @@ fun FileBrowserScreen(
                                                 if (node.isDirectory) {
                                                     val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                                                     viewModel.navigateInto(node, hasPermission)
-                                                } else if (FileTypeResolver.isImage(node.name)) {
-                                                    onNavigateToImageViewer(node.path, null, File(node.path).parent)
-                                                } else if (FileTypeResolver.isVideo(node.name)) {
-                                                    onNavigateToVideoViewer(node.path, null, File(node.path).parent)
-                                                } else if (FileTypeResolver.isAudio(node.name)) {
-                                                    val audioList = (uiState as? BrowserUiState.Success)?.items?.filter {
-                                                        !it.isDirectory && FileTypeResolver.isAudio(it.name)
-                                                    } ?: listOf(node)
-                                                    AudioPlaybackController.getInstance(context).playTrack(node, audioList)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
                                                 } else {
-                                                    FileIntentDispatcher.view(context, node)
+                                                    onNavigateToPreview(node.path, null, File(node.path).parent)
                                                 }
                                             },
                                             onToggleSelection = {
