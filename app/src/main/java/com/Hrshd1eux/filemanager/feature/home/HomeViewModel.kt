@@ -21,12 +21,14 @@ class HomeViewModel(
     private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
     private val recentsRepository: RecentsRepository = RecentsRepository(),
     private val storageAnalyzer: LocalStorageAnalyzer = LocalStorageAnalyzer(),
-    private val vaultLockManager: VaultLockManager = VaultLockManager.getInstance(application)
+    private val vaultLockManager: VaultLockManager = VaultLockManager.getInstance(application),
+    private val appSettingsRepository: com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository = com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance(application)
 ) : AndroidViewModel(application) {
 
     val favorites: StateFlow<List<FavoriteItem>> = favoritesRepository.favorites
     val recents: StateFlow<List<RecentItem>> = recentsRepository.recents
     val lockSettings: StateFlow<VaultLockSettings> = vaultLockManager.lockSettings
+    val firstRunExplanationCompleted: StateFlow<Boolean> = appSettingsRepository.firstRunExplanationCompleted
 
     private val _storageBreakdown = MutableStateFlow(StorageBreakdown(isCalculating = true))
     val storageBreakdown: StateFlow<StorageBreakdown> = _storageBreakdown.asStateFlow()
@@ -53,5 +55,9 @@ class HomeViewModel(
 
     fun removeRecent(path: String) {
         recentsRepository.removeRecent(path)
+    }
+
+    fun setFirstRunExplanationCompleted(completed: Boolean = true) {
+        appSettingsRepository.setFirstRunExplanationCompleted(completed)
     }
 }

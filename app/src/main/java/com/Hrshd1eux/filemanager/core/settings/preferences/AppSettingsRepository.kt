@@ -28,6 +28,9 @@ class AppSettingsRepository(context: Context? = null) {
     private val _confirmDelete = MutableStateFlow(loadConfirmDelete())
     val confirmDelete: StateFlow<Boolean> = _confirmDelete.asStateFlow()
 
+    private val _firstRunExplanationCompleted = MutableStateFlow(loadFirstRunExplanationCompleted())
+    val firstRunExplanationCompleted: StateFlow<Boolean> = _firstRunExplanationCompleted.asStateFlow()
+
     fun updateThemeMode(mode: ThemeMode) {
         _themeMode.value = mode
         prefs?.edit()?.putString(KEY_THEME_MODE, mode.name)?.apply()
@@ -41,6 +44,16 @@ class AppSettingsRepository(context: Context? = null) {
     fun updateConfirmDelete(enabled: Boolean) {
         _confirmDelete.value = enabled
         prefs?.edit()?.putBoolean(KEY_CONFIRM_DELETE, enabled)?.apply()
+    }
+
+    fun setFirstRunExplanationCompleted(completed: Boolean = true) {
+        _firstRunExplanationCompleted.value = completed
+        prefs?.edit()?.putBoolean(KEY_FIRST_RUN_EXPLANATION_COMPLETED, completed)?.apply()
+    }
+
+    fun resetFirstRunExplanation() {
+        _firstRunExplanationCompleted.value = false
+        prefs?.edit()?.remove(KEY_FIRST_RUN_EXPLANATION_COMPLETED)?.apply()
     }
 
     private fun loadThemeMode(): ThemeMode {
@@ -57,11 +70,16 @@ class AppSettingsRepository(context: Context? = null) {
         return prefs?.getBoolean(KEY_CONFIRM_DELETE, true) ?: true
     }
 
+    private fun loadFirstRunExplanationCompleted(): Boolean {
+        return prefs?.getBoolean(KEY_FIRST_RUN_EXPLANATION_COMPLETED, false) ?: false
+    }
+
     companion object {
         private const val PREFS_NAME = "arca_app_settings"
         private const val KEY_THEME_MODE = "app_theme_mode"
         private const val KEY_DYNAMIC_COLOR = "app_dynamic_color"
         private const val KEY_CONFIRM_DELETE = "app_confirm_delete"
+        private const val KEY_FIRST_RUN_EXPLANATION_COMPLETED = "app_first_run_storage_explanation_completed"
 
         @Volatile
         private var instance: AppSettingsRepository? = null

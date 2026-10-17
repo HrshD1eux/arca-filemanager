@@ -46,12 +46,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
+import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 import com.Hrshd1eux.filemanager.feature.home.components.FavoritesSheet
+import com.Hrshd1eux.filemanager.feature.home.components.FirstRunStorageExplanationDialog
 import com.Hrshd1eux.filemanager.feature.home.components.HomeCategoriesGrid
 import com.Hrshd1eux.filemanager.feature.home.components.HomeQuickNavGroup
 import com.Hrshd1eux.filemanager.feature.home.components.HomeStorageCard
@@ -76,6 +85,9 @@ fun HomeScreen(
     onNavigateToPrivacy: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     var showMenu by remember { mutableStateOf(false) }
     var showFavoritesSheet by remember { mutableStateOf(false) }
     var showRecentsSheet by remember { mutableStateOf(false) }
@@ -86,6 +98,62 @@ fun HomeScreen(
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val storageBreakdown by viewModel.storageBreakdown.collectAsStateWithLifecycle()
     val lockSettings by viewModel.lockSettings.collectAsStateWithLifecycle()
+    val firstRunExplanationCompleted by viewModel.firstRunExplanationCompleted.collectAsStateWithLifecycle()
+
+    var hasAllFilesAccess by remember {
+        mutableStateOf(StoragePermissionManager.hasAllFilesAccess(context))
+    }
+
+    val allFilesPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        val granted = StoragePermissionManager.hasAllFilesAccess(context)
+        hasAllFilesAccess = granted
+        if (granted) {
+            viewModel.refreshStorageBreakdown()
+        }
+    }
+
+    val legacyPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        val granted = StoragePermissionManager.hasAllFilesAccess(context)
+        hasAllFilesAccess = granted
+        if (granted) {
+            viewModel.refreshStorageBreakdown()
+        }
+    }
+
+    val launchPermissionRequest: () -> Unit = {
+        if (StoragePermissionManager.isAllFilesAccessSupported()) {
+            allFilesPermissionLauncher.launch(StoragePermissionManager.createManageAllFilesIntent(context))
+        } else {
+            val legacy = StoragePermissionManager.getRequiredLegacyPermissions()
+            if (legacy.isNotEmpty()) {
+                legacyPermissionLauncher.launch(legacy)
+            } else {
+                allFilesPermissionLauncher.launch(StoragePermissionManager.createManageAllFilesIntent(context))
+            }
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val granted = StoragePermissionManager.hasAllFilesAccess(context)
+                if (granted != hasAllFilesAccess) {
+                    hasAllFilesAccess = granted
+                    if (granted) {
+                        viewModel.refreshStorageBreakdown()
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -178,7 +246,9 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(2.dp))
                 HomeStorageCard(
                     breakdown = storageBreakdown,
-                    title = "Storage",
+                    title = if (hasAllFilesAccess) "Storage" else "Storage • Limited Access",
+                    hasAllFilesAccess = hasAllFilesAccess,
+                    onGrantPermissionClick = launchPermissionRequest,
                     onCardClick = { onNavigateToBrowser(null, "Internal Storage") }
                 )
             }
@@ -286,6 +356,20 @@ fun HomeScreen(
                     Text("Cancel")
                 }
             }
+        )
+    }
+
+    // First-Run Storage Explanation Dialog (shown once when storage permission is not yet granted)
+    if (!hasAllFilesAccess && !firstRunExplanationCompleted) {
+        FirstRunStorageExplanationDialog(
+            onGrantAccess = {
+                viewModel.setFirstRunExplanationCompleted(true)
+                launchPermissionRequest()
+            },
+            onContinueWithLimitedAccess = {
+                viewModel.setFirstRunExplanationCompleted(true)
+            },
+            onReadPrivacyStatement = onNavigateToPrivacy
         )
     }
 }

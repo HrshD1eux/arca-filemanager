@@ -37,15 +37,27 @@ fun HomeStorageCard(
     breakdown: StorageBreakdown,
     title: String = "Storage",
     onCardClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hasAllFilesAccess: Boolean = true,
+    onGrantPermissionClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onCardClick),
+            .clickable(onClick = {
+                if (!hasAllFilesAccess && onGrantPermissionClick != null) {
+                    onGrantPermissionClick()
+                } else {
+                    onCardClick()
+                }
+            }),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = if (hasAllFilesAccess) {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+            }
         )
     ) {
         Column(
@@ -93,38 +105,62 @@ fun HomeStorageCard(
             val totalFormatted = FileFormatter.formatFileSize(breakdown.totalBytes)
             val freeFormatted = FileFormatter.formatFileSize(breakdown.freeBytes)
 
-            Text(
-                text = if (breakdown.totalBytes > 0) "$usedFormatted / $totalFormatted" else "Calculating storage...",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Progress Bar (e.g. ████████████░░░)
-            LinearProgressIndicator(
-                progress = { breakdown.usedPercentage },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(5.dp)),
-                color = if (breakdown.usedPercentage > 0.9f) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                drawStopIndicator = {}
-            )
-
-            if (breakdown.totalBytes > 0) {
-                Spacer(modifier = Modifier.height(8.dp))
+            if (!hasAllFilesAccess) {
                 Text(
-                    text = "$freeFormatted available",
+                    text = "Limited Access Mode",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Private Vault and Network features are active. Grant storage access to browse device files.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (onGrantPermissionClick != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    androidx.compose.material3.Button(
+                        onClick = onGrantPermissionClick,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Grant Storage Access")
+                    }
+                }
+            } else {
+                Text(
+                    text = if (breakdown.totalBytes > 0) "$usedFormatted / $totalFormatted" else "Calculating storage...",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Progress Bar (e.g. ████████████░░░)
+                LinearProgressIndicator(
+                    progress = { breakdown.usedPercentage },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+                    color = if (breakdown.usedPercentage > 0.9f) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    drawStopIndicator = {}
+                )
+
+                if (breakdown.totalBytes > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "$freeFormatted available",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

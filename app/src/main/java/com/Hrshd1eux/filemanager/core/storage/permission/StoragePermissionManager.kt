@@ -75,6 +75,46 @@ object StoragePermissionManager {
     }
 
     /**
+     * Returns true if the device runs Android 11+ (API 30+) where All Files Access is supported.
+     */
+    fun isAllFilesAccessSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+
+    /**
+     * Required runtime permissions for Android 10 and below.
+     */
+    fun getRequiredLegacyPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        } else {
+            emptyArray()
+        }
+    }
+
+    /**
+     * Important Android platform limitation disclaimer.
+     * Highlights that all-files access is not a universal pass to other apps' private sandboxes.
+     */
+    const val ANDROID_STORAGE_LIMITATION_DISCLAIMER: String =
+        "Important Android limitation: All-Files Access is powerful, but it is not a universal pass to every file or another app's private storage. Android strictly isolates each app's private sandbox (/data/data/) and restricts access to Android/data. ARCA operates within platform security boundaries and cannot access other apps' private data."
+
+    /**
+     * Transparent explanation of why broader file access is useful in ARCA.
+     */
+    const val STORAGE_EXPLANATION_WHY_BROADER_ACCESS: String =
+        "ARCA uses storage access to browse, organize, move, and compress files on your device and SD cards, as well as calculate storage metrics and verify archive integrity. ARCA operates 100% offline with zero analytics, tracking, or cloud uploads."
+
+    /**
+     * Explanation of functionality available in limited access mode.
+     */
+    const val LIMITED_ACCESS_MODE_EXPLANATION: String =
+        "ARCA is running with limited storage access. Private Vault (encrypted app sandbox), Network servers (SFTP, FTP, SMB, WebDAV), Settings, and offline tools are fully functional. You can grant storage access at any time to browse device files."
+
+    /**
      * Returns all currently active persisted SAF tree URIs.
      */
     fun getPersistedTreeUris(context: Context): List<Uri> {

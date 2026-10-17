@@ -246,6 +246,44 @@ fun FileBrowserScreen(
         viewModel.refresh(hasPermission)
     }
 
+    val legacyPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+        viewModel.refresh(hasPermission)
+    }
+
+    val requestStoragePermission: () -> Unit = {
+        if (StoragePermissionManager.isAllFilesAccessSupported()) {
+            permissionLauncher.launch(StoragePermissionManager.createManageAllFilesIntent(context))
+        } else {
+            val legacy = StoragePermissionManager.getRequiredLegacyPermissions()
+            if (legacy.isNotEmpty()) {
+                legacyPermissionLauncher.launch(legacy)
+            } else {
+                permissionLauncher.launch(StoragePermissionManager.createManageAllFilesIntent(context))
+            }
+        }
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                if (hasPermission && uiState is BrowserUiState.PermissionRequired) {
+                    viewModel.refresh(hasPermission = true)
+                } else if (!hasPermission && uiState is BrowserUiState.Success) {
+                    viewModel.refresh(hasPermission = false)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     LaunchedEffect(initialPath) {
         val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
         viewModel.initialize(initialPath, hasPermission, context)
@@ -561,10 +599,7 @@ fun FileBrowserScreen(
                 is BrowserUiState.PermissionRequired -> {
                     PermissionDeniedView(
                         reason = state.reason,
-                        onGrantPermission = {
-                            val intent = StoragePermissionManager.createManageAllFilesIntent(context)
-                            permissionLauncher.launch(intent)
-                        },
+                        onGrantPermission = requestStoragePermission,
                         onReadPrivacyStatement = onNavigateToPrivacy
                     )
                 }
@@ -1442,13 +1477,51 @@ private fun PermissionDeniedView(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Platform Security Note",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = StoragePermissionManager.ANDROID_STORAGE_LIMITATION_DISCLAIMER,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onGrantPermission,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Grant All Files Access")
+                    Text(
+                        if (StoragePermissionManager.isAllFilesAccessSupported()) {
+                            "Grant All Files Access"
+                        } else {
+                            "Grant Storage Access"
+                        }
+                    )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(
