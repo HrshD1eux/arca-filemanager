@@ -14,6 +14,8 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
+import com.Hrshd1eux.filemanager.core.vault.search.VaultSearchEngine
+
 class VaultSearchTest {
 
     @get:Rule
@@ -58,40 +60,8 @@ class VaultSearchTest {
         )
     )
 
-    // Helper using identical matching logic as VaultViewModel.filterVaultEntries
     private fun filter(entries: List<VaultFileEntry>, query: String): List<VaultFileEntry> {
-        val tokens = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
-        if (tokens.isEmpty()) return emptyList()
-
-        return entries.filter { entry ->
-            val ext = entry.originalName.substringAfterLast('.', "")
-            val category = com.Hrshd1eux.filemanager.core.storage.util.FileFormatter.getCategoryDescription(entry.mimeType, entry.isDirectory)
-            val sizeStr = com.Hrshd1eux.filemanager.core.storage.util.FileFormatter.formatFileSize(entry.size)
-            val dateStr = com.Hrshd1eux.filemanager.core.storage.util.FileFormatter.formatDateShort(entry.lastModified)
-            val fullPath = if (entry.parentVirtualPath.isEmpty()) entry.originalName else "${entry.parentVirtualPath}/${entry.originalName}"
-
-            val searchable = buildString {
-                append(entry.originalName.lowercase())
-                append(" ")
-                append(fullPath.lowercase())
-                append(" ")
-                append(ext.lowercase())
-                append(" ")
-                append(entry.mimeType.lowercase())
-                append(" ")
-                append(category.lowercase())
-                append(" ")
-                append(sizeStr.lowercase())
-                append(" ")
-                append(dateStr.lowercase())
-            }
-
-            tokens.all { token -> searchable.contains(token) }
-        }.sortedWith(
-            compareBy<VaultFileEntry> { !it.isDirectory }
-                .thenByDescending { it.originalName.lowercase().startsWith(tokens.first()) }
-                .thenBy { it.originalName.lowercase() }
-        )
+        return VaultSearchEngine.search(entries, query)
     }
 
     @Test

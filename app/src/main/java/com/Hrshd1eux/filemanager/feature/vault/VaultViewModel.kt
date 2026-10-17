@@ -4,12 +4,14 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.privacy.NotificationPrivacyGuard
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.vault.VaultManager
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockSettings
 import com.Hrshd1eux.filemanager.core.vault.model.VaultFileEntry
 import com.Hrshd1eux.filemanager.core.vault.model.VaultUiState
+import com.Hrshd1eux.filemanager.core.vault.search.VaultSearchEngine
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -71,9 +73,19 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshState() {
         if (!vaultManager.isConfigured()) {
             stopIdleChecker()
+            isSearching = false
+            searchQuery = ""
+            selectedIds.clear()
+            currentPath = ""
+            VaultSearchEngine.clear()
             _uiState.value = VaultUiState.Unconfigured
         } else if (!vaultManager.isUnlocked()) {
             stopIdleChecker()
+            isSearching = false
+            searchQuery = ""
+            selectedIds.clear()
+            currentPath = ""
+            VaultSearchEngine.clear()
             _uiState.value = VaultUiState.Locked()
         } else {
             startIdleChecker()
@@ -102,7 +114,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         val allFiles = vaultManager.getAllFiles()
         val entriesInPath = vaultManager.getEntriesInPath(currentPath)
         val filteredResults = if (isSearching && searchQuery.isNotBlank()) {
-            filterVaultEntries(allFiles, searchQuery)
+            VaultSearchEngine.search(allFiles, searchQuery)
         } else {
             emptyList()
         }
@@ -142,38 +154,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun filterVaultEntries(entries: List<VaultFileEntry>, query: String): List<VaultFileEntry> {
-        val tokens = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
-        if (tokens.isEmpty()) return emptyList()
-
-        return entries.filter { entry ->
-            val ext = entry.originalName.substringAfterLast('.', "")
-            val category = FileFormatter.getCategoryDescription(entry.mimeType, entry.isDirectory)
-            val sizeStr = FileFormatter.formatFileSize(entry.size)
-            val dateStr = FileFormatter.formatDateShort(entry.lastModified)
-            val fullPath = if (entry.parentVirtualPath.isEmpty()) entry.originalName else "${entry.parentVirtualPath}/${entry.originalName}"
-
-            val searchable = buildString {
-                append(entry.originalName.lowercase())
-                append(" ")
-                append(fullPath.lowercase())
-                append(" ")
-                append(ext.lowercase())
-                append(" ")
-                append(entry.mimeType.lowercase())
-                append(" ")
-                append(category.lowercase())
-                append(" ")
-                append(sizeStr.lowercase())
-                append(" ")
-                append(dateStr.lowercase())
-            }
-
-            tokens.all { token -> searchable.contains(token) }
-        }.sortedWith(
-            compareBy<VaultFileEntry> { !it.isDirectory }
-                .thenByDescending { it.originalName.lowercase().startsWith(tokens.first()) }
-                .thenBy { it.originalName.lowercase() }
-        )
+        return VaultSearchEngine.search(entries, query)
     }
 
     fun createVault(password: CharArray) {
@@ -220,6 +201,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     fun lockVault() {
         stopIdleChecker()
         vaultManager.lock()
+        VaultSearchEngine.clear()
         currentPath = ""
         selectedIds.clear()
         isSearching = false
@@ -282,9 +264,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     fun createFolder(folderName: String) {
         onUserInteraction()
         viewModelScope.launch {
-            vaultManager.createFolder(folderName, currentPath).onSuccess { folder ->
+            vaultManager.createFolder(folderName, currentPath).onSuccess {
                 publishUnlockedState()
-                _userMessage.emit("Created folder '${folder.originalName}'")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("created_folder"))
             }.onFailure { error ->
                 _userMessage.emit("Failed to create folder: ${error.localizedMessage}")
             }
@@ -294,9 +276,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     fun renameEntry(entryId: String, newName: String) {
         onUserInteraction()
         viewModelScope.launch {
-            vaultManager.renameEntry(entryId, newName).onSuccess { entry ->
+            vaultManager.renameEntry(entryId, newName).onSuccess {
                 publishUnlockedState()
-                _userMessage.emit("Renamed to '${entry.originalName}'")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("renamed"))
             }.onFailure { error ->
                 _userMessage.emit("Rename failed: ${error.localizedMessage}")
             }
@@ -310,7 +292,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             vaultManager.moveEntries(ids, targetVirtualPath).onSuccess {
                 selectedIds.clear()
                 publishUnlockedState()
-                _userMessage.emit("Moved ${ids.size} item(s)")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("moved", ids.size))
             }.onFailure { error ->
                 _userMessage.emit("Move failed: ${error.localizedMessage}")
             }
@@ -322,7 +304,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             vaultManager.moveEntries(setOf(entryId), targetVirtualPath).onSuccess {
                 publishUnlockedState()
-                _userMessage.emit("Moved item")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("moved", 1))
             }.onFailure { error ->
                 _userMessage.emit("Move failed: ${error.localizedMessage}")
             }
@@ -336,7 +318,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             vaultManager.deleteEntries(ids).onSuccess {
                 selectedIds.clear()
                 publishUnlockedState()
-                _userMessage.emit("Deleted ${ids.size} item(s) permanently")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("deleted", ids.size))
             }.onFailure { error ->
                 _userMessage.emit("Delete failed: ${error.localizedMessage}")
             }
@@ -348,7 +330,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             vaultManager.deleteEntries(setOf(entry.id)).onSuccess {
                 publishUnlockedState()
-                _userMessage.emit("Deleted '${entry.originalName}' permanently")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("deleted", 1))
             }.onFailure { error ->
                 _userMessage.emit("Delete failed: ${error.localizedMessage}")
             }
@@ -359,7 +341,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         onUserInteraction()
         viewModelScope.launch {
             publishUnlockedState(
-                activeProgress = OperationProgress(totalFiles = sources.size, currentFileName = sources.firstOrNull()?.name ?: "")
+                activeProgress = OperationProgress(totalFiles = sources.size, currentFileName = "Encrypting files into Vault...")
             )
 
             vaultManager.importFiles(
@@ -377,7 +359,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                 }
             ).onSuccess { imported ->
                 publishUnlockedState()
-                _userMessage.emit("Imported ${imported.size} file(s) into Vault")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("imported", imported.size))
             }.onFailure { error ->
                 publishUnlockedState()
                 _userMessage.emit("Import failed: ${error.localizedMessage}")
@@ -390,7 +372,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val ids = selectedIds.toSet()
             publishUnlockedState(
-                activeProgress = OperationProgress(totalFiles = ids.size, currentFileName = "Exporting...")
+                activeProgress = OperationProgress(totalFiles = ids.size, currentFileName = "Decrypting files from Vault...")
             )
 
             vaultManager.exportEntries(
@@ -401,14 +383,14 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         activeProgress = OperationProgress(
                             bytesProcessed = bytesWritten,
                             totalFiles = ids.size,
-                            currentFileName = "Decrypting files to storage..."
+                            currentFileName = "Decrypting files from Vault..."
                         )
                     )
                 }
             ).onSuccess { count ->
                 selectedIds.clear()
                 publishUnlockedState()
-                _userMessage.emit("Exported $count file(s) to ${destinationDir.name}")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("exported", count))
             }.onFailure { error ->
                 publishUnlockedState()
                 _userMessage.emit("Export failed: ${error.localizedMessage}")
@@ -420,7 +402,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         onUserInteraction()
         viewModelScope.launch {
             publishUnlockedState(
-                activeProgress = OperationProgress(totalFiles = 1, currentFileName = entry.originalName)
+                activeProgress = OperationProgress(totalFiles = 1, currentFileName = "Decrypting file from Vault...")
             )
 
             vaultManager.exportEntries(
@@ -431,13 +413,13 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         activeProgress = OperationProgress(
                             bytesProcessed = bytesWritten,
                             totalFiles = 1,
-                            currentFileName = entry.originalName
+                            currentFileName = "Decrypting file from Vault..."
                         )
                     )
                 }
             ).onSuccess {
                 publishUnlockedState()
-                _userMessage.emit("Exported '${entry.originalName}' to ${destinationDir.name}")
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("exported", 1))
             }.onFailure { error ->
                 publishUnlockedState()
                 _userMessage.emit("Export failed: ${error.localizedMessage}")

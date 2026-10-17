@@ -142,6 +142,23 @@ fun VaultScreen(
         }
     }
 
+    // Security Enforcement: Wipe all transient UI entry references and dialogs on lock
+    LaunchedEffect(isUnlocked) {
+        if (!isUnlocked) {
+            previewEntry = null
+            entryToRename = null
+            entryToMove = null
+            entryToDelete = null
+            entryToExport = null
+            showImportPicker = false
+            showCreateFolderDialog = false
+            showLockSettingsDialog = false
+            showBatchMoveDialog = false
+            showBatchDeleteDialog = false
+            showBatchExportPicker = false
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
