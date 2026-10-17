@@ -13,8 +13,8 @@ android {
         applicationId = "com.Hrshd1eux.filemanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10140
-        versionName = "1.1.40"
+        versionCode = 10232
+        versionName = "1.2.32"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -68,6 +68,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {

@@ -46,12 +46,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
+import com.Hrshd1eux.filemanager.core.version.AppVersionInfo
+import com.Hrshd1eux.filemanager.core.version.rememberAppVersionInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    versionInfo: AppVersionInfo = rememberAppVersionInfo()
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -88,7 +91,7 @@ fun AboutScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                AppHeader()
+                AppHeader(versionInfo = versionInfo)
             }
 
             item {
@@ -109,6 +112,7 @@ fun AboutScreen(
 
 @Composable
 private fun AppHeader(
+    versionInfo: AppVersionInfo,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -139,12 +143,22 @@ private fun AppHeader(
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "Version 1.1.40 (Build 10140)",
+            text = "${versionInfo.displayVersion} (${versionInfo.displayBuild})",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (!versionInfo.buildIdentifier.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Build ID: ${versionInfo.buildIdentifier}",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "Application ID: com.Hrshd1eux.filemanager",
+            text = "Application ID: ${versionInfo.applicationId}",
             style = MaterialTheme.typography.labelSmall,
             fontFamily = FontFamily.Monospace,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
