@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -174,6 +176,7 @@ fun FileBrowserScreen(
     onNavigateToVideoViewer: (videoPath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToPreview: (filePath: String, categoryName: String?, directoryPath: String?) -> Unit = onNavigateToImageViewer,
     modifier: Modifier = Modifier,
+    onNavigateToPrivacy: () -> Unit = {},
     viewModel: FileBrowserViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -561,7 +564,8 @@ fun FileBrowserScreen(
                         onGrantPermission = {
                             val intent = StoragePermissionManager.createManageAllFilesIntent(context)
                             permissionLauncher.launch(intent)
-                        }
+                        },
+                        onReadPrivacyStatement = onNavigateToPrivacy
                     )
                 }
 
@@ -1391,7 +1395,8 @@ private fun EmptyFolderView(
 private fun PermissionDeniedView(
     reason: String,
     onGrantPermission: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onReadPrivacyStatement: () -> Unit = {}
 ) {
     Box(
         modifier = modifier
@@ -1444,6 +1449,20 @@ private fun PermissionDeniedView(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Grant All Files Access")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = onReadPrivacyStatement,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Read Privacy Statement", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

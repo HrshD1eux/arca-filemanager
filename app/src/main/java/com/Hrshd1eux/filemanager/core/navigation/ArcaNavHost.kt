@@ -80,7 +80,8 @@ fun ArcaNavHost(
                     navController.navigate(Screen.NetworkBrowser(connectionId = connectionId, title = title))
                 },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
-                onNavigateToAbout = { navController.navigate(Screen.About) }
+                onNavigateToAbout = { navController.navigate(Screen.About) },
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
             )
         }
 
@@ -109,6 +110,7 @@ fun ArcaNavHost(
                 onNavigateToPreview = { filePath, categoryName, directoryPath ->
                     navController.navigate(Screen.Preview(initialPath = filePath, categoryName = categoryName, directoryPath = directoryPath))
                 },
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -1,6 +1,7 @@
 package com.Hrshd1eux.filemanager.feature.home
 
 import android.os.Environment
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
@@ -69,6 +73,7 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier,
+    onNavigateToPrivacy: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -210,7 +215,7 @@ fun HomeScreen(
             // 5. Offline Status Footer Banner
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                HomeOfflineStatusBanner()
+                HomeOfflineStatusBanner(onNavigateToPrivacy = onNavigateToPrivacy)
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -287,10 +292,15 @@ fun HomeScreen(
 
 @Composable
 private fun HomeOfflineStatusBanner(
+    onNavigateToPrivacy: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onNavigateToPrivacy)
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -300,10 +310,11 @@ private fun HomeOfflineStatusBanner(
             tint = VaultEmerald,
             modifier = Modifier.size(16.dp)
         )
+        Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = " ARCA • 100% Offline & Private",
+            text = "ARCA • 100% Offline & Private (View Privacy Statement)",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )
     }
 }
