@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
@@ -189,11 +190,18 @@ fun SettingsScreen(
             }
 
             item {
-                SettingsCategoryHeader(title = "Privacy & Diagnostics")
+                SettingsCategoryHeader(title = "About & Privacy")
             }
 
             item {
                 SettingsCard {
+                    SettingsRow(
+                        title = "About ARCA",
+                        subtitle = "Version, open-source licenses, and legal info",
+                        icon = Icons.Default.Info,
+                        onClick = onNavigateToAbout
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = "Privacy Statement",
                         subtitle = "Zero telemetry, zero ads, offline-only",

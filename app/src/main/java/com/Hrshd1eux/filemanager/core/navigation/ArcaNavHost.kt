@@ -255,7 +255,8 @@ fun ArcaNavHost(
         ) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
+                onNavigateToAbout = { navController.navigate(Screen.About) }
             )
         }
 
@@ -277,7 +278,8 @@ fun ArcaNavHost(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) {
             AboutScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
             )
         }
 
