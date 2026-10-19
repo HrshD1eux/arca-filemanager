@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
@@ -59,11 +60,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -136,6 +141,20 @@ fun VaultScreen(
         }
     }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.userMessage.collect { message ->
             snackbarHostState.showSnackbar(message)
@@ -164,6 +183,13 @@ fun VaultScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (isSelectionMode && unlockedState != null) {
+                val visibleCount = if (unlockedState.isSearching && unlockedState.searchQuery.isNotBlank()) {
+                    unlockedState.searchResults.size
+                } else {
+                    unlockedState.currentEntries.size
+                }
+                val allSelected = visibleCount > 0 && unlockedState.selectedIds.size >= visibleCount
+
                 TopAppBar(
                     title = {
                         Text(
@@ -179,7 +205,10 @@ fun VaultScreen(
                     },
                     actions = {
                         IconButton(onClick = { viewModel.selectAll() }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "Select All")
+                            Icon(
+                                imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                contentDescription = if (allSelected) "Deselect All" else "Select All"
+                            )
                         }
                         IconButton(onClick = { showBatchMoveDialog = true }) {
                             Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = "Move Selected", tint = VaultEmerald)

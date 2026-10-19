@@ -8,6 +8,7 @@ import com.Hrshd1eux.filemanager.core.operations.util.StreamCopier
 import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -107,6 +108,16 @@ class FileOperationEngine(
                             totalBytes += source.size
                         }
                     }
+                }
+            }
+
+            // Check available storage space for local destinations
+            if (resolvedDest is ResolvedNode.Local && totalBytes > 0) {
+                val usableSpace = resolvedDest.file.usableSpace
+                if (usableSpace in 1 until totalBytes) {
+                    throw IOException(
+                        "Insufficient storage space: ${FileFormatter.formatFileSize(totalBytes)} required, but only ${FileFormatter.formatFileSize(usableSpace)} available."
+                    )
                 }
             }
 
@@ -644,18 +655,25 @@ class FileOperationEngine(
             destination.delete()
         }
 
-        FileInputStream(source).use { inStream ->
-            FileOutputStream(destination).use { outStream ->
-                StreamCopier.copyStream(
-                    source = inStream,
-                    destination = outStream,
-                    onBytesCopied = onChunkCopied
-                )
+        try {
+            FileInputStream(source).use { inStream ->
+                FileOutputStream(destination).use { outStream ->
+                    StreamCopier.copyStream(
+                        source = inStream,
+                        destination = outStream,
+                        onBytesCopied = onChunkCopied
+                    )
+                }
             }
-        }
 
-        if (verifyIntegrity) {
-            FileVerifier.verifyFilePair(source, destination, ioDispatcher)
+            if (verifyIntegrity) {
+                FileVerifier.verifyFilePair(source, destination, ioDispatcher)
+            }
+        } catch (t: Throwable) {
+            if (destination.exists()) {
+                destination.delete()
+            }
+            throw t
         }
     }
 
@@ -687,16 +705,23 @@ class FileOperationEngine(
         if (destFile.exists()) {
             destFile.delete()
         }
-        val inStreamResult = srcOperator.openInputStream(srcNode)
-        val inStream = inStreamResult.getOrThrow()
-        inStream.use { input ->
-            FileOutputStream(destFile).use { output ->
-                StreamCopier.copyStream(
-                    source = input,
-                    destination = output,
-                    onBytesCopied = onChunkCopied
-                )
+        try {
+            val inStreamResult = srcOperator.openInputStream(srcNode)
+            val inStream = inStreamResult.getOrThrow()
+            inStream.use { input ->
+                FileOutputStream(destFile).use { output ->
+                    StreamCopier.copyStream(
+                        source = input,
+                        destination = output,
+                        onBytesCopied = onChunkCopied
+                    )
+                }
             }
+        } catch (t: Throwable) {
+            if (destFile.exists()) {
+                destFile.delete()
+            }
+            throw t
         }
     }
 

@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -1029,18 +1030,21 @@ class FileBrowserViewModel(
                 )
             }
 
-            // Record visited folder to Recents
-            recentsRepository.recordAccess(targetNode)
+            val (sortedItems, breadcrumbs) = withContext(ioDispatcher) {
+                // Record visited folder to Recents
+                recentsRepository.recordAccess(targetNode)
 
-            val rawItems = storageProvider.listChildren(targetNode.id).getOrDefault(emptyList())
-            val filteredItems = if (displayPreferencesRepository.showHiddenFiles.value) {
-                rawItems
-            } else {
-                rawItems.filterNot { it.name.startsWith(".") }
+                val rawItems = storageProvider.listChildren(targetNode.id).getOrDefault(emptyList())
+                val filteredItems = if (displayPreferencesRepository.showHiddenFiles.value) {
+                    rawItems
+                } else {
+                    rawItems.filterNot { it.name.startsWith(".") }
+                }
+
+                val sorted = NodeSorter.sort(filteredItems, displayPreferencesRepository.sortOrder.value)
+                val crumbs = generateBreadcrumbs(path)
+                Pair(sorted, crumbs)
             }
-
-            val sortedItems = NodeSorter.sort(filteredItems, displayPreferencesRepository.sortOrder.value)
-            val breadcrumbs = generateBreadcrumbs(path)
 
             _uiState.value = BrowserUiState.Success(
                 currentPath = path,

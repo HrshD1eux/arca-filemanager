@@ -202,6 +202,31 @@ class FileOperationEngineTest {
         assertTrue(File(destDir, "created.txt").isFile)
     }
 
+    @Test
+    fun copy_failureOrCancellation_cleansUpPartialDestinationFile() = runTest(testDispatcher) {
+        val srcFile = File(sourceDir, "large.bin").apply {
+            writeBytes(ByteArray(128 * 1024) { 0x42 })
+        }
+        val srcNode = srcFile.toNode()
+        val destNode = destDir.toNode()
+
+        var interrupted = false
+        val result = engine.copy(
+            sources = listOf(srcNode),
+            destinationDir = destNode,
+            onProgress = {
+                if (!interrupted) {
+                    interrupted = true
+                    throw IllegalStateException("Simulated disk write failure or interruption")
+                }
+            }
+        )
+
+        assertTrue(result.isFailure)
+        val targetFile = File(destDir, "large.bin")
+        assertFalse("Partial destination file should be cleaned up", targetFile.exists())
+    }
+
     private fun File.toNode(): StorageNode {
         return StorageNode(
             id = absolutePath,

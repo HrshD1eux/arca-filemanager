@@ -13,8 +13,8 @@ android {
         applicationId = "com.Hrshd1eux.filemanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10330
-        versionName = "1.3.30"
+        versionCode = 10340
+        versionName = "1.3.40"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

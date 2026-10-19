@@ -39,7 +39,10 @@ class FileBrowserViewModelTest {
             displayName = "Test Storage",
             ioDispatcher = testDispatcher
         )
-        viewModel = FileBrowserViewModel(storageProvider = provider)
+        viewModel = FileBrowserViewModel(
+            storageProvider = provider,
+            ioDispatcher = testDispatcher
+        )
     }
 
     @After

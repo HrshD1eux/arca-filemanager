@@ -26,6 +26,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
@@ -82,6 +85,8 @@ fun UnifiedPreviewScreen(
     val context = LocalContext.current
     val previewState by viewModel.previewState.collectAsStateWithLifecycle()
     val previewType by viewModel.previewType.collectAsStateWithLifecycle()
+    val isOperating by viewModel.isOperating.collectAsStateWithLifecycle()
+    val operationProgress by viewModel.operationProgress.collectAsStateWithLifecycle()
     val currentFile = viewModel.currentFile
     val hasPrevious = viewModel.hasPrevious
     val hasNext = viewModel.hasNext
@@ -95,9 +100,16 @@ fun UnifiedPreviewScreen(
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var showCopyPicker by remember { mutableStateOf(false) }
     var showMovePicker by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(initialPath, categoryName, directoryPath) {
         viewModel.initialize(initialPath, categoryName, directoryPath)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.userMessage.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
     }
 
     val isMediaMode = previewType == PreviewType.IMAGE || previewType == PreviewType.VIDEO
@@ -325,7 +337,7 @@ fun UnifiedPreviewScreen(
             confirmButtonText = "Copy Here",
             onDestinationSelected = { dest, verifyIntegrity ->
                 showCopyPicker = false
-                // Dispatch copy operation
+                viewModel.copyCurrentFile(dest, verifyIntegrity)
             },
             onDismiss = { showCopyPicker = false }
         )
@@ -337,11 +349,31 @@ fun UnifiedPreviewScreen(
             storageProvider = remember { LocalFileSystemProvider() },
             title = "Move ${currentFile.name} to",
             confirmButtonText = "Move Here",
-            onDestinationSelected = { dest, verifyIntegrity ->
+            onDestinationSelected = { dest, _ ->
                 showMovePicker = false
-                viewModel.onFileMoved(dest.path, onDismissAfterMove = onNavigateBack)
+                viewModel.moveCurrentFile(dest, onDismissAfterMove = onNavigateBack)
             },
             onDismiss = { showMovePicker = false }
+        )
+    }
+
+    // Operation Progress Dialog
+    val currentProgress = operationProgress
+    if (isOperating && currentProgress != null) {
+        OperationProgressDialog(
+            progress = currentProgress,
+            title = "Processing...",
+            onCancel = {}
+        )
+    }
+
+    // Floating Snackbar Notification Host
+    Box(modifier = Modifier.fillMaxSize()) {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = if (showControls) 80.dp else 16.dp)
         )
     }
 }

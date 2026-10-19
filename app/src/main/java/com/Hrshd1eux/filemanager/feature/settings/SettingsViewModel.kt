@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionLevelPreset
@@ -7,12 +8,16 @@ import com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepo
 import com.Hrshd1eux.filemanager.core.display.preferences.DisplayPreferencesRepository
 import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 import com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository
+import com.Hrshd1eux.filemanager.core.storage.analyzer.InstalledAppsRepository
+import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockSettings
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * ViewModel managing all user-configurable settings in ARCA.
@@ -37,8 +42,19 @@ class SettingsViewModel(
 
     val vaultLockSettings: StateFlow<VaultLockSettings> = vaultLockManager.lockSettings
 
+    private val _hasAllFilesAccess = MutableStateFlow(false)
+    val hasAllFilesAccess: StateFlow<Boolean> = _hasAllFilesAccess.asStateFlow()
+
+    private val _hasUsageAccess = MutableStateFlow(false)
+    val hasUsageAccess: StateFlow<Boolean> = _hasUsageAccess.asStateFlow()
+
     private val _userMessage = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 1)
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
+
+    fun refreshPermissions(context: Context) {
+        _hasAllFilesAccess.value = StoragePermissionManager.hasAllFilesAccess(context)
+        _hasUsageAccess.value = InstalledAppsRepository.getInstance(context).hasUsageStatsPermission()
+    }
 
     fun setThemeMode(mode: ThemeMode) {
         appSettingsRepository.updateThemeMode(mode)

@@ -1,6 +1,8 @@
 package com.Hrshd1eux.filemanager.feature.settings
 
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,12 +51,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.R
+import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 import com.Hrshd1eux.filemanager.feature.settings.components.ArchiveSettingsDialog
 import com.Hrshd1eux.filemanager.feature.settings.components.ThemeSelectionDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultLockSettingsDialog
@@ -66,6 +75,9 @@ fun SettingsScreen(
     onNavigateToAbout: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
     val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
@@ -74,6 +86,21 @@ fun SettingsScreen(
     val defaultArchiveFormat by viewModel.defaultArchiveFormat.collectAsStateWithLifecycle()
     val defaultCompressionLevel by viewModel.defaultCompressionLevel.collectAsStateWithLifecycle()
     val vaultLockSettings by viewModel.vaultLockSettings.collectAsStateWithLifecycle()
+    val hasAllFilesAccess by viewModel.hasAllFilesAccess.collectAsStateWithLifecycle()
+    val hasUsageAccess by viewModel.hasUsageAccess.collectAsStateWithLifecycle()
+
+    DisposableEffect(lifecycleOwner) {
+        viewModel.refreshPermissions(context)
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshPermissions(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showArchiveDialog by remember { mutableStateOf(false) }
@@ -163,6 +190,28 @@ fun SettingsScreen(
                         icon = Icons.Default.DeleteOutline,
                         checked = confirmDelete,
                         onCheckedChange = { viewModel.setConfirmDelete(it) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsRow(
+                        title = "All Files Access",
+                        subtitle = if (hasAllFilesAccess) "Granted • Full storage management active" else "Not granted • Tap to configure in system settings",
+                        icon = Icons.Default.Storage,
+                        onClick = {
+                            runCatching {
+                                context.startActivity(StoragePermissionManager.createManageAllFilesIntent(context))
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsRow(
+                        title = "Usage Access",
+                        subtitle = if (hasUsageAccess) "Granted • Storage Analyzer app stats enabled" else "Optional • Required for app size breakdown",
+                        icon = Icons.Default.Security,
+                        onClick = {
+                            runCatching {
+                                context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            }
+                        }
                     )
                 }
             }

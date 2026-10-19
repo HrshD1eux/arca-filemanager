@@ -7,6 +7,7 @@ import com.Hrshd1eux.filemanager.core.display.model.SortDirection
 import com.Hrshd1eux.filemanager.core.display.model.SortField
 import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
+import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.feature.category.CategoryRepository
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
@@ -24,10 +25,14 @@ import com.Hrshd1eux.filemanager.feature.viewer.unified.model.PreviewTypeResolve
 import com.Hrshd1eux.filemanager.feature.viewer.video.util.VideoMetadataExtractor
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -76,6 +81,9 @@ class UnifiedPreviewViewModel(
 
     private val _isOperating = MutableStateFlow(false)
     val isOperating: StateFlow<Boolean> = _isOperating.asStateFlow()
+
+    private val _userMessage = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 1)
+    val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
 
     private var isInitialized = false
 
@@ -220,6 +228,65 @@ class UnifiedPreviewViewModel(
                     _currentIndex.value = remaining.size - 1
                 }
                 loadPreviewForCurrentIndex()
+            }
+        }
+    }
+
+    fun copyCurrentFile(destinationDir: StorageNode, verifyIntegrity: Boolean) {
+        val node = currentFile ?: return
+        viewModelScope.launch(ioDispatcher) {
+            _isOperating.value = true
+            val result = operationEngine.copy(
+                sources = listOf(node),
+                destinationDir = destinationDir,
+                conflictResolution = ConflictResolution.RENAME_AUTO,
+                verifyIntegrity = verifyIntegrity,
+                onProgress = { _operationProgress.value = it }
+            )
+            _isOperating.value = false
+            _operationProgress.value = null
+
+            result.onSuccess {
+                _userMessage.tryEmit("Copied \"${node.name}\" to \"${destinationDir.name}\"")
+            }.onFailure { err ->
+                _userMessage.tryEmit("Copy failed: ${err.localizedMessage ?: "Unknown error"}")
+            }
+        }
+    }
+
+    fun moveCurrentFile(
+        destinationDir: StorageNode,
+        onDismissAfterMove: () -> Unit
+    ) {
+        val node = currentFile ?: return
+        viewModelScope.launch(ioDispatcher) {
+            _isOperating.value = true
+            val result = operationEngine.move(
+                sources = listOf(node),
+                destinationDir = destinationDir,
+                conflictResolution = ConflictResolution.RENAME_AUTO,
+                onProgress = { _operationProgress.value = it }
+            )
+            _isOperating.value = false
+            _operationProgress.value = null
+
+            result.onSuccess {
+                val remaining = _files.value.toMutableList().apply { removeAt(_currentIndex.value) }
+                _files.value = remaining
+                _userMessage.tryEmit("Moved \"${node.name}\" to \"${destinationDir.name}\"")
+
+                if (remaining.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        onDismissAfterMove()
+                    }
+                } else {
+                    if (_currentIndex.value >= remaining.size) {
+                        _currentIndex.value = remaining.size - 1
+                    }
+                    loadPreviewForCurrentIndex()
+                }
+            }.onFailure { err ->
+                _userMessage.tryEmit("Move failed: ${err.localizedMessage ?: "Unknown error"}")
             }
         }
     }

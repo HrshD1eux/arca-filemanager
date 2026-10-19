@@ -249,9 +249,17 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectAll() {
         onUserInteraction()
-        val currentEntries = vaultManager.getEntriesInPath(currentPath)
-        selectedIds.clear()
-        selectedIds.addAll(currentEntries.map { it.id })
+        val visibleIds = if (isSearching && searchQuery.isNotBlank()) {
+            VaultSearchEngine.search(vaultManager.getAllFiles(), searchQuery).map { it.id }
+        } else {
+            vaultManager.getEntriesInPath(currentPath).map { it.id }
+        }
+        val allSelected = visibleIds.isNotEmpty() && selectedIds.containsAll(visibleIds)
+        if (allSelected) {
+            selectedIds.clear()
+        } else {
+            selectedIds.addAll(visibleIds)
+        }
         publishUnlockedState()
     }
 
