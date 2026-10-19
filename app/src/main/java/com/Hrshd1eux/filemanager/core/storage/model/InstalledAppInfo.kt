@@ -80,4 +80,13 @@ data class InstalledAppInfo(
             isSystemApp -> "System App"
             else -> "User App"
         }
+
+    val isSplitApk: Boolean
+        get() = extraInfo.splitApks.isNotEmpty()
+
+    val splitApkCount: Int
+        get() = extraInfo.splitApks.size
+
+    val apkFormatLabel: String
+        get() = if (isSplitApk) "Split APKs ($splitApkCount splits)" else "Single Standalone APK"
 }

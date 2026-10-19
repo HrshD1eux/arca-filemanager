@@ -62,6 +62,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppInfo
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.InstalledAppsViewModel
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.AppDetailsBottomSheet
+import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.ShareApkBottomSheet
 import com.Hrshd1eux.filemanager.feature.cleaner.storage.components.SystemStorageDetailsBottomSheet
 import com.Hrshd1eux.filemanager.feature.home.HomeViewModel
 
@@ -445,7 +446,19 @@ fun StorageAnalyzerScreen(
         AppDetailsBottomSheet(
             app = appsUiState.selectedAppForDetails!!,
             onDismiss = { appsViewModel.selectAppForDetails(null) },
-            onCopied = { appsViewModel.emitMessage(it) }
+            onCopied = { appsViewModel.emitMessage(it) },
+            onShareApk = { app ->
+                appsViewModel.selectAppForDetails(null)
+                appsViewModel.selectAppForShare(app)
+            }
+        )
+    }
+
+    // Share APK Bottom Sheet
+    if (appsUiState.selectedAppForShare != null) {
+        ShareApkBottomSheet(
+            app = appsUiState.selectedAppForShare!!,
+            onDismiss = { appsViewModel.selectAppForShare(null) }
         )
     }
 

@@ -74,6 +74,7 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.AppDetailsBottomSheet
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.InstalledAppItem
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.InstalledAppsSortBottomSheet
+import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.ShareApkBottomSheet
 import com.Hrshd1eux.filemanager.feature.cleaner.storage.components.SystemStorageDetailsBottomSheet
 
 /**
@@ -379,7 +380,19 @@ fun InstalledAppsScreen(
         AppDetailsBottomSheet(
             app = uiState.selectedAppForDetails!!,
             onDismiss = { viewModel.selectAppForDetails(null) },
-            onCopied = { viewModel.emitMessage(it) }
+            onCopied = { viewModel.emitMessage(it) },
+            onShareApk = { app ->
+                viewModel.selectAppForDetails(null)
+                viewModel.selectAppForShare(app)
+            }
+        )
+    }
+
+    // Share APK Bottom Sheet
+    if (uiState.selectedAppForShare != null) {
+        ShareApkBottomSheet(
+            app = uiState.selectedAppForShare!!,
+            onDismiss = { viewModel.selectAppForShare(null) }
         )
     }
 

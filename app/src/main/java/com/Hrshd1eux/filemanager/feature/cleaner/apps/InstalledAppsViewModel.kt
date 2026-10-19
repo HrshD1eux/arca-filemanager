@@ -27,6 +27,7 @@ data class InstalledAppsUiState(
     val sortOrder: InstalledAppSortOrder = InstalledAppSortOrder.SIZE_DESC,
     val showPackageNames: Boolean = false,
     val selectedAppForDetails: InstalledAppInfo? = null,
+    val selectedAppForShare: InstalledAppInfo? = null,
     val systemStorageBreakdown: SystemStorageBreakdown = SystemStorageBreakdown(),
     val showSystemStorageDetails: Boolean = false,
     val isUsageAccessGranted: Boolean = false,
@@ -141,6 +142,10 @@ class InstalledAppsViewModel(
 
     fun selectAppForDetails(app: InstalledAppInfo?) {
         _uiState.value = _uiState.value.copy(selectedAppForDetails = app)
+    }
+
+    fun selectAppForShare(app: InstalledAppInfo?) {
+        _uiState.value = _uiState.value.copy(selectedAppForShare = app)
     }
 
     fun toggleSystemStorageDetails(show: Boolean) {

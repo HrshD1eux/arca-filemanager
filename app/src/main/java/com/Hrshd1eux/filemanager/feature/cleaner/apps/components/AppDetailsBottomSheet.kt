@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppInfo
 import com.Hrshd1eux.filemanager.core.storage.model.StorageAccuracy
 import com.Hrshd1eux.filemanager.core.storage.model.StorageComponentMeasurement
@@ -76,7 +78,7 @@ import java.util.Locale
  * 2. Explicit accuracy badges (Exact, Approximate, Stale, Unavailable).
  * 3. Transparent disclosure on "The Hard Truth About Exact Storage".
  * 4. Other accessible package information (split APKs, native ABI, SDK levels, permissions, process).
- * 5. Actions to copy package name, open Android settings, or grant Usage Access.
+ * 5. Actions to share installed APK, copy package name, open Android settings, or grant Usage Access.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +86,7 @@ fun AppDetailsBottomSheet(
     app: InstalledAppInfo,
     onDismiss: () -> Unit,
     onCopied: (String) -> Unit = {},
+    onShareApk: (InstalledAppInfo) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -142,6 +145,21 @@ fun AppDetailsBottomSheet(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     AppTypeBadge(isUserApp = app.isUserApp)
+                }
+
+                IconButton(
+                    onClick = { onShareApk(app) },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Share APK",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
@@ -519,28 +537,48 @@ fun AppDetailsBottomSheet(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Action: Open in Android Settings
-            Button(
-                onClick = {
-                    try {
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.parse("package:${app.packageName}")
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(intent)
-                    } catch (_: Exception) {
-                    }
-                },
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Action Buttons: Share APK & System Settings
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Open in System Settings")
+                Button(
+                    onClick = { onShareApk(app) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Share APK", maxLines = 1)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:${app.packageName}")
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("System Settings", maxLines = 1)
+                }
             }
         }
     }
