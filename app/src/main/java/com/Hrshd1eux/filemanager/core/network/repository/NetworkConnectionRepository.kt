@@ -27,7 +27,9 @@ internal data class NetworkConnectionDto(
     val basePath: String = "/",
     val isPassiveMode: Boolean = true,
     val isImplicitTls: Boolean = false,
-    val allowSelfSignedCert: Boolean = false
+    val allowSelfSignedCert: Boolean = false,
+    val domain: String? = null,
+    val shareName: String? = null
 ) {
     fun toModel(): NetworkServerConfig {
         return NetworkServerConfig(
@@ -38,6 +40,8 @@ internal data class NetworkConnectionDto(
             port = port,
             authType = NetworkAuthType.valueOf(authType),
             username = username,
+            domain = domain,
+            shareName = shareName,
             basePath = basePath,
             isPassiveMode = isPassiveMode,
             isImplicitTls = isImplicitTls,
@@ -55,6 +59,8 @@ internal data class NetworkConnectionDto(
                 port = model.effectivePort,
                 authType = model.authType.name,
                 username = model.username,
+                domain = model.domain,
+                shareName = model.shareName,
                 basePath = model.basePath,
                 isPassiveMode = model.isPassiveMode,
                 isImplicitTls = model.isImplicitTls,

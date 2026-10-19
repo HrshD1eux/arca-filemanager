@@ -80,4 +80,15 @@ sealed class NetworkException(
         val protocol: NetworkProtocol,
         message: String
     ) : NetworkException("[${protocol.name}] Protocol violation: $message")
+
+    /**
+     * A destructive operation (such as delete, move, or rename) failed or was interrupted by a connection drop.
+     * Blind retry is strictly forbidden to prevent unintended file loss or state corruption.
+     */
+    class NonRetriableOperationException(
+        val operation: String,
+        val targetPath: String,
+        message: String,
+        cause: Throwable? = null
+    ) : NetworkException("Cannot automatically retry destructive operation '$operation' on '$targetPath': $message. Please verify remote state before proceeding.", cause)
 }

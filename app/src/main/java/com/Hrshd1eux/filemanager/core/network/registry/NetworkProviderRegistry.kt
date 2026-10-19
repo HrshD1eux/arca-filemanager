@@ -72,4 +72,11 @@ object NetworkProviderRegistry {
         activeProviders.clear()
         providers.forEach { it.disconnect() }
     }
+
+    /**
+     * Synchronously clears the provider registry cache.
+     */
+    fun clear() {
+        activeProviders.clear()
+    }
 }

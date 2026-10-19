@@ -686,12 +686,19 @@ class FileOperationEngine(
         FileInputStream(srcFile).use { inStream ->
             val outStreamResult = destOperator.openOutputStream(destNode, append = false)
             val outStream = outStreamResult.getOrThrow()
-            outStream.use { out ->
-                StreamCopier.copyStream(
-                    source = inStream,
-                    destination = out,
-                    onBytesCopied = onChunkCopied
-                )
+            try {
+                outStream.use { out ->
+                    StreamCopier.copyStream(
+                        source = inStream,
+                        destination = out,
+                        onBytesCopied = onChunkCopied
+                    )
+                }
+            } catch (t: Throwable) {
+                try {
+                    destOperator.delete(destNode)
+                } catch (_: Exception) {}
+                throw t
             }
         }
     }
@@ -735,12 +742,19 @@ class FileOperationEngine(
         val inStream = srcOperator.openInputStream(srcNode).getOrThrow()
         inStream.use { input ->
             val outStream = destOperator.openOutputStream(destNode, append = false).getOrThrow()
-            outStream.use { output ->
-                StreamCopier.copyStream(
-                    source = input,
-                    destination = output,
-                    onBytesCopied = onChunkCopied
-                )
+            try {
+                outStream.use { output ->
+                    StreamCopier.copyStream(
+                        source = input,
+                        destination = output,
+                        onBytesCopied = onChunkCopied
+                    )
+                }
+            } catch (t: Throwable) {
+                try {
+                    destOperator.delete(destNode)
+                } catch (_: Exception) {}
+                throw t
             }
         }
     }

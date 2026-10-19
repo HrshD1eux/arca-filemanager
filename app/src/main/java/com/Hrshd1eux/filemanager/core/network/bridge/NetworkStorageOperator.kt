@@ -8,6 +8,8 @@ import com.Hrshd1eux.filemanager.core.operations.engine.RemoteTreeEntry
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import com.Hrshd1eux.filemanager.core.network.util.NetworkOperationKind
+import com.Hrshd1eux.filemanager.core.network.util.NetworkRetryPolicy
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -54,8 +56,14 @@ class NetworkStorageOperator(
         val provider = providerResolver(spec.serverConfigId)
             ?: return Result.failure(IOException("No active network connection for server '${spec.serverConfigId}'"))
         val targetPath = NetworkPathResolver.joinRemotePath(spec.remotePath, dirName)
-        val result = provider.createDirectory(targetPath)
-        return result.map {
+        return runCatching {
+            NetworkRetryPolicy.executeSafely(
+                kind = NetworkOperationKind.DESTRUCTIVE,
+                operationName = "CREATE_DIRECTORY",
+                targetPath = targetPath
+            ) {
+                provider.createDirectory(targetPath).getOrThrow()
+            }
             resolveChild(parentDir, dirName, isDirectory = true)
         }
     }
@@ -78,7 +86,15 @@ class NetworkStorageOperator(
             ?: return Result.failure(IOException("Not a valid remote node: ${target.path}"))
         val provider = providerResolver(spec.serverConfigId)
             ?: return Result.failure(IOException("No active network connection for server '${spec.serverConfigId}'"))
-        return provider.delete(spec.remotePath)
+        return runCatching {
+            NetworkRetryPolicy.executeSafely(
+                kind = NetworkOperationKind.DESTRUCTIVE,
+                operationName = "DELETE",
+                targetPath = spec.remotePath
+            ) {
+                provider.delete(spec.remotePath).getOrThrow()
+            }
+        }
     }
 
     override suspend fun deleteRecursive(target: StorageNode): Result<Unit> {
@@ -87,29 +103,37 @@ class NetworkStorageOperator(
         val provider = providerResolver(spec.serverConfigId)
             ?: return Result.failure(IOException("No active network connection for server '${spec.serverConfigId}'"))
 
-        val treeResult = listTree(target)
-        if (treeResult.isFailure) {
-            return provider.delete(spec.remotePath)
-        }
-        val entries = treeResult.getOrDefault(emptyList())
+        return runCatching {
+            NetworkRetryPolicy.executeSafely(
+                kind = NetworkOperationKind.DESTRUCTIVE,
+                operationName = "DELETE_RECURSIVE",
+                targetPath = spec.remotePath
+            ) {
+                val treeResult = listTree(target)
+                if (treeResult.isFailure) {
+                    return@executeSafely provider.delete(spec.remotePath).getOrThrow()
+                }
+                val entries = treeResult.getOrDefault(emptyList())
 
-        // 1. Delete files first
-        for (entry in entries.filter { !it.node.isDirectory }) {
-            currentCoroutineContext().ensureActive()
-            val entrySpec = NetworkPathResolver.parseRemoteSpec(entry.node) ?: continue
-            provider.delete(entrySpec.remotePath)
-        }
+                // 1. Delete files first
+                for (entry in entries.filter { !it.node.isDirectory }) {
+                    currentCoroutineContext().ensureActive()
+                    val entrySpec = NetworkPathResolver.parseRemoteSpec(entry.node) ?: continue
+                    provider.delete(entrySpec.remotePath).getOrThrow()
+                }
 
-        // 2. Delete child directories deepest first
-        val dirEntries = entries.filter { it.node.isDirectory }.sortedByDescending { it.relativeSubPath.length }
-        for (dir in dirEntries) {
-            currentCoroutineContext().ensureActive()
-            val dirSpec = NetworkPathResolver.parseRemoteSpec(dir.node) ?: continue
-            provider.delete(dirSpec.remotePath)
-        }
+                // 2. Delete child directories deepest first
+                val dirEntries = entries.filter { it.node.isDirectory }.sortedByDescending { it.relativeSubPath.length }
+                for (dir in dirEntries) {
+                    currentCoroutineContext().ensureActive()
+                    val dirSpec = NetworkPathResolver.parseRemoteSpec(dir.node) ?: continue
+                    provider.delete(dirSpec.remotePath).getOrThrow()
+                }
 
-        // 3. Delete root target directory
-        return provider.delete(spec.remotePath)
+                // 3. Delete root target directory
+                provider.delete(spec.remotePath).getOrThrow()
+            }
+        }
     }
 
     override suspend fun rename(target: StorageNode, newName: String): Result<StorageNode> {
@@ -117,8 +141,14 @@ class NetworkStorageOperator(
             ?: return Result.failure(IOException("Not a valid remote node: ${target.path}"))
         val provider = providerResolver(spec.serverConfigId)
             ?: return Result.failure(IOException("No active network connection for server '${spec.serverConfigId}'"))
-        val renameResult = provider.rename(spec.remotePath, newName)
-        return renameResult.map {
+        return runCatching {
+            NetworkRetryPolicy.executeSafely(
+                kind = NetworkOperationKind.DESTRUCTIVE,
+                operationName = "RENAME",
+                targetPath = spec.remotePath
+            ) {
+                provider.rename(spec.remotePath, newName).getOrThrow()
+            }
             val parentPath = spec.remotePath.substringBeforeLast('/', "")
             val newRemotePath = if (parentPath.isEmpty()) "/$newName" else "$parentPath/$newName"
             val uri = "${spec.scheme}://${spec.serverConfigId}$newRemotePath"
@@ -142,7 +172,14 @@ class NetworkStorageOperator(
             ?: return Result.failure(IOException("Not a valid remote node: ${targetDir.path}"))
         val provider = providerResolver(spec.serverConfigId)
             ?: return Result.failure(IOException("No active network connection for server '${spec.serverConfigId}'"))
-        return provider.listChildren(spec.remotePath).map { list ->
+        return runCatching {
+            val list = NetworkRetryPolicy.executeSafely(
+                kind = NetworkOperationKind.READ_IDEMPOTENT,
+                operationName = "LIST_CHILDREN",
+                targetPath = spec.remotePath
+            ) {
+                provider.listChildren(spec.remotePath).getOrThrow()
+            }
             list.map { child ->
                 val childUri = "${spec.scheme}://${spec.serverConfigId}${child.path}"
                 StorageNode(
