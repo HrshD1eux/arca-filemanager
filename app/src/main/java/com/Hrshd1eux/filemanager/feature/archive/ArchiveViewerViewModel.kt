@@ -6,11 +6,13 @@ import com.Hrshd1eux.filemanager.core.archive.engine.ExtendedArchiveEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.IsoEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.RarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.SevenZEngine
+import com.Hrshd1eux.filemanager.core.archive.engine.StandaloneCompressorEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.TarEngine
 import com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
+import com.Hrshd1eux.filemanager.core.archive.split.MissingSplitVolumeException
 import com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver
 import com.Hrshd1eux.filemanager.core.archive.split.SplitResolution
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
@@ -56,7 +58,8 @@ class ArchiveViewerViewModel(
     private val tarEngine: TarEngine = TarEngine(ioDispatcher),
     private val rarEngine: RarEngine = RarEngine(ioDispatcher),
     private val isoEngine: IsoEngine = IsoEngine(ioDispatcher),
-    private val extendedArchiveEngine: ExtendedArchiveEngine = ExtendedArchiveEngine(ioDispatcher)
+    private val extendedArchiveEngine: ExtendedArchiveEngine = ExtendedArchiveEngine(ioDispatcher),
+    private val standaloneCompressorEngine: StandaloneCompressorEngine = StandaloneCompressorEngine(ioDispatcher)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ArchiveViewerUiState>(ArchiveViewerUiState.Loading)
@@ -109,6 +112,11 @@ class ArchiveViewerViewModel(
                 name.endsWith(".tar.z") || name.endsWith(".taz")
     }
 
+    private fun isStandaloneCompressed(file: File?): Boolean {
+        if (file == null) return false
+        return standaloneCompressorEngine.isSupported(file)
+    }
+
     fun loadArchive(path: String, password: CharArray? = null) {
         val file = File(path)
         archiveFile = file
@@ -126,6 +134,7 @@ class ArchiveViewerViewModel(
                     isRar(file) -> rarEngine.listEntries(file, password)
                     is7z(file) -> sevenZEngine.listEntries(file, password)
                     isTar(file) -> tarEngine.listEntries(file)
+                    isStandaloneCompressed(file) -> standaloneCompressorEngine.listEntries(file)
                     else -> zipEngine.listEntries(file)
                 }
                 currentPassword = password
@@ -135,6 +144,10 @@ class ArchiveViewerViewModel(
                 _uiState.value = ArchiveViewerUiState.PasswordRequired(
                     archiveName = file.name,
                     message = e.localizedMessage
+                )
+            } catch (e: MissingSplitVolumeException) {
+                _uiState.value = ArchiveViewerUiState.Error(
+                    e.localizedMessage ?: "Split archive volume missing. Please ensure all parts are in the same folder."
                 )
             } catch (e: Exception) {
                 _uiState.value = ArchiveViewerUiState.Error("Failed to open archive: ${e.localizedMessage}")
@@ -250,6 +263,12 @@ class ArchiveViewerViewModel(
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
+                isStandaloneCompressed(file) -> standaloneCompressorEngine.extractAll(
+                    compressedFile = file,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = { _activeProgress.value = it }
+                )
                 else -> zipEngine.extractAll(
                     zipFile = file,
                     destinationDir = destinationDir,
@@ -329,6 +348,13 @@ class ArchiveViewerViewModel(
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
+                isStandaloneCompressed(file) -> standaloneCompressorEngine.extractEntries(
+                    compressedFile = file,
+                    entryPaths = selected,
+                    destinationDir = destinationDir,
+                    conflictResolution = conflictResolution,
+                    onProgress = { _activeProgress.value = it }
+                )
                 else -> zipEngine.extractEntries(
                     zipFile = file,
                     entryPaths = selected,
@@ -381,6 +407,12 @@ class ArchiveViewerViewModel(
                     tarFile = file,
                     onProgress = { _activeProgress.value = it }
                 )
+                isStandaloneCompressed(file) -> Result.success(
+                    standaloneCompressorEngine.testArchive(
+                        compressedFile = file,
+                        onProgress = { _activeProgress.value = it }
+                    )
+                )
                 else -> zipEngine.testArchive(
                     zipFile = file,
                     onProgress = { _activeProgress.value = it }
@@ -409,6 +441,7 @@ class ArchiveViewerViewModel(
                 isRar(file) -> rarEngine.getArchiveProperties(file, effectivePassword)
                 is7z(file) -> sevenZEngine.getArchiveProperties(file)
                 isTar(file) -> tarEngine.getArchiveProperties(file)
+                isStandaloneCompressed(file) -> standaloneCompressorEngine.getArchiveProperties(file)
                 else -> zipEngine.getArchiveProperties(file)
             }
         }
@@ -421,6 +454,13 @@ class ArchiveViewerViewModel(
     fun addFiles(sources: List<File>) {
         val file = archiveFile ?: return
         if (sources.isEmpty()) return
+
+        if (isStandaloneCompressed(file)) {
+            viewModelScope.launch {
+                _userMessage.emit("${file.extension.uppercase()} is a single-file compressed format (extraction and viewing only). Adding multiple files is not supported.")
+            }
+            return
+        }
 
         if (isExtendedArchive(file)) {
             val ext = file.extension.lowercase()
@@ -505,11 +545,13 @@ class ArchiveViewerViewModel(
         }
         val isRarFormat = isRar(file)
         val isIsoFormat = isIso(file)
+        val isStandalone = isStandaloneCompressed(file)
         val ext = file.extension.lowercase()
         val formatBadge = when {
-            isSplit -> "7Z Split Archive (${splitSuccess!!.parts.size} volumes)"
+            isSplit -> "${splitSuccess!!.baseName} Split Archive (${splitSuccess.parts.size} volumes)"
             isIsoFormat -> "ISO Disc Image (Extraction & Viewing only)"
             isRarFormat -> "RAR (Extraction & Viewing only)"
+            isStandalone -> "${ext.uppercase()} Compressed Stream (Extraction & Viewing only)"
             ext == "arj" -> "ARJ Archive (Extraction & Viewing only)"
             ext == "cpio" -> "CPIO Archive"
             ext == "deb" -> "Debian Package (Extraction & Viewing only)"
@@ -517,7 +559,7 @@ class ArchiveViewerViewModel(
             file.name.lowercase().endsWith(".tar.z") || file.name.lowercase().endsWith(".taz") -> "TAR.Z (Extraction & Viewing only)"
             else -> null
         }
-        val isReadOnly = isIsoFormat || isRarFormat || is7z(file) || isTar(file) || isSplit || (isExtendedArchive(file) && ext != "cpio")
+        val isReadOnly = isIsoFormat || isRarFormat || is7z(file) || isTar(file) || isSplit || isStandalone || (isExtendedArchive(file) && ext != "cpio")
 
         _uiState.value = ArchiveViewerUiState.Success(
             archiveName = displayName,

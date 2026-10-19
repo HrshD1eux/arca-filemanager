@@ -28,6 +28,7 @@ import org.tukaani.xz.LZMA2Options
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.util.zip.CRC32
 import kotlin.coroutines.coroutineContext
 
@@ -106,12 +107,14 @@ class SevenZEngine(
             throw ArchivePasswordRequiredException("Archive headers are encrypted. Password required to view contents.", e)
         } catch (e: MissingSplitVolumeException) {
             throw e
+        } catch (e: ArchivePasswordRequiredException) {
+            throw e
         } catch (e: Throwable) {
             if (e.message?.contains("password", ignoreCase = true) == true ||
                 e.message?.contains("encrypted", ignoreCase = true) == true) {
                 throw ArchivePasswordRequiredException("Password required or incorrect password for encrypted archive.", e)
             }
-            // Other read failure
+            throw IOException("Corrupted or invalid 7z archive (${e.localizedMessage ?: "Unreadable header"}).", e)
         }
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
     }

@@ -26,6 +26,7 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import kotlin.coroutines.coroutineContext
@@ -65,7 +66,7 @@ class TarEngine(
         val type = TarCompressionType.fromFileName(tarFile.name)
         val entries = mutableListOf<ArchiveEntry>()
 
-        runCatching {
+        try {
             openTarInputStream(tarFile, type).use { tis ->
                 var entry: TarArchiveEntry? = tis.nextEntry
                 while (entry != null) {
@@ -91,6 +92,8 @@ class TarEngine(
                     entry = tis.nextEntry
                 }
             }
+        } catch (e: Throwable) {
+            throw IOException("Corrupted or invalid TAR archive (${e.localizedMessage ?: "Unreadable stream"}).", e)
         }
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
     }

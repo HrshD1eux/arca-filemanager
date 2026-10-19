@@ -17,6 +17,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.OutputStream
 import kotlin.coroutines.coroutineContext
 
@@ -88,6 +89,7 @@ class RarEngine(
                 e.message?.contains("encrypted", ignoreCase = true) == true) {
                 throw ArchivePasswordRequiredException("Password required or incorrect password for RAR archive.", e)
             }
+            throw IOException("Corrupted or invalid RAR archive (${e.localizedMessage ?: "Unreadable headers"}).", e)
         }
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
     }

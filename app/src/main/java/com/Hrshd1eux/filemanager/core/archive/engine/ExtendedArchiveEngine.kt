@@ -26,6 +26,7 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import kotlin.coroutines.coroutineContext
 
 private const val BUFFER_SIZE = 64 * 1024
@@ -66,7 +67,7 @@ class ExtendedArchiveEngine(
         val format = ExtendedArchiveFormat.fromFile(archiveFile) ?: return@withContext emptyList()
 
         val entries = mutableListOf<ArchiveEntry>()
-        runCatching {
+        try {
             openArchiveInputStream(archiveFile, format).use { ais ->
                 var rawEntry: ApacheArchiveEntry? = ais.nextEntry
                 var entryCount = 0
@@ -104,6 +105,8 @@ class ExtendedArchiveEngine(
                     rawEntry = ais.nextEntry
                 }
             }
+        } catch (e: Throwable) {
+            throw IOException("Corrupted or invalid ${format.displayName} (${e.localizedMessage ?: "Invalid structure"}).", e)
         }
 
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })

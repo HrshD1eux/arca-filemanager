@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -33,7 +34,7 @@ class ZipEngine(
         if (!zipFile.exists() || !zipFile.isFile) return@withContext emptyList()
 
         val entries = mutableListOf<ArchiveEntry>()
-        runCatching {
+        try {
             ZipFile(zipFile).use { zf ->
                 ArchiveSafetyGuard.validateArchiveHeader(zf.size())
                 val zipEntries = zf.entries()
@@ -65,6 +66,8 @@ class ZipEngine(
                     )
                 }
             }
+        } catch (e: Throwable) {
+            throw IOException("Corrupted or invalid ZIP archive (${e.localizedMessage ?: "Invalid structure"}).", e)
         }
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
     }
