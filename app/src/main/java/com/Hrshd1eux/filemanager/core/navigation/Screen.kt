@@ -47,6 +47,12 @@ sealed interface Screen {
     ) : Screen
 
     @Serializable
+    data object StorageAnalyzer : Screen
+
+    @Serializable
+    data object InstalledApps : Screen
+
+    @Serializable
     data class ArchiveViewer(
         val archivePath: String,
         val title: String = ""

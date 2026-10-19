@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -75,6 +77,8 @@ fun HomeScreen(
     onNavigateToBrowser: (initialPath: String?, title: String) -> Unit,
     onNavigateToSearch: (rootPath: String?) -> Unit,
     onNavigateToCategory: (CategoryFilter) -> Unit = {},
+    onNavigateToStorageAnalyzer: () -> Unit = {},
+    onNavigateToInstalledApps: () -> Unit = {},
     onNavigateToLargeFiles: (rootPath: String?) -> Unit = {},
     onNavigateToDuplicateFinder: (rootPath: String?) -> Unit = {},
     onNavigateToVault: () -> Unit = {},
@@ -185,6 +189,26 @@ fun HomeScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
+                                text = { Text("Storage Analyzer") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Storage, contentDescription = null)
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onNavigateToStorageAnalyzer()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Installed Apps") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Apps, contentDescription = null)
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onNavigateToInstalledApps()
+                                }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Large Files") },
                                 leadingIcon = {
                                     Icon(Icons.Default.CleaningServices, contentDescription = null)
@@ -249,7 +273,7 @@ fun HomeScreen(
                     title = if (hasAllFilesAccess) "Storage" else "Storage • Limited Access",
                     hasAllFilesAccess = hasAllFilesAccess,
                     onGrantPermissionClick = launchPermissionRequest,
-                    onCardClick = { onNavigateToBrowser(null, "Internal Storage") }
+                    onCardClick = onNavigateToStorageAnalyzer
                 )
             }
 

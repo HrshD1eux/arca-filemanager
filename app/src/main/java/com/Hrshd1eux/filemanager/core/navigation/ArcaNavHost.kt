@@ -23,8 +23,10 @@ import com.Hrshd1eux.filemanager.feature.about.AboutScreen
 import com.Hrshd1eux.filemanager.feature.archive.ArchiveViewerScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.category.CategoryScreen
+import com.Hrshd1eux.filemanager.feature.cleaner.apps.InstalledAppsScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.duplicates.DuplicateFinderScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.largefiles.LargeFilesScreen
+import com.Hrshd1eux.filemanager.feature.cleaner.storage.StorageAnalyzerScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
 import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
 import com.Hrshd1eux.filemanager.feature.network.browser.NetworkFileBrowserScreen
@@ -66,6 +68,12 @@ fun ArcaNavHost(
                 },
                 onNavigateToCategory = { category ->
                     navController.navigate(Screen.Category(categoryName = category.name))
+                },
+                onNavigateToStorageAnalyzer = {
+                    navController.navigate(Screen.StorageAnalyzer)
+                },
+                onNavigateToInstalledApps = {
+                    navController.navigate(Screen.InstalledApps)
                 },
                 onNavigateToLargeFiles = { rootPath ->
                     navController.navigate(Screen.LargeFiles(rootPath = rootPath))
@@ -186,6 +194,34 @@ fun ArcaNavHost(
             val route = backStackEntry.toRoute<Screen.DuplicateFinder>()
             DuplicateFinderScreen(
                 rootPath = route.rootPath,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.StorageAnalyzer>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            StorageAnalyzerScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToInstalledApps = { navController.navigate(Screen.InstalledApps) },
+                onNavigateToCategory = { category ->
+                    navController.navigate(Screen.Category(categoryName = category.name))
+                },
+                onNavigateToLargeFiles = { navController.navigate(Screen.LargeFiles(rootPath = null)) },
+                onNavigateToDuplicateFinder = { navController.navigate(Screen.DuplicateFinder(rootPath = null)) }
+            )
+        }
+
+        composable<Screen.InstalledApps>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            InstalledAppsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
