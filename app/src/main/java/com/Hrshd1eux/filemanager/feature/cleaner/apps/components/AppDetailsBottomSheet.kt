@@ -245,21 +245,28 @@ fun AppDetailsBottomSheet(
                         )
                     }
 
-                    // 1. APK / Installed Package Size
+                    // 1. Installed Package Runtime Footprint
                     StorageComponentRow(
-                        title = "APK / Package Size",
-                        measurement = app.storageMeasurement.codeComponent,
-                        fallbackSubtitle = "Executable code & bundled assets"
+                        title = "Package Footprint",
+                        measurement = app.storageMeasurement.packageComponent,
+                        fallbackSubtitle = "Compiled code, dex & native runtime libraries"
                     )
 
-                    // 2. App-Reported Data Size
+                    // 2. Raw APK Binary On Disk
+                    StorageComponentRow(
+                        title = "APK Binary",
+                        measurement = app.storageMeasurement.apkComponent,
+                        fallbackSubtitle = if (app.isSplitApk) "Base APK + ${app.splitApkCount} split APKs on disk" else "Standalone APK binary file on disk"
+                    )
+
+                    // 3. App-Reported Data Size
                     StorageComponentRow(
                         title = "App Data Size",
                         measurement = app.storageMeasurement.dataComponent,
                         fallbackSubtitle = "User databases, settings & files"
                     )
 
-                    // 3. App-Reported Cache Size
+                    // 4. App-Reported Cache Size
                     StorageComponentRow(
                         title = "App Cache Size",
                         measurement = app.storageMeasurement.cacheComponent,
@@ -268,7 +275,7 @@ fun AppDetailsBottomSheet(
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                    // 4. Total of Displayed Components
+                    // 5. Total of Displayed Components
                     StorageComponentRow(
                         title = "Total Displayed Footprint",
                         measurement = app.storageMeasurement.totalComponent,

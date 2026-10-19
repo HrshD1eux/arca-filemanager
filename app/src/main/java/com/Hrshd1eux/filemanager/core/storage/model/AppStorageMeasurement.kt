@@ -46,7 +46,7 @@ enum class StorageAccuracy(
 }
 
 /**
- * Represents an individual storage dimension (Code, Data, or Cache) with explicit accuracy and explanation.
+ * Represents an individual storage dimension (Package, APK, Data, or Cache) with explicit accuracy and explanation.
  */
 data class StorageComponentMeasurement(
     val bytes: Long?,
@@ -95,16 +95,17 @@ data class StorageComponentMeasurement(
 }
 
 /**
- * Storage metrics for an installed application, broken down by code, data, cache, and total.
+ * Storage metrics for an installed application, cleanly separating package, APK, app-data, and cache measurements.
  *
- * Adheres strictly to the architectural constraints:
- * 1. For each app, show separate values when Android exposes them: APK/package, data, cache.
+ * Adheres strictly to the Version 1.3.11 architectural constraints:
+ * 1. Separate package (runtime footprint, dex, native libraries), APK (raw binaries on disk), app-data, and cache.
  * 2. Total of the displayed components, when the underlying values are available and comparable.
- * 3. Make the interface clear about whether a value is exact, approximate, stale or unavailable.
+ * 3. Make the interface clear about whether each value is exact, approximate, stale, or unavailable.
  * 4. Never label an inaccessible measurement as zero. Show Unavailable when that is what the system tells you.
  */
 data class AppStorageMeasurement(
-    val codeComponent: StorageComponentMeasurement,
+    val packageComponent: StorageComponentMeasurement,
+    val apkComponent: StorageComponentMeasurement = packageComponent,
     val dataComponent: StorageComponentMeasurement = StorageComponentMeasurement.unavailable(),
     val cacheComponent: StorageComponentMeasurement = StorageComponentMeasurement.unavailable(),
     val totalComponent: StorageComponentMeasurement,
@@ -113,9 +114,42 @@ data class AppStorageMeasurement(
     val isAccessible: Boolean = totalComponent.isAccessible,
     val inaccessibilityReason: String? = null
 ) {
+    /**
+     * Secondary constructor for backward compatibility with existing tests and calls passing `codeComponent`.
+     */
+    constructor(
+        codeComponent: StorageComponentMeasurement,
+        dataComponent: StorageComponentMeasurement = StorageComponentMeasurement.unavailable(),
+        cacheComponent: StorageComponentMeasurement = StorageComponentMeasurement.unavailable(),
+        totalComponent: StorageComponentMeasurement,
+        source: StorageMeasurementSource,
+        measuredAtMillis: Long = System.currentTimeMillis(),
+        isAccessible: Boolean = totalComponent.isAccessible,
+        inaccessibilityReason: String? = null,
+        apkComponent: StorageComponentMeasurement = codeComponent
+    ) : this(
+        packageComponent = codeComponent,
+        apkComponent = apkComponent,
+        dataComponent = dataComponent,
+        cacheComponent = cacheComponent,
+        totalComponent = totalComponent,
+        source = source,
+        measuredAtMillis = measuredAtMillis,
+        isAccessible = isAccessible,
+        inaccessibilityReason = inaccessibilityReason
+    )
+
+    /**
+     * Backward-compatible property mapping to packageComponent if accessible, else apkComponent.
+     */
+    val codeComponent: StorageComponentMeasurement
+        get() = if (packageComponent.isAccessible) packageComponent else apkComponent
+
     // Convenience / backward-compatible properties
     val totalBytes: Long? get() = totalComponent.bytes
     val codeBytes: Long? get() = codeComponent.bytes
+    val packageBytes: Long? get() = packageComponent.bytes
+    val apkBytes: Long? get() = apkComponent.bytes
     val dataBytes: Long? get() = dataComponent.bytes
     val cacheBytes: Long? get() = cacheComponent.bytes
 
@@ -146,7 +180,8 @@ data class AppStorageMeasurement(
      */
     fun asStale(): AppStorageMeasurement {
         return copy(
-            codeComponent = if (codeComponent.isAccessible) codeComponent.copy(accuracy = StorageAccuracy.STALE) else codeComponent,
+            packageComponent = if (packageComponent.isAccessible) packageComponent.copy(accuracy = StorageAccuracy.STALE) else packageComponent,
+            apkComponent = if (apkComponent.isAccessible) apkComponent.copy(accuracy = StorageAccuracy.STALE) else apkComponent,
             dataComponent = if (dataComponent.isAccessible) dataComponent.copy(accuracy = StorageAccuracy.STALE) else dataComponent,
             cacheComponent = if (cacheComponent.isAccessible) cacheComponent.copy(accuracy = StorageAccuracy.STALE) else cacheComponent,
             totalComponent = if (totalComponent.isAccessible) totalComponent.copy(accuracy = StorageAccuracy.STALE) else totalComponent
@@ -157,7 +192,8 @@ data class AppStorageMeasurement(
         fun unavailable(reason: String = "Storage measurement restricted by system"): AppStorageMeasurement {
             val unavail = StorageComponentMeasurement.unavailable(reason)
             return AppStorageMeasurement(
-                codeComponent = unavail,
+                packageComponent = unavail,
+                apkComponent = unavail,
                 dataComponent = unavail,
                 cacheComponent = unavail,
                 totalComponent = unavail,
@@ -174,17 +210,22 @@ data class AppStorageMeasurement(
             splitCount: Int = 0
         ): AppStorageMeasurement {
             return if (totalSize > 0L) {
-                val splitNote = if (splitCount > 0) "Base APK + $splitCount splits" else "Base APK binary"
-                val code = StorageComponentMeasurement.exact(totalSize, splitNote)
+                val splitNote = if (splitCount > 0) "Base APK + $splitCount splits on disk" else "Base APK binary on disk"
+                val apk = StorageComponentMeasurement.exact(totalSize, splitNote)
+                val pkg = StorageComponentMeasurement.approximate(
+                    totalSize,
+                    "Installed package footprint (Code only; dex and runtime restricted without Usage Access)"
+                )
                 val data = StorageComponentMeasurement.unavailable("Requires Usage Access permission to inspect app data")
                 val cache = StorageComponentMeasurement.unavailable("Requires Usage Access permission to inspect app cache")
                 // Total of displayed components: only code is accessible, so total is approximate with respect to the app's full storage
                 val total = StorageComponentMeasurement.approximate(
                     totalSize,
-                    "Total of accessible components (Code only; data and cache restricted)"
+                    "Total of accessible components (APK files only; data and cache restricted)"
                 )
                 AppStorageMeasurement(
-                    codeComponent = code,
+                    packageComponent = pkg,
+                    apkComponent = apk,
                     dataComponent = data,
                     cacheComponent = cache,
                     totalComponent = total,
@@ -201,23 +242,57 @@ data class AppStorageMeasurement(
             appBytes: Long,
             dataBytes: Long,
             cacheBytes: Long,
+            rawApkBytes: Long? = null,
+            splitCount: Int = 0,
             timestampMillis: Long = System.currentTimeMillis(),
             isSelf: Boolean = false
         ): AppStorageMeasurement {
-            val code = StorageComponentMeasurement.exact(appBytes, "Reported by Android StorageStatsManager")
-            val data = StorageComponentMeasurement.exact(dataBytes, "Reported by Android StorageStatsManager")
-            val cache = StorageComponentMeasurement.exact(cacheBytes, "Reported by Android StorageStatsManager")
+            val pkg = StorageComponentMeasurement.exact(appBytes, "Installed package footprint (code, dex, native libs)")
+            val apk = if (rawApkBytes != null && rawApkBytes > 0L) {
+                val splitNote = if (splitCount > 0) "Base APK + $splitCount splits on disk" else "Base APK binary on disk"
+                StorageComponentMeasurement.exact(rawApkBytes, splitNote)
+            } else {
+                StorageComponentMeasurement.approximate(appBytes, "Reported package code size")
+            }
+            val data = StorageComponentMeasurement.exact(dataBytes, "App-reported private data")
+            val cache = StorageComponentMeasurement.exact(cacheBytes, "App-reported cache")
             val totalBytes = appBytes + dataBytes + cacheBytes
             val total = StorageComponentMeasurement.exact(
                 totalBytes,
-                "Exact total of displayed components (Code + Data + Cache)"
+                "Exact total of displayed components (Package + Data + Cache)"
             )
             return AppStorageMeasurement(
-                codeComponent = code,
+                packageComponent = pkg,
+                apkComponent = apk,
                 dataComponent = data,
                 cacheComponent = cache,
                 totalComponent = total,
                 source = if (isSelf) StorageMeasurementSource.SELF_INSPECTION else StorageMeasurementSource.SYSTEM_STORAGE_STATS,
+                measuredAtMillis = timestampMillis,
+                isAccessible = true
+            )
+        }
+
+        fun fromSelfInspection(
+            apkBytes: Long,
+            packageBytes: Long,
+            dataBytes: Long,
+            cacheBytes: Long,
+            timestampMillis: Long = System.currentTimeMillis()
+        ): AppStorageMeasurement {
+            val apk = StorageComponentMeasurement.exact(apkBytes, "ARCA on-disk APK binary")
+            val pkg = StorageComponentMeasurement.exact(packageBytes, "ARCA package runtime code")
+            val data = StorageComponentMeasurement.exact(dataBytes, "ARCA private data directory")
+            val cache = StorageComponentMeasurement.exact(cacheBytes, "ARCA internal cache directory")
+            val totalBytes = packageBytes + dataBytes + cacheBytes
+            val total = StorageComponentMeasurement.exact(totalBytes, "Exact total of ARCA components")
+            return AppStorageMeasurement(
+                packageComponent = pkg,
+                apkComponent = apk,
+                dataComponent = data,
+                cacheComponent = cache,
+                totalComponent = total,
+                source = StorageMeasurementSource.SELF_INSPECTION,
                 measuredAtMillis = timestampMillis,
                 isAccessible = true
             )
@@ -271,7 +346,8 @@ data class AppStorageMeasurement(
             )
 
             return AppStorageMeasurement(
-                codeComponent = code,
+                packageComponent = code,
+                apkComponent = code,
                 dataComponent = data,
                 cacheComponent = cache,
                 totalComponent = total,

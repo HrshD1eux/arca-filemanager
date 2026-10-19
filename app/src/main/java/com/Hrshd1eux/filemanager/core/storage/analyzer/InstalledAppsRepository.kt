@@ -268,10 +268,13 @@ class InstalledAppsRepository(
                 val uuid = appInfo.storageUuid ?: StorageManager.UUID_DEFAULT
                 val userHandle = Process.myUserHandle()
                 val stats = storageStatsManager.queryStatsForPackage(uuid, packageName, userHandle)
+                val rawApkSize = calculateApkSizeOnDisk(appInfo)
                 AppStorageMeasurement.fromSystemStats(
                     appBytes = stats.appBytes,
                     dataBytes = stats.dataBytes,
                     cacheBytes = stats.cacheBytes,
+                    rawApkBytes = rawApkSize,
+                    splitCount = extraInfo.splitApks.size,
                     timestampMillis = measuredTime,
                     isSelf = isSelf
                 )
@@ -288,15 +291,12 @@ class InstalledAppsRepository(
                 val codeBytes = calculateApkSizeOnDisk(appInfo)
                 val dataBytes = calculateDirSizeExcluding(ctx.dataDir, setOf(ctx.cacheDir, ctx.codeCacheDir))
                 val cacheBytes = calculateDirSize(ctx.cacheDir) + calculateDirSize(ctx.codeCacheDir)
-                val totalBytes = codeBytes + dataBytes + cacheBytes
-                AppStorageMeasurement(
-                    codeComponent = StorageComponentMeasurement.exact(codeBytes, "ARCA on-disk binary"),
-                    dataComponent = StorageComponentMeasurement.exact(dataBytes, "ARCA private data directory"),
-                    cacheComponent = StorageComponentMeasurement.exact(cacheBytes, "ARCA internal cache directory"),
-                    totalComponent = StorageComponentMeasurement.exact(totalBytes, "Exact total of ARCA components"),
-                    source = StorageMeasurementSource.SELF_INSPECTION,
-                    measuredAtMillis = measuredTime,
-                    isAccessible = true
+                AppStorageMeasurement.fromSelfInspection(
+                    apkBytes = codeBytes,
+                    packageBytes = codeBytes,
+                    dataBytes = dataBytes,
+                    cacheBytes = cacheBytes,
+                    timestampMillis = measuredTime
                 )
             }
             if (selfResult.isSuccess) {
@@ -313,23 +313,10 @@ class InstalledAppsRepository(
                 val totalCodeSize = baseSize + splitsSize
 
                 if (totalCodeSize > 0L) {
-                    val splitCount = extraInfo.splitApks.size
-                    val codeNote = if (splitCount > 0) "Base APK + $splitCount split APKs" else "Base APK binary on disk"
-                    val code = StorageComponentMeasurement.exact(totalCodeSize, codeNote)
-                    val data = StorageComponentMeasurement.unavailable("Requires Usage Access permission to inspect app data")
-                    val cache = StorageComponentMeasurement.unavailable("Requires Usage Access permission to inspect app cache")
-                    val total = StorageComponentMeasurement.approximate(
-                        totalCodeSize,
-                        "Total of accessible components (Code only; data and cache restricted by system sandbox)"
-                    )
-                    AppStorageMeasurement(
-                        codeComponent = code,
-                        dataComponent = data,
-                        cacheComponent = cache,
-                        totalComponent = total,
-                        source = StorageMeasurementSource.APK_ON_DISK,
-                        measuredAtMillis = measuredTime,
-                        isAccessible = true
+                    AppStorageMeasurement.fromApkFiles(
+                        totalSize = totalCodeSize,
+                        timestampMillis = measuredTime,
+                        splitCount = extraInfo.splitApks.size
                     )
                 } else {
                     AppStorageMeasurement.unavailable("Storage measurement not accessible (0 bytes returned)")
