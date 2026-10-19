@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
@@ -92,6 +93,7 @@ fun CompressDialog(
     onConfirmCreate: (profile: CompressionProfile, archiveName: String, password: CharArray?) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    destinationDirectory: String? = null,
     enabledFormats: Set<ArchiveFormatOption> = ArchivePreferencesRepository.DEFAULT_ENABLED_FORMATS,
     defaultFormat: ArchiveFormatOption = ArchiveFormatOption.ZIP,
     defaultLevel: CompressionLevelPreset = CompressionLevelPreset.NORMAL
@@ -142,7 +144,9 @@ fun CompressDialog(
     }
 
     val totalBytes = remember(sources) { sources.sumOf { it.size } }
-    val isNameValid = rawName.isNotBlank() && !rawName.contains('/') && !rawName.contains('\\')
+    val illegalChars = remember { setOf('/', '\\', ':', '*', '?', '"', '<', '>', '|') }
+    val hasIllegalChar = remember(rawName) { rawName.any { it in illegalChars } }
+    val isNameValid = rawName.isNotBlank() && !hasIllegalChar
     val ext = selectedFormat.defaultExtension
     val displaySuffix = if (selectedSplitSize != SplitSizePreset.NO_SPLIT && selectedFormat == ArchiveFormatOption.SEVEN_Z) {
         ".7z.001"
@@ -294,6 +298,35 @@ fun CompressDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
+                }
+
+                if (!destinationDirectory.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Save to: $destinationDirectory",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -476,8 +509,32 @@ fun CompressDialog(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             // Method
+                            val supportedMethods = remember(selectedFormat) {
+                                when (selectedFormat) {
+                                    ArchiveFormatOption.SEVEN_Z -> listOf(
+                                        CompressionMethodOption.LZMA2,
+                                        CompressionMethodOption.LZMA,
+                                        CompressionMethodOption.BZIP2,
+                                        CompressionMethodOption.DEFLATE,
+                                        CompressionMethodOption.COPY
+                                    )
+                                    ArchiveFormatOption.ZIP -> listOf(
+                                        CompressionMethodOption.DEFLATE,
+                                        CompressionMethodOption.COPY,
+                                        CompressionMethodOption.BZIP2
+                                    )
+                                    ArchiveFormatOption.TAR_GZ -> listOf(CompressionMethodOption.DEFLATE)
+                                    ArchiveFormatOption.TAR_XZ -> listOf(CompressionMethodOption.LZMA2)
+                                    ArchiveFormatOption.TAR_BZ2 -> listOf(CompressionMethodOption.BZIP2)
+                                    ArchiveFormatOption.TAR -> listOf(CompressionMethodOption.COPY)
+                                }
+                            }
+                            if (selectedMethod !in supportedMethods) {
+                                selectedMethod = supportedMethods.first()
+                            }
+
                             Text(
-                                text = "Method",
+                                text = "Method (${selectedFormat.displayName})",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -487,11 +544,24 @@ fun CompressDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                MethodChip(CompressionMethodOption.LZMA2, selectedMethod) { selectedMethod = it }
-                                MethodChip(CompressionMethodOption.LZMA, selectedMethod) { selectedMethod = it }
-                                MethodChip(CompressionMethodOption.DEFLATE, selectedMethod) { selectedMethod = it }
-                                MethodChip(CompressionMethodOption.COPY, selectedMethod) { selectedMethod = it }
+                                supportedMethods.forEach { methodOption ->
+                                    MethodChip(methodOption, selectedMethod) { selectedMethod = it }
+                                }
                             }
+                            val methodHint = when (selectedMethod) {
+                                CompressionMethodOption.LZMA2 -> "LZMA2: Maximum compression ratio with high-speed decompression."
+                                CompressionMethodOption.LZMA -> "LZMA: Classic 7-Zip high-compression algorithm."
+                                CompressionMethodOption.DEFLATE -> "Deflate: Fast, industry-standard compression for ZIP/GZIP."
+                                CompressionMethodOption.BZIP2 -> "BZip2: High compression on text, code, and log files."
+                                CompressionMethodOption.COPY -> "Copy: Packaging without compression (lowest CPU usage)."
+                                else -> "Standard compression."
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = methodHint,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
 
                             Spacer(modifier = Modifier.height(10.dp))
 
@@ -626,8 +696,10 @@ fun CompressDialog(
                     singleLine = true,
                     isError = !isNameValid && rawName.isNotBlank(),
                     supportingText = {
-                        if (!isNameValid && rawName.isNotBlank()) {
-                            Text("Name cannot contain / or \\")
+                        if (hasIllegalChar) {
+                            Text("Name cannot contain illegal characters (/ \\ : * ? \" < > |)", color = MaterialTheme.colorScheme.error)
+                        } else if (rawName.isBlank()) {
+                            Text("Archive name cannot be empty", color = MaterialTheme.colorScheme.error)
                         }
                     },
                     trailingIcon = {
@@ -742,6 +814,32 @@ fun CompressDialog(
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "Compatibility: ARCA creates password-protected archives exclusively in 7Z format with AES-256. Legacy ZIP encryption (ZipCrypto) is deprecated and insecure. TAR/ISO formats do not support archive passwords.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                    )
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "Security Guarantee: Passwords encrypt archive contents for confidentiality. Checksums (such as SHA-256) verify data integrity, but do not provide encryption.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.height(6.dp))

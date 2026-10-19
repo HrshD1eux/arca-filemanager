@@ -5,6 +5,8 @@ import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
 import com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredException
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
+import com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver
+import com.Hrshd1eux.filemanager.core.archive.split.SplitResolution
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
@@ -429,11 +431,15 @@ class RarEngine(
         var totalFolders = 0
         var uncompressedSize = 0L
 
+        var hasEncryptedHeader = false
+        var isSolid = false
         runCatching {
             val passwordStr = password?.let { String(it) }
             val archive = if (passwordStr != null) Archive(rarFile, passwordStr) else Archive(rarFile)
             archive.use { arc ->
+                isSolid = arc.mainHeader?.isSolid ?: false
                 for (header in arc.fileHeaders) {
+                    if (header.isEncrypted) hasEncryptedHeader = true
                     if (header.isDirectory) {
                         totalFolders++
                     } else {
@@ -444,14 +450,27 @@ class RarEngine(
             }
         }
 
+        val resolution = SplitArchiveResolver.resolveSplitParts(rarFile)
+        val isSplit = resolution is SplitResolution.Success && resolution.isSplit
+        val volumeCount = if (resolution is SplitResolution.Success && resolution.isSplit) resolution.parts.size else 1
+        val finalName = if (isSplit) "${(resolution as SplitResolution.Success).baseName} ($volumeCount volumes)" else rarFile.name
+        val finalSize = if (isSplit) (resolution as SplitResolution.Success).totalSize else rarFile.length()
+
         ArchiveProperties(
-            archiveName = rarFile.name,
+            archiveName = finalName,
             archivePath = rarFile.absolutePath,
             totalFiles = totalFiles,
             totalFolders = totalFolders,
             uncompressedSize = uncompressedSize,
-            compressedSize = rarFile.length(),
-            lastModified = rarFile.lastModified()
+            compressedSize = finalSize,
+            lastModified = rarFile.lastModified(),
+            formatDisplayName = "RAR Archive",
+            compressionMethod = "RAR Compression",
+            isEncrypted = hasEncryptedHeader,
+            encryptionDetails = if (hasEncryptedHeader) "AES-128 / AES-256" else "None",
+            isSolid = isSolid,
+            isSplit = isSplit,
+            splitVolumeCount = volumeCount
         )
     }
 

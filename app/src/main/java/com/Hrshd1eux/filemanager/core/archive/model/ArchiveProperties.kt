@@ -7,7 +7,15 @@ data class ArchiveProperties(
     val totalFolders: Int,
     val uncompressedSize: Long,
     val compressedSize: Long,
-    val lastModified: Long
+    val lastModified: Long,
+    val formatDisplayName: String = "Archive",
+    val compressionMethod: String = "Standard",
+    val isEncrypted: Boolean = false,
+    val encryptionDetails: String? = null,
+    val isSolid: Boolean = false,
+    val isSplit: Boolean = false,
+    val splitVolumeCount: Int = 1,
+    val comment: String? = null
 ) {
     val compressionRatio: Float
         get() = if (uncompressedSize > 0 && compressedSize >= 0) {

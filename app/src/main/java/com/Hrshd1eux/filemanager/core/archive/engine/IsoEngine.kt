@@ -375,7 +375,11 @@ class IsoEngine(
             totalFolders = totalFolders,
             uncompressedSize = uncompressedSize,
             compressedSize = isoFile.length(),
-            lastModified = isoFile.lastModified()
+            lastModified = isoFile.lastModified(),
+            formatDisplayName = "ISO Disc Image (.iso)",
+            compressionMethod = "Raw Disc Sectors (Uncompressed)",
+            isEncrypted = false,
+            encryptionDetails = "None"
         )
     }
 

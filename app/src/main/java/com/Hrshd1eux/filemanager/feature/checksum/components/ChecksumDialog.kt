@@ -10,6 +10,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -147,6 +149,33 @@ fun ChecksumDialog(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Conceptual Separation Banner (Data Integrity vs. Encryption)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Fingerprint,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Integrity Verification: Checksums detect corruption and tampering. They verify file data without encrypting or authenticating.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(14.dp))
 
                 if (isCalculating) {
@@ -191,6 +220,36 @@ fun ChecksumDialog(
                         color = MaterialTheme.colorScheme.error
                     )
                 } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Calculated Hashes",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        TextButton(
+                            onClick = {
+                                val allHashesText = checksumItems.joinToString("\n") {
+                                    "${it.algorithm.displayName}: ${it.hashHex}"
+                                }
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("All Checksums for ${node.name}", allHashesText)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Copied all checksums to clipboard", Toast.LENGTH_SHORT).show()
+                            },
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Copy All", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
                     // Checksum Cards
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         checksumItems.forEach { item ->

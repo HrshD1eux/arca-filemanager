@@ -410,7 +410,11 @@ class ExtendedArchiveEngine(
             totalFolders = totalFolders,
             uncompressedSize = uncompressedSize,
             compressedSize = archiveFile.length(),
-            lastModified = archiveFile.lastModified()
+            lastModified = archiveFile.lastModified(),
+            formatDisplayName = format?.displayName ?: "Extended Archive",
+            compressionMethod = format?.displayName ?: "Extended Archive",
+            isEncrypted = false,
+            encryptionDetails = "None"
         )
     }
 

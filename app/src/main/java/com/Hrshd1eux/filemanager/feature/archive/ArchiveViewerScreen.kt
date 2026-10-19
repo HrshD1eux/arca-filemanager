@@ -75,12 +75,14 @@ import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchivePropertiesSheet
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveTestDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
+import com.Hrshd1eux.filemanager.feature.checksum.components.ChecksumDialog
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -109,6 +111,7 @@ fun ArchiveViewerScreen(
     var activeConflictResolution by remember { mutableStateOf(ConflictResolution.RENAME_AUTO) }
     var activeExtractVerify by remember { mutableStateOf(false) }
     var showAddPicker by remember { mutableStateOf(false) }
+    var showArchiveChecksums by remember { mutableStateOf(false) }
     val localProvider = remember { LocalFileSystemProvider() }
 
     LaunchedEffect(archivePath) {
@@ -595,7 +598,27 @@ fun ArchiveViewerScreen(
     if (currentProperties != null) {
         ArchivePropertiesSheet(
             properties = currentProperties,
-            onDismiss = { viewModel.dismissArchiveProperties() }
+            onDismiss = { viewModel.dismissArchiveProperties() },
+            onVerifyChecksums = {
+                viewModel.dismissArchiveProperties()
+                showArchiveChecksums = true
+            }
+        )
+    }
+
+    // Archive Checksum & File Verification Dialog
+    if (showArchiveChecksums) {
+        val archiveNodeFile = File(archivePath)
+        ChecksumDialog(
+            node = StorageNode(
+                id = archiveNodeFile.absolutePath,
+                path = archiveNodeFile.absolutePath,
+                name = archiveNodeFile.name,
+                size = archiveNodeFile.length(),
+                lastModified = archiveNodeFile.lastModified(),
+                isDirectory = false
+            ),
+            onDismiss = { showArchiveChecksums = false }
         )
     }
 

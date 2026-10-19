@@ -25,6 +25,7 @@ import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -314,6 +315,9 @@ class TarEngine(
 
                     for (source in sources) {
                         coroutineContext.ensureActive()
+                        if (!source.exists()) {
+                            throw FileNotFoundException("Source file does not exist: ${source.absolutePath}")
+                        }
 
                         if (source.isDirectory) {
                             val baseDir = source.parentFile ?: source
@@ -372,11 +376,11 @@ class TarEngine(
                         }
                     }
                 }
-            } catch (e: CancellationException) {
+            } catch (t: Throwable) {
                 if (destinationTar.exists()) {
                     destinationTar.delete()
                 }
-                throw e
+                throw t
             }
 
             destinationTar.length()
@@ -484,7 +488,18 @@ class TarEngine(
             totalFolders = totalFolders,
             uncompressedSize = uncompressedSize,
             compressedSize = tarFile.length(),
-            lastModified = tarFile.lastModified()
+            lastModified = tarFile.lastModified(),
+            formatDisplayName = "${type.displayName} Archive",
+            compressionMethod = when (type) {
+                TarCompressionType.GZIP -> "GZIP Deflate"
+                TarCompressionType.BZIP2 -> "BZip2"
+                TarCompressionType.XZ -> "XZ LZMA2"
+                TarCompressionType.Z -> "Unix Compress"
+                TarCompressionType.NONE -> "TAR (Uncompressed)"
+            },
+            isEncrypted = false,
+            encryptionDetails = "None",
+            isSolid = true
         )
     }
 

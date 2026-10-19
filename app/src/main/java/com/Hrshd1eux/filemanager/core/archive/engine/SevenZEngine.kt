@@ -27,6 +27,7 @@ import com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredEx
 import org.tukaani.xz.LZMA2Options
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.zip.CRC32
@@ -360,11 +361,11 @@ class SevenZEngine(
                     out.setContentMethods(buildContentMethods(method, compressionLevel, dictionarySizeMb))
                     writeSourcesToSevenZ(out, sources, totalBytes, totalFiles, onProgress)
                 }
-            } catch (e: CancellationException) {
+            } catch (t: Throwable) {
                 if (destination7z.exists()) {
                     destination7z.delete()
                 }
-                throw e
+                throw t
             }
 
             destination7z.length()
@@ -489,6 +490,9 @@ class SevenZEngine(
 
         for (source in sources) {
             coroutineContext.ensureActive()
+            if (!source.exists()) {
+                throw FileNotFoundException("Source file does not exist: ${source.absolutePath}")
+            }
 
             if (source.isDirectory) {
                 val baseDir = source.parentFile ?: source
@@ -644,6 +648,7 @@ class SevenZEngine(
         var totalFolders = 0
         var uncompressedSize = 0L
 
+        var isEncrypted = false
         runCatching {
             openSevenZFile(sevenZFile).use { szf ->
                 var entry: SevenZArchiveEntry? = szf.nextEntry
@@ -661,7 +666,13 @@ class SevenZEngine(
             if (it is MissingSplitVolumeException) {
                 throw it
             }
+            if (it is ArchivePasswordRequiredException || it.message?.contains("password", ignoreCase = true) == true) {
+                isEncrypted = true
+            }
         }
+
+        val isSplit = resolution is SplitResolution.Success && resolution.isSplit
+        val volumeCount = if (resolution is SplitResolution.Success && resolution.isSplit) resolution.parts.size else 1
 
         ArchiveProperties(
             archiveName = displayName,
@@ -670,7 +681,14 @@ class SevenZEngine(
             totalFolders = totalFolders,
             uncompressedSize = uncompressedSize,
             compressedSize = displaySize,
-            lastModified = sevenZFile.lastModified()
+            lastModified = sevenZFile.lastModified(),
+            formatDisplayName = "7-Zip Archive (7Z)",
+            compressionMethod = "LZMA2 / LZMA",
+            isEncrypted = isEncrypted,
+            encryptionDetails = if (isEncrypted) "AES-256" else "None",
+            isSolid = true,
+            isSplit = isSplit,
+            splitVolumeCount = volumeCount
         )
     }
 

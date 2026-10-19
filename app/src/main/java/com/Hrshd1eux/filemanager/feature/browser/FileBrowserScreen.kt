@@ -1042,10 +1042,12 @@ fun FileBrowserScreen(
 
     // Single Compress Dialog
     val targetToCompress = nodeToCompress
+    val currentDirectoryPath = (uiState as? BrowserUiState.Success)?.currentPath
     if (targetToCompress != null) {
         CompressDialog(
             sources = listOf(targetToCompress),
             defaultName = "${targetToCompress.name}${defaultArchiveFormat.defaultExtension}",
+            destinationDirectory = currentDirectoryPath,
             enabledFormats = enabledArchiveFormats,
             defaultFormat = defaultArchiveFormat,
             defaultLevel = defaultCompressionLevel,
@@ -1077,6 +1079,7 @@ fun FileBrowserScreen(
         CompressDialog(
             sources = targetBulkCompress,
             defaultName = defaultZipName,
+            destinationDirectory = currentDirectoryPath,
             enabledFormats = enabledArchiveFormats,
             defaultFormat = defaultArchiveFormat,
             defaultLevel = defaultCompressionLevel,

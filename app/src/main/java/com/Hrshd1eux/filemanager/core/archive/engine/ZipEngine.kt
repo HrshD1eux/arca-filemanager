@@ -5,6 +5,8 @@ import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyException
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
+import com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver
+import com.Hrshd1eux.filemanager.core.archive.split.SplitResolution
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
@@ -15,6 +17,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.zip.CRC32
@@ -292,6 +295,9 @@ class ZipEngine(
                     zos.setLevel(compressionLevel)
                     for (source in sources) {
                         coroutineContext.ensureActive()
+                        if (!source.exists()) {
+                            throw FileNotFoundException("Source file does not exist: ${source.absolutePath}")
+                        }
                         if (source.isDirectory) {
                             val baseDir = source.parentFile ?: source
                             source.walkTopDown().forEach { file ->
@@ -350,11 +356,11 @@ class ZipEngine(
                         }
                     }
                 }
-            } catch (e: CancellationException) {
+            } catch (t: Throwable) {
                 if (destinationZip.exists()) {
                     destinationZip.delete()
                 }
-                throw e
+                throw t
             }
 
             destinationZip.length()
@@ -543,12 +549,18 @@ class ZipEngine(
         var totalFolders = 0
         var uncompressedSize = 0L
         var compressedSize = 0L
+        var archiveComment: String? = null
+        var hasDeflated = false
+        var hasStored = false
 
         runCatching {
             ZipFile(zipFile).use { zf ->
+                archiveComment = zf.comment
                 val entries = zf.entries()
                 while (entries.hasMoreElements()) {
                     val entry = entries.nextElement()
+                    if (entry.method == ZipEntry.DEFLATED) hasDeflated = true
+                    if (entry.method == ZipEntry.STORED) hasStored = true
                     if (entry.isDirectory || entry.name.endsWith("/")) {
                         totalFolders++
                     } else {
@@ -560,14 +572,35 @@ class ZipEngine(
             }
         }
 
+        val resolution = SplitArchiveResolver.resolveSplitParts(zipFile)
+        val isSplit = resolution is SplitResolution.Success && resolution.isSplit
+        val volumeCount = if (resolution is SplitResolution.Success && resolution.isSplit) resolution.parts.size else 1
+        val finalName = if (isSplit) "${(resolution as SplitResolution.Success).baseName} ($volumeCount volumes)" else zipFile.name
+        val finalCompressedSize = if (isSplit) (resolution as SplitResolution.Success).totalSize else (if (compressedSize > 0) compressedSize else zipFile.length())
+
+        val methodStr = when {
+            hasDeflated && hasStored -> "Deflate / Store"
+            hasDeflated -> "Deflate"
+            hasStored -> "Store (Uncompressed)"
+            else -> "Standard Deflate"
+        }
+
         ArchiveProperties(
-            archiveName = zipFile.name,
+            archiveName = finalName,
             archivePath = zipFile.absolutePath,
             totalFiles = totalFiles,
             totalFolders = totalFolders,
             uncompressedSize = uncompressedSize,
-            compressedSize = if (compressedSize > 0) compressedSize else zipFile.length(),
-            lastModified = zipFile.lastModified()
+            compressedSize = finalCompressedSize,
+            lastModified = zipFile.lastModified(),
+            formatDisplayName = "ZIP Archive",
+            compressionMethod = methodStr,
+            isEncrypted = false,
+            encryptionDetails = "None",
+            isSolid = false,
+            isSplit = isSplit,
+            splitVolumeCount = volumeCount,
+            comment = archiveComment
         )
     }
 

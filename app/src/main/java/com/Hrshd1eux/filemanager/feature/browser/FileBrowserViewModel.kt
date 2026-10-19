@@ -810,6 +810,12 @@ class FileBrowserViewModel(
                 }
                 val encSuffix = if (password != null && password.isNotEmpty()) " (Encrypted 🔒)" else ""
                 _userMessage.emit("Created $archiveName (${FileFormatter.formatFileSize(size)})$encSuffix")
+            } catch (t: Throwable) {
+                if (destFile.exists()) {
+                    destFile.delete()
+                }
+                _userMessage.emit("Compression failed: ${t.localizedMessage ?: "Operation cancelled or error"}")
+                throw t
             } finally {
                 if (password != null) {
                     java.util.Arrays.fill(password, '\u0000')

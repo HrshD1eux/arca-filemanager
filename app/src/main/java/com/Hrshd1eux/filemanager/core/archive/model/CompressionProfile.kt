@@ -135,5 +135,102 @@ data class CompressionProfile(
                 )
             }
         }
+
+        fun fromPreset(preset: CompressionPresetProfile, format: ArchiveFormatOption): CompressionProfile {
+            return when (preset) {
+                CompressionPresetProfile.FAST -> when (format) {
+                    ArchiveFormatOption.SEVEN_Z -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.FAST,
+                        compressionLevel = 1,
+                        method = CompressionMethodOption.LZMA2,
+                        isSolid = false,
+                        dictionarySizeMb = 16
+                    )
+                    ArchiveFormatOption.TAR -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.STORE,
+                        compressionLevel = 0,
+                        method = CompressionMethodOption.COPY
+                    )
+                    ArchiveFormatOption.TAR_GZ -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.FAST,
+                        compressionLevel = 1,
+                        method = CompressionMethodOption.DEFLATE
+                    )
+                    ArchiveFormatOption.TAR_XZ -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.FAST,
+                        compressionLevel = 1,
+                        method = CompressionMethodOption.LZMA2
+                    )
+                    ArchiveFormatOption.TAR_BZ2 -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.FAST,
+                        compressionLevel = 1,
+                        method = CompressionMethodOption.BZIP2
+                    )
+                    else -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.FAST,
+                        compressionLevel = 1,
+                        method = CompressionMethodOption.DEFLATE
+                    )
+                }
+                CompressionPresetProfile.BALANCED -> defaultFor(format)
+                CompressionPresetProfile.MAXIMUM -> when (format) {
+                    ArchiveFormatOption.SEVEN_Z -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.MAXIMUM,
+                        compressionLevel = 9,
+                        method = CompressionMethodOption.LZMA2,
+                        isSolid = true,
+                        dictionarySizeMb = 64
+                    )
+                    ArchiveFormatOption.TAR -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.STORE,
+                        compressionLevel = 0,
+                        method = CompressionMethodOption.COPY
+                    )
+                    ArchiveFormatOption.TAR_GZ -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.MAXIMUM,
+                        compressionLevel = 9,
+                        method = CompressionMethodOption.DEFLATE
+                    )
+                    ArchiveFormatOption.TAR_XZ -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.MAXIMUM,
+                        compressionLevel = 9,
+                        method = CompressionMethodOption.LZMA2
+                    )
+                    ArchiveFormatOption.TAR_BZ2 -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.MAXIMUM,
+                        compressionLevel = 9,
+                        method = CompressionMethodOption.BZIP2
+                    )
+                    else -> CompressionProfile(
+                        format = format,
+                        levelPreset = CompressionLevelPreset.MAXIMUM,
+                        compressionLevel = 9,
+                        method = CompressionMethodOption.DEFLATE
+                    )
+                }
+            }
+        }
     }
+}
+
+enum class CompressionPresetProfile(
+    val id: String,
+    val displayName: String,
+    val description: String,
+    val levelPreset: CompressionLevelPreset
+) {
+    FAST("fast", "Fast", "Minimal CPU & memory impact, fastest compression speed", CompressionLevelPreset.FAST),
+    BALANCED("balanced", "Balanced", "Recommended: optimal balance between compression ratio and speed", CompressionLevelPreset.NORMAL),
+    MAXIMUM("maximum", "Maximum", "Highest compression ratio, smallest archive size", CompressionLevelPreset.MAXIMUM)
 }

@@ -364,7 +364,11 @@ class StandaloneCompressorEngine(
             totalFolders = 0,
             uncompressedSize = uncompressed,
             compressedSize = compressedFile.length(),
-            lastModified = compressedFile.lastModified()
+            lastModified = compressedFile.lastModified(),
+            formatDisplayName = type?.displayName ?: "Compressed File",
+            compressionMethod = type?.displayName ?: "Standalone Stream",
+            isEncrypted = false,
+            encryptionDetails = "None"
         )
     }
 
