@@ -2,6 +2,7 @@ package com.Hrshd1eux.filemanager.feature.cleaner.apps
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,9 +29,12 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,7 +42,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -113,78 +119,130 @@ fun InstalledAppsScreen(
         }
     }
 
+    BackHandler(enabled = uiState.isSelectionMode) {
+        viewModel.clearSelection()
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
+            if (uiState.isSelectionMode) {
+                TopAppBar(
+                    title = {
                         Text(
-                            text = "Installed Apps",
+                            text = "${uiState.selectedPackageNames.size} selected",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
-                        if (!uiState.isLoading && uiState.report.totalAppCount > 0) {
-                            val totalFormatted = FileFormatter.formatFileSize(uiState.report.totalMeasurableBytes)
-                            Text(
-                                text = "${uiState.report.totalAppCount} apps • $totalFormatted measurable",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear Selection"
                             )
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                actions = {
-                    // Inspect OS Storage button
-                    IconButton(onClick = { viewModel.toggleSystemStorageDetails(true) }) {
-                        Icon(
-                            imageVector = Icons.Default.Storage,
-                            contentDescription = "Inspect System Storage",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    // Package Name on demand toggle
-                    IconButton(
-                        onClick = { viewModel.toggleShowPackageNames() }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Code,
-                            contentDescription = "Toggle Package Names",
-                            tint = if (uiState.showPackageNames) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    // Sort button
-                    IconButton(onClick = { showSortSheet = true }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Sort,
-                            contentDescription = "Sort"
-                        )
-                    }
-
-                    // Refresh button
-                    IconButton(onClick = { viewModel.loadApps(forceRefresh = true) }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    },
+                    actions = {
+                        val allSelected = uiState.filteredApps.isNotEmpty() &&
+                                uiState.selectedPackageNames.containsAll(uiState.filteredApps.map { it.packageName })
+                        IconButton(onClick = { viewModel.selectAll() }) {
+                            Icon(
+                                imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                contentDescription = if (allSelected) "Deselect All" else "Select All"
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                viewModel.exportSelectedApks(context) { chooserIntent ->
+                                    context.startActivity(chooserIntent)
+                                }
+                            },
+                            enabled = !uiState.isBatchExporting
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share Selected APKs",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "Installed Apps",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (!uiState.isLoading && uiState.report.totalAppCount > 0) {
+                                val totalFormatted = FileFormatter.formatFileSize(uiState.report.totalMeasurableBytes)
+                                Text(
+                                    text = "${uiState.report.totalAppCount} apps • $totalFormatted measurable",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    actions = {
+                        // Inspect OS Storage button
+                        IconButton(onClick = { viewModel.toggleSystemStorageDetails(true) }) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = "Inspect System Storage",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        // Package Name on demand toggle
+                        IconButton(
+                            onClick = { viewModel.toggleShowPackageNames() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Code,
+                                contentDescription = "Toggle Package Names",
+                                tint = if (uiState.showPackageNames) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Sort button
+                        IconButton(onClick = { showSortSheet = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Sort,
+                                contentDescription = "Sort"
+                            )
+                        }
+
+                        // Refresh button
+                        IconButton(onClick = { viewModel.loadApps(forceRefresh = true) }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            }
         }
     ) { innerPadding ->
         Column(
@@ -324,6 +382,76 @@ fun InstalledAppsScreen(
                 }
             }
 
+            // Batch Export Progress Card
+            AnimatedVisibility(visible = uiState.isBatchExporting) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Exporting Selected APKs...",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            if (uiState.batchExportPercent > 0) {
+                                Text(
+                                    text = "${uiState.batchExportPercent}%",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        if (uiState.batchExportPercent > 0) {
+                            LinearProgressIndicator(
+                                progress = { uiState.batchExportPercent / 100f },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = uiState.batchExportProgress ?: "Preparing selected applications...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedButton(
+                                onClick = { viewModel.cancelBatchExport() },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Cancel")
+                            }
+                        }
+                    }
+                }
+            }
+
             // Content List or Loading State
             Box(modifier = Modifier.fillMaxSize()) {
                 if (uiState.isLoading) {
@@ -363,10 +491,22 @@ fun InstalledAppsScreen(
                             items = uiState.filteredApps,
                             key = { it.packageName }
                         ) { app ->
+                            val isSelected = uiState.selectedPackageNames.contains(app.packageName)
                             InstalledAppItem(
                                 app = app,
                                 showPackageName = uiState.showPackageNames,
-                                onClick = { viewModel.selectAppForDetails(app) }
+                                isSelectionMode = uiState.isSelectionMode,
+                                isSelected = isSelected,
+                                onClick = {
+                                    if (uiState.isSelectionMode) {
+                                        viewModel.toggleAppSelection(app.packageName)
+                                    } else {
+                                        viewModel.selectAppForDetails(app)
+                                    }
+                                },
+                                onLongClick = {
+                                    viewModel.toggleAppSelection(app.packageName)
+                                }
                             )
                         }
                     }

@@ -323,4 +323,131 @@ class ApkShareManagerTest {
         val sanitized = ApkShareManager.sanitizeFileName(longName)
         assertTrue(sanitized.length <= 36)
     }
+
+    @Test
+    fun prepareAndCreateShareIntent_tracksProgressAccurately() = runBlocking {
+        var lastCopied = 0L
+        var reportedTotal = 0L
+        var callbackCount = 0
+
+        val manager = ApkShareManager(
+            ioDispatcher = testDispatcher,
+            storageChecker = { 100 * 1024 * 1024L },
+            uriProvider = createUriMock()
+        )
+        val app = createTestApp(isSplit = false)
+
+        val result = manager.prepareAndCreateShareIntent(
+            context = null,
+            app = app,
+            shareMode = ApkShareMode.BASE_ONLY,
+            customCacheDir = cacheDir,
+            onProgress = { copied, total ->
+                callbackCount++
+                lastCopied = copied
+                reportedTotal = total
+            }
+        )
+
+        assertTrue(result is ApkShareResult.Success)
+        assertTrue(callbackCount > 0)
+        assertEquals(baseApkFile.length(), lastCopied)
+        assertEquals(baseApkFile.length(), reportedTotal)
+    }
+
+    @Test
+    fun temporaryFileReuse_avoidsRedundantCopyWhenCacheExists() = runBlocking {
+        val manager = ApkShareManager(
+            ioDispatcher = testDispatcher,
+            storageChecker = { 100 * 1024 * 1024L },
+            uriProvider = createUriMock()
+        )
+        val app = createTestApp(isSplit = false, appName = "CachedApp")
+
+        // First copy
+        val result1 = manager.prepareAndCreateShareIntent(
+            context = null,
+            app = app,
+            customCacheDir = cacheDir
+        )
+        assertTrue(result1 is ApkShareResult.Success)
+        val file1 = (result1 as ApkShareResult.Success).targetFiles.first()
+        val modTime1 = file1.lastModified()
+
+        // Second copy - should reuse file without rewriting
+        val result2 = manager.prepareAndCreateShareIntent(
+            context = null,
+            app = app,
+            customCacheDir = cacheDir
+        )
+        assertTrue(result2 is ApkShareResult.Success)
+        val file2 = (result2 as ApkShareResult.Success).targetFiles.first()
+        assertEquals(modTime1, file2.lastModified())
+    }
+
+    @Test
+    fun prepareBatchShareIntent_combinesMultipleAppsAndSplits() = runBlocking {
+        val manager = ApkShareManager(
+            ioDispatcher = testDispatcher,
+            storageChecker = { 100 * 1024 * 1024L },
+            uriProvider = createUriMock()
+        )
+        val app1 = createTestApp(isSplit = false, appName = "App One", versionName = "1.0")
+        val app2 = createTestApp(isSplit = true, appName = "App Two", versionName = "2.0")
+
+        val progressReports = mutableListOf<String>()
+
+        val result = manager.prepareBatchShareIntent(
+            context = null,
+            apps = listOf(app1, app2),
+            shareMode = ApkShareMode.ALL_SPLITS,
+            customCacheDir = cacheDir,
+            onProgress = { copied, total, name ->
+                progressReports.add("$name: $copied/$total")
+            }
+        )
+
+        assertTrue(result is ApkShareResult.Success)
+        val success = result as ApkShareResult.Success
+        // App1 (1 base) + App2 (1 base + 2 splits) = 4 files
+        assertEquals(4, success.sharedFileCount)
+        assertEquals(4, success.uris.size)
+        assertTrue(progressReports.isNotEmpty())
+    }
+
+    @Test
+    fun prepareBatchShareIntent_insufficientStorage_returnsError() = runBlocking {
+        val manager = ApkShareManager(
+            ioDispatcher = testDispatcher,
+            storageChecker = { 1024L }, // Only 1 KB available
+            uriProvider = createUriMock()
+        )
+        val app1 = createTestApp(isSplit = false, appName = "App One")
+
+        val result = manager.prepareBatchShareIntent(
+            context = null,
+            apps = listOf(app1),
+            customCacheDir = cacheDir
+        )
+
+        assertTrue("Must report insufficient storage", result is ApkShareResult.InsufficientStorage)
+    }
+
+    @Test
+    fun prepareBatchShareIntent_noAccessibleApps_returnsInaccessible() = runBlocking {
+        val manager = ApkShareManager(
+            ioDispatcher = testDispatcher,
+            storageChecker = { 100 * 1024 * 1024L },
+            uriProvider = createUriMock()
+        )
+        val app = createTestApp(sourceDir = "/non/existent/path/app.apk")
+
+        val result = manager.prepareBatchShareIntent(
+            context = null,
+            apps = listOf(app),
+            customCacheDir = cacheDir
+        )
+
+        assertTrue(result is ApkShareResult.Inaccessible)
+    }
 }

@@ -34,6 +34,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -62,6 +63,7 @@ import com.Hrshd1eux.filemanager.core.storage.apk.ApkShareMode
 import com.Hrshd1eux.filemanager.core.storage.apk.ApkShareResult
 import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppInfo
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -82,6 +84,9 @@ fun ShareApkBottomSheet(
 
     var inspection by remember { mutableStateOf<ApkShareInspection?>(null) }
     var isPreparing by remember { mutableStateOf(false) }
+    var activeJob by remember { mutableStateOf<Job?>(null) }
+    var copiedBytes by remember { mutableStateOf(0L) }
+    var totalBytes by remember { mutableStateOf(0L) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var storageWarning by remember { mutableStateOf<String?>(null) }
 
@@ -433,24 +438,76 @@ fun ShareApkBottomSheet(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Action Buttons
+            // Action Buttons / Export Progress
             if (isPreparing) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        Text(
-                            text = "Preparing APK for sharing...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Preparing APK for sharing...",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (totalBytes > 0) {
+                                val percent = ((copiedBytes * 100) / totalBytes).toInt().coerceIn(0, 100)
+                                Text(
+                                    text = "$percent%",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        if (totalBytes > 0) {
+                            val progress = (copiedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                text = "${FileFormatter.formatFileSize(copiedBytes)} of ${FileFormatter.formatFileSize(totalBytes)} copied",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            Text(
+                                text = "Streaming APK binaries...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                activeJob?.cancel()
+                                activeJob = null
+                                isPreparing = false
+                                copiedBytes = 0L
+                                totalBytes = 0L
+                            },
+                            modifier = Modifier.align(Alignment.End),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Cancel")
+                        }
                     }
                 }
             } else {
@@ -466,8 +523,21 @@ fun ShareApkBottomSheet(
                                 app = app,
                                 mode = ApkShareMode.ALL_SPLITS,
                                 apkShareManager = apkShareManager,
-                                onStart = { isPreparing = true; errorMessage = null },
-                                onComplete = { isPreparing = false },
+                                onJobCreated = { activeJob = it },
+                                onProgress = { copied, total ->
+                                    copiedBytes = copied
+                                    totalBytes = total
+                                },
+                                onStart = {
+                                    isPreparing = true
+                                    errorMessage = null
+                                    copiedBytes = 0L
+                                    totalBytes = inspection?.totalSizeBytes ?: 0L
+                                },
+                                onComplete = {
+                                    isPreparing = false
+                                    activeJob = null
+                                },
                                 onError = { errorMessage = it },
                                 onSuccess = { onDismiss() }
                             )
@@ -494,8 +564,21 @@ fun ShareApkBottomSheet(
                                 app = app,
                                 mode = ApkShareMode.BASE_ONLY,
                                 apkShareManager = apkShareManager,
-                                onStart = { isPreparing = true; errorMessage = null },
-                                onComplete = { isPreparing = false },
+                                onJobCreated = { activeJob = it },
+                                onProgress = { copied, total ->
+                                    copiedBytes = copied
+                                    totalBytes = total
+                                },
+                                onStart = {
+                                    isPreparing = true
+                                    errorMessage = null
+                                    copiedBytes = 0L
+                                    totalBytes = inspection?.baseSizeBytes ?: 0L
+                                },
+                                onComplete = {
+                                    isPreparing = false
+                                    activeJob = null
+                                },
                                 onError = { errorMessage = it },
                                 onSuccess = { onDismiss() }
                             )
@@ -516,8 +599,21 @@ fun ShareApkBottomSheet(
                                 app = app,
                                 mode = ApkShareMode.BASE_ONLY,
                                 apkShareManager = apkShareManager,
-                                onStart = { isPreparing = true; errorMessage = null },
-                                onComplete = { isPreparing = false },
+                                onJobCreated = { activeJob = it },
+                                onProgress = { copied, total ->
+                                    copiedBytes = copied
+                                    totalBytes = total
+                                },
+                                onStart = {
+                                    isPreparing = true
+                                    errorMessage = null
+                                    copiedBytes = 0L
+                                    totalBytes = inspection?.baseSizeBytes ?: 0L
+                                },
+                                onComplete = {
+                                    isPreparing = false
+                                    activeJob = null
+                                },
                                 onError = { errorMessage = it },
                                 onSuccess = { onDismiss() }
                             )
@@ -547,17 +643,20 @@ private fun dispatchShare(
     app: InstalledAppInfo,
     mode: ApkShareMode,
     apkShareManager: ApkShareManager,
+    onJobCreated: (Job) -> Unit,
+    onProgress: (Long, Long) -> Unit,
     onStart: () -> Unit,
     onComplete: () -> Unit,
     onError: (String) -> Unit,
     onSuccess: () -> Unit
 ) {
     onStart()
-    scope.launch {
+    val job = scope.launch {
         val result = apkShareManager.prepareAndCreateShareIntent(
             context = context,
             app = app,
-            shareMode = mode
+            shareMode = mode,
+            onProgress = onProgress
         )
         onComplete()
         when (result) {
@@ -578,6 +677,10 @@ private fun dispatchShare(
             is ApkShareResult.ExtractionFailed -> {
                 onError(result.message)
             }
+            is ApkShareResult.Cancelled -> {
+                // User cancelled export or sheet dismissed
+            }
         }
     }
+    onJobCreated(job)
 }

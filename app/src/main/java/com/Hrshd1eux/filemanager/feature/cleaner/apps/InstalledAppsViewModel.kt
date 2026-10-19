@@ -3,13 +3,20 @@ package com.Hrshd1eux.filemanager.feature.cleaner.apps
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import android.content.Intent
 import com.Hrshd1eux.filemanager.core.storage.analyzer.InstalledAppsReport
 import com.Hrshd1eux.filemanager.core.storage.analyzer.InstalledAppsRepository
 import com.Hrshd1eux.filemanager.core.storage.analyzer.SystemStorageRepository
+import com.Hrshd1eux.filemanager.core.storage.apk.ApkShareManager
+import com.Hrshd1eux.filemanager.core.storage.apk.ApkShareMode
+import com.Hrshd1eux.filemanager.core.storage.apk.ApkShareResult
 import com.Hrshd1eux.filemanager.core.storage.model.AppTypeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppInfo
 import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppSortOrder
 import com.Hrshd1eux.filemanager.core.storage.model.SystemStorageBreakdown
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -31,8 +38,15 @@ data class InstalledAppsUiState(
     val systemStorageBreakdown: SystemStorageBreakdown = SystemStorageBreakdown(),
     val showSystemStorageDetails: Boolean = false,
     val isUsageAccessGranted: Boolean = false,
+    val selectedPackageNames: Set<String> = emptySet(),
+    val isBatchExporting: Boolean = false,
+    val batchExportProgress: String? = null,
+    val batchExportPercent: Int = 0,
     val errorMessage: String? = null
-)
+) {
+    val isSelectionMode: Boolean
+        get() = selectedPackageNames.isNotEmpty()
+}
 
 class InstalledAppsViewModel(
     application: Application,
@@ -45,6 +59,8 @@ class InstalledAppsViewModel(
 
     private val _userMessage = MutableSharedFlow<String>()
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
+
+    private var batchExportJob: Job? = null
 
     init {
         loadApps(forceRefresh = false)
@@ -150,6 +166,101 @@ class InstalledAppsViewModel(
 
     fun toggleSystemStorageDetails(show: Boolean) {
         _uiState.value = _uiState.value.copy(showSystemStorageDetails = show)
+    }
+
+    fun toggleAppSelection(packageName: String) {
+        val current = _uiState.value.selectedPackageNames
+        val newSelection = if (current.contains(packageName)) {
+            current - packageName
+        } else {
+            current + packageName
+        }
+        _uiState.value = _uiState.value.copy(selectedPackageNames = newSelection)
+    }
+
+    fun selectAll() {
+        val allPackageNames = _uiState.value.filteredApps.map { it.packageName }.toSet()
+        val newSelection = if (_uiState.value.selectedPackageNames.containsAll(allPackageNames)) {
+            emptySet()
+        } else {
+            allPackageNames
+        }
+        _uiState.value = _uiState.value.copy(selectedPackageNames = newSelection)
+    }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(selectedPackageNames = emptySet())
+    }
+
+    fun cancelBatchExport() {
+        batchExportJob?.cancel()
+        batchExportJob = null
+        _uiState.value = _uiState.value.copy(
+            isBatchExporting = false,
+            batchExportProgress = null,
+            batchExportPercent = 0
+        )
+    }
+
+    fun exportSelectedApks(
+        context: Context,
+        apkShareManager: ApkShareManager = ApkShareManager.getInstance(),
+        onSuccess: (Intent) -> Unit
+    ) {
+        val selectedApps = _uiState.value.filteredApps.filter { it.packageName in _uiState.value.selectedPackageNames }
+        if (selectedApps.isEmpty()) {
+            emitMessage("No applications selected for export.")
+            return
+        }
+
+        batchExportJob?.cancel()
+        batchExportJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isBatchExporting = true,
+                batchExportProgress = "Preparing ${selectedApps.size} apps...",
+                batchExportPercent = 0
+            )
+
+            val result = apkShareManager.prepareBatchShareIntent(
+                context = context,
+                apps = selectedApps,
+                shareMode = ApkShareMode.ALL_SPLITS,
+                onProgress = { copiedBytes, totalBytes, appName ->
+                    val percent = if (totalBytes > 0) ((copiedBytes * 100) / totalBytes).toInt().coerceIn(0, 100) else 0
+                    val formattedCopied = FileFormatter.formatFileSize(copiedBytes)
+                    val formattedTotal = FileFormatter.formatFileSize(totalBytes)
+                    _uiState.value = _uiState.value.copy(
+                        batchExportProgress = "Exporting $appName ($formattedCopied / $formattedTotal)",
+                        batchExportPercent = percent
+                    )
+                }
+            )
+
+            _uiState.value = _uiState.value.copy(
+                isBatchExporting = false,
+                batchExportProgress = null,
+                batchExportPercent = 0
+            )
+
+            when (result) {
+                is ApkShareResult.Success -> {
+                    clearSelection()
+                    onSuccess(result.chooserIntent)
+                }
+                is ApkShareResult.InsufficientStorage -> {
+                    emitMessage("Insufficient storage: Required ${result.formattedRequired}, Available ${result.formattedAvailable}.")
+                }
+                is ApkShareResult.Inaccessible -> {
+                    emitMessage(result.reason)
+                }
+                is ApkShareResult.ExtractionFailed -> {
+                    emitMessage(result.message)
+                }
+                is ApkShareResult.Cancelled -> {
+                    emitMessage("Batch APK export cancelled.")
+                }
+            }
+        }
     }
 
     fun emitMessage(message: String) {
