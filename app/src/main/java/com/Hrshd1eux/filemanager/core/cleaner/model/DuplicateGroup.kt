@@ -12,7 +12,8 @@ enum class ScanStage(val displayName: String) {
 data class DuplicateGroup(
     val hash: String,
     val sizePerFile: Long,
-    val files: List<StorageNode>
+    val files: List<StorageNode>,
+    val matchLevel: DuplicateMatchLevel = DuplicateMatchLevel.CONFIRMED_HASH_MATCH
 ) {
     val wastedBytes: Long
         get() = if (files.size > 1) sizePerFile * (files.size - 1) else 0L
