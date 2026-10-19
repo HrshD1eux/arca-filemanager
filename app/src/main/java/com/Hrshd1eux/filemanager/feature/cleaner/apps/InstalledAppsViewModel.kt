@@ -5,9 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.storage.analyzer.InstalledAppsReport
 import com.Hrshd1eux.filemanager.core.storage.analyzer.InstalledAppsRepository
+import com.Hrshd1eux.filemanager.core.storage.analyzer.SystemStorageRepository
 import com.Hrshd1eux.filemanager.core.storage.model.AppTypeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppInfo
 import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppSortOrder
+import com.Hrshd1eux.filemanager.core.storage.model.SystemStorageBreakdown
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,17 +23,20 @@ data class InstalledAppsUiState(
     val report: InstalledAppsReport = InstalledAppsReport(),
     val filteredApps: List<InstalledAppInfo> = emptyList(),
     val searchQuery: String = "",
-    val typeFilter: AppTypeFilter = AppTypeFilter.ALL,
+    val typeFilter: AppTypeFilter = AppTypeFilter.USER, // Default to User Apps for clean separation
     val sortOrder: InstalledAppSortOrder = InstalledAppSortOrder.SIZE_DESC,
     val showPackageNames: Boolean = false,
     val selectedAppForDetails: InstalledAppInfo? = null,
+    val systemStorageBreakdown: SystemStorageBreakdown = SystemStorageBreakdown(),
+    val showSystemStorageDetails: Boolean = false,
     val isUsageAccessGranted: Boolean = false,
     val errorMessage: String? = null
 )
 
 class InstalledAppsViewModel(
     application: Application,
-    private val repository: InstalledAppsRepository = InstalledAppsRepository.getInstance(application)
+    private val repository: InstalledAppsRepository = InstalledAppsRepository.getInstance(application),
+    private val systemStorageRepository: SystemStorageRepository = SystemStorageRepository.getInstance(application)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(InstalledAppsUiState())
@@ -50,8 +55,9 @@ class InstalledAppsViewModel(
             runCatching {
                 val usageGranted = repository.hasUsageStatsPermission()
                 val report = repository.getInstalledApps(forceRefresh = forceRefresh)
-                usageGranted to report
-            }.onSuccess { (usageGranted, report) ->
+                val systemBreakdown = systemStorageRepository.getSystemStorageBreakdown(forceRefresh = forceRefresh)
+                Triple(usageGranted, report, systemBreakdown)
+            }.onSuccess { (usageGranted, report, systemBreakdown) ->
                 val current = _uiState.value
                 val filtered = repository.filterAndSort(
                     apps = report.apps,
@@ -63,13 +69,14 @@ class InstalledAppsViewModel(
                     isLoading = false,
                     report = report,
                     filteredApps = filtered,
+                    systemStorageBreakdown = systemBreakdown,
                     isUsageAccessGranted = usageGranted,
                     errorMessage = null
                 )
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.localizedMessage ?: "Failed to inspect installed applications"
+                    errorMessage = error.localizedMessage ?: "Failed to inspect applications & system storage"
                 )
             }
         }
@@ -134,6 +141,10 @@ class InstalledAppsViewModel(
 
     fun selectAppForDetails(app: InstalledAppInfo?) {
         _uiState.value = _uiState.value.copy(selectedAppForDetails = app)
+    }
+
+    fun toggleSystemStorageDetails(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showSystemStorageDetails = show)
     }
 
     fun emitMessage(message: String) {

@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,14 +29,13 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +44,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -76,11 +74,11 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.AppDetailsBottomSheet
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.InstalledAppItem
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.InstalledAppsSortBottomSheet
+import com.Hrshd1eux.filemanager.feature.cleaner.storage.components.SystemStorageDetailsBottomSheet
 
 /**
- * Screen displaying installed user and system applications with per-app storage breakdown,
- * accuracy indicators (Exact, Approximate, Stale, Unavailable), freshness tracking,
- * and transparent platform disclosure.
+ * Screen displaying installed user and system applications with clean category separation,
+ * per-app storage measurements, accuracy indicators, and operating-system storage inspection.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,6 +143,15 @@ fun InstalledAppsScreen(
                     }
                 },
                 actions = {
+                    // Inspect OS Storage button
+                    IconButton(onClick = { viewModel.toggleSystemStorageDetails(true) }) {
+                        Icon(
+                            imageVector = Icons.Default.Storage,
+                            contentDescription = "Inspect System Storage",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     // Package Name on demand toggle
                     IconButton(
                         onClick = { viewModel.toggleShowPackageNames() }
@@ -184,6 +191,34 @@ fun InstalledAppsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Category Separation Tabs: User Apps vs System Apps vs All Apps
+            val tabOptions = listOf(
+                AppTypeFilter.USER to "User Apps (${uiState.report.userAppCount})",
+                AppTypeFilter.SYSTEM to "System Apps (${uiState.report.systemAppCount})",
+                AppTypeFilter.ALL to "All Apps (${uiState.report.totalAppCount})"
+            )
+            val selectedTabIndex = tabOptions.indexOfFirst { it.first == uiState.typeFilter }.coerceAtLeast(0)
+
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                tabOptions.forEachIndexed { index, (filter, label) ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { viewModel.setTypeFilter(filter) },
+                        text = {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
             // Search Input
             OutlinedTextField(
                 value = uiState.searchQuery,
@@ -217,38 +252,7 @@ fun InstalledAppsScreen(
                 )
             )
 
-            // Filter Chips Row: All, User Apps, System Apps
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilterChip(
-                    selected = uiState.typeFilter == AppTypeFilter.ALL,
-                    onClick = { viewModel.setTypeFilter(AppTypeFilter.ALL) },
-                    label = { Text("All (${uiState.report.totalAppCount})") },
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                FilterChip(
-                    selected = uiState.typeFilter == AppTypeFilter.USER,
-                    onClick = { viewModel.setTypeFilter(AppTypeFilter.USER) },
-                    label = { Text("User Apps (${uiState.report.userAppCount})") },
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                FilterChip(
-                    selected = uiState.typeFilter == AppTypeFilter.SYSTEM,
-                    onClick = { viewModel.setTypeFilter(AppTypeFilter.SYSTEM) },
-                    label = { Text("System Apps (${uiState.report.systemAppCount})") },
-                    shape = RoundedCornerShape(8.dp)
-                )
-            }
-
-            // Freshness & Accuracy Banner
+            // Category & Storage Context Banner
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -265,24 +269,40 @@ fun InstalledAppsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (uiState.isUsageAccessGranted) Icons.Default.CheckCircle else Icons.Default.Info,
+                        imageVector = if (uiState.typeFilter == AppTypeFilter.SYSTEM) Icons.Default.Storage else if (uiState.isUsageAccessGranted) Icons.Default.CheckCircle else Icons.Default.Info,
                         contentDescription = null,
                         tint = if (uiState.isUsageAccessGranted) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (uiState.isUsageAccessGranted) {
-                            "Enhanced stats active (Code + Data + Cache) • ${uiState.report.freshnessLabel}."
-                        } else {
-                            "Code binaries on disk • Data/Cache restricted by sandbox • ${uiState.report.freshnessLabel}."
+                        text = when (uiState.typeFilter) {
+                            AppTypeFilter.SYSTEM -> {
+                                "Visible System Apps: Packages in /system/app and /product. Package footprint is distinct from Android OS core storage."
+                            }
+                            AppTypeFilter.USER -> {
+                                if (uiState.isUsageAccessGranted) "User Apps: Installed apps and user updates in /data/app • Enhanced stats active."
+                                else "User Apps: Installed apps in /data/app • Data/Cache sandboxed by OS."
+                            }
+                            AppTypeFilter.ALL -> {
+                                "${uiState.report.freshnessLabel} • Inaccessible measurements marked Unavailable (never 0 B)."
+                            }
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                         modifier = Modifier.weight(1f)
                     )
-                    if (!uiState.isUsageAccessGranted) {
+                    if (uiState.typeFilter == AppTypeFilter.SYSTEM) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Inspect OS",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { viewModel.toggleSystemStorageDetails(true) }
+                        )
+                    } else if (!uiState.isUsageAccessGranted) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Enable",
@@ -360,6 +380,18 @@ fun InstalledAppsScreen(
             app = uiState.selectedAppForDetails!!,
             onDismiss = { viewModel.selectAppForDetails(null) },
             onCopied = { viewModel.emitMessage(it) }
+        )
+    }
+
+    // System Storage Details Bottom Sheet
+    if (uiState.showSystemStorageDetails) {
+        SystemStorageDetailsBottomSheet(
+            breakdown = uiState.systemStorageBreakdown,
+            onDismiss = { viewModel.toggleSystemStorageDetails(false) },
+            onViewSystemApps = {
+                viewModel.toggleSystemStorageDetails(false)
+                viewModel.setTypeFilter(AppTypeFilter.SYSTEM)
+            }
         )
     }
 

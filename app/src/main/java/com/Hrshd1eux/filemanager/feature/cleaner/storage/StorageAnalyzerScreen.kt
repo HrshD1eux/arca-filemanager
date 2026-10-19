@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,6 +26,7 @@ import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -44,7 +44,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,15 +57,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
+import com.Hrshd1eux.filemanager.core.storage.model.AppTypeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppInfo
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.InstalledAppsViewModel
-import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.AppTypeBadge
+import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.AppDetailsBottomSheet
+import com.Hrshd1eux.filemanager.feature.cleaner.storage.components.SystemStorageDetailsBottomSheet
 import com.Hrshd1eux.filemanager.feature.home.HomeViewModel
 
 /**
- * Storage Analyzer screen featuring storage breakdown, the Installed Apps section with source/freshness,
- * category breakdowns, and storage cleaning tools.
+ * Storage Analyzer screen featuring storage breakdown, System & OS Storage inspection,
+ * Installed Apps separated by user/system status, categories breakdown, and cleaning tools.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,7 +112,7 @@ fun StorageAnalyzerScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh analysis"
+                            contentDescription = "Refresh Breakdown"
                         )
                     }
                 },
@@ -129,63 +130,45 @@ fun StorageAnalyzerScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Storage Capacity Overview Card
+            // 1. Device Storage Overview Card
             item {
                 Spacer(modifier = Modifier.height(4.dp))
+                val usedFormatted = FileFormatter.formatFileSize(storageBreakdown.usedBytes)
+                val totalFormatted = FileFormatter.formatFileSize(storageBreakdown.totalBytes)
+                val freeFormatted = FileFormatter.formatFileSize(storageBreakdown.freeBytes)
+                val percentInt = (storageBreakdown.usedPercentage * 100).toInt()
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(18.dp)
+                            .padding(16.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Storage,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Internal Storage",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-
-                            if (storageBreakdown.totalBytes > 0) {
-                                val percent = (storageBreakdown.usedPercentage * 100).toInt()
-                                Text(
-                                    text = "$percent%",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                            Text(
+                                text = "Shared Storage",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "$usedFormatted / $totalFormatted",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        val usedFormatted = FileFormatter.formatFileSize(storageBreakdown.usedBytes)
-                        val totalFormatted = FileFormatter.formatFileSize(storageBreakdown.totalBytes)
-                        val freeFormatted = FileFormatter.formatFileSize(storageBreakdown.freeBytes)
-
-                        Text(
-                            text = if (storageBreakdown.totalBytes > 0) "$usedFormatted used of $totalFormatted" else "Calculating...",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -195,36 +178,115 @@ fun StorageAnalyzerScreen(
                                 .fillMaxWidth()
                                 .height(10.dp)
                                 .clip(RoundedCornerShape(5.dp)),
-                            color = if (storageBreakdown.usedPercentage > 0.9f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant,
                             drawStopIndicator = {}
                         )
 
                         if (storageBreakdown.totalBytes > 0) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "$freeFormatted available",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "$freeFormatted free",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "$percentInt% used",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // 2. Installed Apps Section in Storage Analyzer
+            // 2. System & OS Storage Inspection Card
+            item {
+                val sysBreakdown = appsUiState.systemStorageBreakdown
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { appsViewModel.toggleSystemStorageDetails(true) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "System & OS Storage",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "OS: ${sysBreakdown.formattedAndroidOsSize} • System Apps: ${sysBreakdown.formattedSystemAppsSize}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Inspect",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // 3. Installed Apps Section (Distinguishing User Apps from System Apps)
             item {
                 InstalledAppsStorageSection(
                     report = appsUiState.report,
                     isLoading = appsUiState.isLoading,
-                    onViewAllAppsClick = onNavigateToInstalledApps,
+                    onViewUserApps = {
+                        appsViewModel.setTypeFilter(AppTypeFilter.USER)
+                        onNavigateToInstalledApps()
+                    },
+                    onViewSystemApps = {
+                        appsViewModel.setTypeFilter(AppTypeFilter.SYSTEM)
+                        onNavigateToInstalledApps()
+                    },
+                    onViewAllApps = onNavigateToInstalledApps,
                     onAppClick = { app ->
                         appsViewModel.selectAppForDetails(app)
                     }
                 )
             }
 
-            // 3. Storage Categories Breakdown
+            // 4. Storage Categories Breakdown
             item {
                 Text(
                     text = "Storage Categories",
@@ -284,7 +346,7 @@ fun StorageAnalyzerScreen(
                 }
             }
 
-            // 4. Storage Cleaning Tools Section
+            // 5. Storage Cleaning Tools Section
             item {
                 Text(
                     text = "Cleaning & Optimization",
@@ -324,7 +386,7 @@ fun StorageAnalyzerScreen(
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = "Scan files exceeding 100 MB or custom thresholds",
+                                    text = "Locate files over 100 MB consuming space",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -377,16 +439,40 @@ fun StorageAnalyzerScreen(
             }
         }
     }
+
+    // App Details Bottom Sheet
+    if (appsUiState.selectedAppForDetails != null) {
+        AppDetailsBottomSheet(
+            app = appsUiState.selectedAppForDetails!!,
+            onDismiss = { appsViewModel.selectAppForDetails(null) },
+            onCopied = { appsViewModel.emitMessage(it) }
+        )
+    }
+
+    // System Storage Details Bottom Sheet
+    if (appsUiState.showSystemStorageDetails) {
+        SystemStorageDetailsBottomSheet(
+            breakdown = appsUiState.systemStorageBreakdown,
+            onDismiss = { appsViewModel.toggleSystemStorageDetails(false) },
+            onViewSystemApps = {
+                appsViewModel.toggleSystemStorageDetails(false)
+                appsViewModel.setTypeFilter(AppTypeFilter.SYSTEM)
+                onNavigateToInstalledApps()
+            }
+        )
+    }
 }
 
 /**
- * Dedicated Installed Apps section inside Storage Analyzer.
+ * Dedicated Installed Apps section inside Storage Analyzer separating User Apps from System Apps.
  */
 @Composable
 private fun InstalledAppsStorageSection(
     report: com.Hrshd1eux.filemanager.core.storage.analyzer.InstalledAppsReport,
     isLoading: Boolean,
-    onViewAllAppsClick: () -> Unit,
+    onViewUserApps: () -> Unit,
+    onViewSystemApps: () -> Unit,
+    onViewAllApps: () -> Unit,
     onAppClick: (InstalledAppInfo) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -427,7 +513,7 @@ private fun InstalledAppsStorageSection(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Installed Apps",
+                            text = "Installed Applications",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -452,35 +538,67 @@ private fun InstalledAppsStorageSection(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Source & Freshness pill
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.fillMaxWidth()
+            // Two distinct category tiles: User Apps vs System Apps
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Tile 1: User-Installed Apps
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onViewUserApps),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = VaultEmerald.copy(alpha = 0.08f)
+                    )
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            text = "User Apps",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = VaultEmerald
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${report.userAppCount} installed",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // Tile 2: Pre-installed System Apps
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onViewSystemApps),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Source: APK binaries on disk • ${report.freshnessLabel}. Inaccessible: ${report.inaccessibleCount} apps (Unavailable).",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 10.sp
-                    )
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            text = "System Apps",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${report.systemAppCount} pre-installed",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Preview top 3 user apps
+            // Top User Apps Preview
             val topApps = report.apps
                 .filter { it.isUserApp }
                 .sortedByDescending { it.storageMeasurement.totalBytes ?: -1L }
@@ -538,13 +656,13 @@ private fun InstalledAppsStorageSection(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // View All Apps Button
+            // View All Apps Action
             OutlinedButton(
-                onClick = onViewAllAppsClick,
+                onClick = onViewAllApps,
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Manage All Installed Apps (${report.totalAppCount})")
+                Text("Manage All Apps (${report.totalAppCount})")
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
