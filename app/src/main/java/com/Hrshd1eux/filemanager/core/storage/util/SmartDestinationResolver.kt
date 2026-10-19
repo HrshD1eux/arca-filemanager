@@ -55,10 +55,29 @@ object SmartDestinationResolver {
      */
     fun getRecentDestinations(
         context: Context? = null,
-        recentsRepository: RecentsRepository? = null
+        recentsRepository: RecentsRepository? = null,
+        destinationHistoryRepository: com.Hrshd1eux.filemanager.core.storage.preferences.DestinationHistoryRepository? = null
     ): List<SmartDestinationItem> {
         val items = mutableListOf<SmartDestinationItem>()
         val seenPaths = mutableSetOf<String>()
+
+        // 1. Explicitly recorded copy/move destination history has highest priority
+        destinationHistoryRepository?.recentDestinations?.value?.forEach { dest ->
+            if (!seenPaths.contains(dest.path)) {
+                seenPaths.add(dest.path)
+                val file = File(dest.path)
+                items.add(
+                    SmartDestinationItem(
+                        id = dest.path,
+                        name = dest.name,
+                        path = dest.path,
+                        category = DestinationCategory.RECENT,
+                        icon = Icons.Default.Folder,
+                        subtitle = file.parent ?: dest.path
+                    )
+                )
+            }
+        }
 
         fun addStandard(name: String, dirType: String?, defaultPath: String, icon: ImageVector, subtitle: String) {
             val resolvedPath = if (dirType != null) {

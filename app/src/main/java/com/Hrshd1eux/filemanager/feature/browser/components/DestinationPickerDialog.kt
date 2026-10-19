@@ -92,6 +92,7 @@ fun DestinationPickerDialog(
     favoritesRepository: FavoritesRepository? = null,
     recentsRepository: RecentsRepository? = null,
     lastMoveDestination: StorageNode? = null,
+    destinationHistoryRepository: com.Hrshd1eux.filemanager.core.storage.preferences.DestinationHistoryRepository? = null,
     onStageForMove: (() -> Unit)? = null,
     onDestinationSelected: (destination: StorageNode, verifyIntegrity: Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -110,8 +111,8 @@ fun DestinationPickerDialog(
     var showCreateFolderDialog by remember { mutableStateOf(false) }
 
     // Resolve Smart Destinations
-    val recentDestinations = remember(recentsRepository) {
-        SmartDestinationResolver.getRecentDestinations(context, recentsRepository)
+    val recentDestinations = remember(recentsRepository, destinationHistoryRepository) {
+        SmartDestinationResolver.getRecentDestinations(context, recentsRepository, destinationHistoryRepository)
             .filter { !excludedPaths.contains(it.path) }
     }
     val favoriteDestinations = remember(favoritesRepository) {

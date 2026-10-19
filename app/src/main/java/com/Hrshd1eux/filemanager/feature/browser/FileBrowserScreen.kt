@@ -128,6 +128,9 @@ import com.Hrshd1eux.filemanager.core.actions.QuickActionType
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.EncryptChoiceDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.QuickActionBottomSheet
+import com.Hrshd1eux.filemanager.feature.browser.components.FileComparisonDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.FolderComparisonDialog
+import com.Hrshd1eux.filemanager.core.storage.util.FolderComparator
 import com.Hrshd1eux.filemanager.feature.browser.components.SelectionBottomBar
 import com.Hrshd1eux.filemanager.feature.browser.components.StagedMoveFloatingBar
 import com.Hrshd1eux.filemanager.feature.browser.components.StagedTransferFloatingBar
@@ -236,6 +239,7 @@ fun FileBrowserScreen(
     var bulkNodesToDelete by remember { mutableStateOf<List<StorageNode>?>(null) }
     var bulkNodesToCompress by remember { mutableStateOf<List<StorageNode>?>(null) }
     var bulkNodesToEncrypt by remember { mutableStateOf<List<StorageNode>?>(null) }
+    var nodesToCompare by remember { mutableStateOf<List<StorageNode>?>(null) }
 
     var activeOperationTitle by remember { mutableStateOf("Processing Files") }
 
@@ -395,7 +399,8 @@ fun FileBrowserScreen(
                             } else {
                                 bulkNodesForProperties = selectedItems
                             }
-                        }
+                        },
+                        onCompare = { nodesToCompare = selectedItems }
                     )
                 }
             } else if (!isDualPaneMode && stagedTransfer != null && uiState is BrowserUiState.Success) {
@@ -854,6 +859,9 @@ fun FileBrowserScreen(
             title = "Copy to...",
             confirmButtonText = "Copy Here",
             excludedPaths = if (targetToCopy.isDirectory) setOf(targetToCopy.path) else emptySet(),
+            favoritesRepository = viewModel.favoritesRepository,
+            recentsRepository = viewModel.recentsRepository,
+            destinationHistoryRepository = viewModel.lastDestinationRepository,
             onStageForMove = {
                 val toStage = listOf(targetToCopy)
                 nodeToCopy = null
@@ -884,6 +892,7 @@ fun FileBrowserScreen(
             excludedPaths = targetBulkCopy.filter { it.isDirectory }.map { it.path }.toSet(),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
+            destinationHistoryRepository = viewModel.lastDestinationRepository,
             onStageForMove = {
                 val toStage = targetBulkCopy
                 bulkNodesToCopy = null
@@ -915,6 +924,7 @@ fun FileBrowserScreen(
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
             lastMoveDestination = lastMoveDestination?.takeIf { it.path != targetToMove.path },
+            destinationHistoryRepository = viewModel.lastDestinationRepository,
             onStageForMove = {
                 val toStage = listOf(targetToMove)
                 nodeToMove = null
@@ -947,6 +957,7 @@ fun FileBrowserScreen(
             lastMoveDestination = lastMoveDestination?.takeIf { dest ->
                 targetBulkMove.none { it.path == dest.path }
             },
+            destinationHistoryRepository = viewModel.lastDestinationRepository,
             onStageForMove = {
                 val toStage = targetBulkMove
                 bulkNodesToMove = null
@@ -1153,6 +1164,7 @@ fun FileBrowserScreen(
             confirmButtonText = "Extract Here",
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
+            destinationHistoryRepository = viewModel.lastDestinationRepository,
             onDestinationSelected = { dest, _ ->
                 showCustomExtractPicker = false
                 activeOperationTitle = "Extracting Archive"
@@ -1206,6 +1218,30 @@ fun FileBrowserScreen(
             node = checksumTargetNode,
             onDismiss = { nodeForChecksums = null }
         )
+    }
+
+    // File / Folder Comparison Dialog (Triggered from multi-select 2 items)
+    val compareTargets = nodesToCompare
+    if (compareTargets != null && compareTargets.size == 2) {
+        val first = compareTargets[0]
+        val second = compareTargets[1]
+        if (first.isDirectory && second.isDirectory) {
+            val report = remember(first.path, second.path) {
+                FolderComparator.compareDirectories(File(first.path), File(second.path), recursive = false)
+            }
+            FolderComparisonDialog(
+                leftFolderName = first.name,
+                rightFolderName = second.name,
+                report = report,
+                onDismiss = { nodesToCompare = null }
+            )
+        } else {
+            FileComparisonDialog(
+                file1 = first,
+                file2 = second,
+                onDismiss = { nodesToCompare = null }
+            )
+        }
     }
 
     // Active Operation Progress Dialog (Fallback popup if queue sheet closed)

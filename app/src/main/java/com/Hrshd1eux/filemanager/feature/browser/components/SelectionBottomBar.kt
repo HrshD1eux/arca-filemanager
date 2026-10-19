@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ContentCopy
@@ -67,6 +68,7 @@ fun SelectionBottomBar(
     onShare: () -> Unit,
     onRename: () -> Unit,
     onProperties: () -> Unit,
+    onCompare: (() -> Unit)? = null,
     lastMoveDestination: StorageNode? = null,
     onMoveToRecent: ((StorageNode) -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -257,6 +259,23 @@ fun SelectionBottomBar(
                                 onClick = {
                                     showMoreMenu = false
                                     onRename()
+                                }
+                            )
+                        }
+
+                        // Compare (available when 2 items selected)
+                        if (selectedCount == 2 && onCompare != null) {
+                            DropdownMenuItem(
+                                text = { Text("Compare Items") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.CompareArrows,
+                                        contentDescription = "Compare"
+                                    )
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    onCompare()
                                 }
                             )
                         }

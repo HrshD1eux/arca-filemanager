@@ -347,6 +347,7 @@ class FileBrowserViewModel(
         }
 
         clearSelection()
+        lastDestinationRepository.recordDestination(destination)
         val title = if (sources.size == 1) "Copying ${sources.first().name}" else "Copying ${sources.size} items"
         operationManager.enqueue(title = title, type = OperationType.COPY) { onProgress ->
             val result = operationEngine.copy(
