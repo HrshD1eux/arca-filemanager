@@ -48,6 +48,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.Hrshd1eux.filemanager.core.version.AppVersionInfo
+import com.Hrshd1eux.filemanager.core.version.rememberAppVersionInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -144,7 +146,8 @@ fun PrivacyStatementScreen(
 
 @Composable
 private fun PrivacyHeroCard(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    versionInfo: AppVersionInfo = rememberAppVersionInfo()
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -172,7 +175,7 @@ private fun PrivacyHeroCard(
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
-                        text = "Last verified: Version 1.2.34 • Zero Telemetry",
+                        text = "Last verified: ${versionInfo.displayVersion} • Zero Telemetry",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
