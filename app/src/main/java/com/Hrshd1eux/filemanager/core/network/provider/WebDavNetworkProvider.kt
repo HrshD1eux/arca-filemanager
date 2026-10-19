@@ -38,7 +38,8 @@ import java.io.OutputStream
  */
 class WebDavNetworkProvider(
     config: NetworkServerConfig,
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val tlsValidator: com.Hrshd1eux.filemanager.core.network.tls.TlsCertificateValidator = com.Hrshd1eux.filemanager.core.network.tls.TlsCertificateValidator()
 ) : BaseNetworkProvider(
     config = config,
     protocol = NetworkProtocol.WEBDAV,
@@ -49,12 +50,43 @@ class WebDavNetworkProvider(
     },
     ioDispatcher = ioDispatcher
 ) {
+    constructor(
+        config: NetworkServerConfig,
+        tlsValidator: com.Hrshd1eux.filemanager.core.network.tls.TlsCertificateValidator,
+        ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    ) : this(config, ioDispatcher, tlsValidator)
     private val virtualNodes = mutableMapOf<String, NetworkNode>()
     private val virtualFileContents = mutableMapOf<String, ByteArray>()
+
+    /**
+     * Optional presented X.509 certificate chain for HTTPS/TLS validation.
+     */
+    var presentedCertificates: Array<java.security.cert.X509Certificate>? = null
+
+    /**
+     * Verifies presented TLS certificate chain for HTTPS endpoints.
+     */
+    fun verifyTlsCertificate() {
+        val isHttps = config.effectivePort == 443 || config.isImplicitTls
+        if (isHttps) {
+            presentedCertificates?.let { chain ->
+                tlsValidator.assertValid(
+                    serverHost = config.host,
+                    chain = chain,
+                    connectionId = config.id,
+                    allowExplicitPinnedCert = config.allowSelfSignedCert
+                )
+            }
+        }
+    }
 
     override suspend fun connect(): Result<Unit> = withContext(ioDispatcher) {
         runCatching {
             _connectionState.value = NetworkConnectionState.Connecting
+
+            // TLS Certificate verification for HTTPS WebDAV
+            verifyTlsCertificate()
+
             _connectionState.value = NetworkConnectionState.Connected
             _connectionState.value = NetworkConnectionState.Authenticating
 

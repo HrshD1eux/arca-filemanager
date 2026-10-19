@@ -59,12 +59,47 @@ sealed class NetworkException(
     ) : NetworkException("Permission denied on remote server for path: '$path'")
 
     /**
+     * SSH host key verification detected a changed host key (potential MITM attack).
+     */
+    class SshHostKeyChangedException(
+        val host: String,
+        val port: Int,
+        val expectedFingerprint: String,
+        val actualFingerprint: String
+    ) : NetworkException("WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! Host key for '$host:$port' ($actualFingerprint) does not match trusted key ($expectedFingerprint). Connection aborted for security.")
+
+    /**
+     * SSH server host key is not yet trusted / unknown.
+     */
+    class SshHostKeyUnverifiedException(
+        val host: String,
+        val port: Int,
+        val keyType: String,
+        val actualFingerprint: String
+    ) : NetworkException("SSH host key for '$host:$port' ($keyType $actualFingerprint) is not trusted. Explicit verification required.")
+
+    /**
      * TLS/SSL handshake failure or untrusted certificate error.
      */
-    class TlsCertificateException(
+    open class TlsCertificateException(
         message: String,
         cause: Throwable? = null
     ) : NetworkException("TLS/SSL certificate error: $message", cause)
+
+    class TlsCertificateExpiredException(
+        val host: String,
+        message: String
+    ) : TlsCertificateException("Certificate for '$host' is expired: $message")
+
+    class TlsCertificateUntrustedException(
+        val host: String,
+        message: String
+    ) : TlsCertificateException("Certificate for '$host' is not trusted by system authorities: $message")
+
+    class TlsCertificateHostnameMismatchException(
+        val host: String,
+        val certSubject: String
+    ) : TlsCertificateException("Certificate hostname mismatch: Connected to '$host', but certificate was issued for '$certSubject'")
 
     /**
      * An insecure protocol or dialect was rejected (e.g. attempting SMB1).

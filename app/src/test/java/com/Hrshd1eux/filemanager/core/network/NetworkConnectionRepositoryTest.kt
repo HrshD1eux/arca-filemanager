@@ -8,6 +8,7 @@ import com.Hrshd1eux.filemanager.core.network.repository.NetworkConnectionReposi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -30,21 +31,27 @@ class NetworkConnectionRepositoryTest {
     }
 
     @Test
-    fun initialState_preSeedsSampleNasAndServerConnections() = runTest {
+    fun initialState_preSeedsNamedBookmarkProfiles() = runTest {
         val list = repository.getConnections()
-        assertEquals("Must pre-seed 2 sample connections", 2, list.size)
+        assertEquals("Must pre-seed 3 named bookmark profiles", 3, list.size)
 
-        val nas = list.find { it.name == "NAS" }
-        assertNotNull("Sample NAS connection must exist", nas)
-        assertEquals("192.168.1.20", nas?.host)
+        val nas = list.find { it.name == "Home NAS" }
+        assertNotNull("Sample Home NAS connection must exist", nas)
+        assertEquals("192.168.1.50", nas?.host)
         assertEquals(NetworkProtocol.SFTP, nas?.protocol)
         assertEquals(22, nas?.effectivePort)
 
-        val server = list.find { it.name == "Server" }
-        assertNotNull("Sample Server connection must exist", server)
-        assertEquals("example.local", server?.host)
-        assertEquals(NetworkProtocol.SFTP, server?.protocol)
-        assertEquals(22, server?.effectivePort)
+        val office = list.find { it.name == "Office Server" }
+        assertNotNull("Sample Office Server connection must exist", office)
+        assertEquals("office.corp.internal", office?.host)
+        assertEquals(NetworkProtocol.SFTP, office?.protocol)
+        assertEquals(22, office?.effectivePort)
+
+        val backup = list.find { it.name == "Backup Server" }
+        assertNotNull("Sample Backup Server connection must exist", backup)
+        assertEquals("backup.cloud.lan", backup?.host)
+        assertEquals(NetworkProtocol.WEBDAV, backup?.protocol)
+        assertEquals(443, backup?.effectivePort)
     }
 
     @Test
@@ -97,5 +104,62 @@ class NetworkConnectionRepositoryTest {
         // Secret should also be purged
         val secret = credentialsStore.getSecret("temp-conn", SecureCredentialsStore.SECRET_PASSWORD)
         assertNull("Secret must be purged upon connection deletion", secret)
+    }
+
+    @Test
+    fun exportProfilesWithoutSecrets_strictlyOmitsPasswordsAndKeys() = runTest {
+        val secretConfig = NetworkServerConfig(
+            id = "classified-01",
+            name = "Secret Server",
+            protocol = NetworkProtocol.SFTP,
+            host = "classified.vault.internal",
+            authType = NetworkAuthType.PASSWORD,
+            username = "chief_officer",
+            password = "SuperSecretPassword123!",
+            privateKey = "-----BEGIN OPENSSH PRIVATE KEY-----...",
+            passphrase = "SecretPassphrase"
+        )
+        repository.saveConnection(secretConfig)
+
+        val exportedJson = repository.exportProfilesWithoutSecrets()
+        assertTrue("Exported JSON must contain server name", exportedJson.contains("Secret Server"))
+        assertTrue("Exported JSON must contain host", exportedJson.contains("classified.vault.internal"))
+
+        // Strictly verify NO secrets exist in export
+        assertFalse("Export must NOT leak password", exportedJson.contains("SuperSecretPassword123!"))
+        assertFalse("Export must NOT leak private key", exportedJson.contains("BEGIN OPENSSH PRIVATE KEY"))
+        assertFalse("Export must NOT leak passphrase", exportedJson.contains("SecretPassphrase"))
+    }
+
+    @Test
+    fun importProfiles_safelyImportsProfilesWithoutSecrets() = runTest {
+        val jsonPayload = """
+            [
+                {
+                    "id": "imported-server-01",
+                    "name": "Imported Remote Box",
+                    "protocol": "SFTP",
+                    "host": "10.200.1.5",
+                    "port": 2222,
+                    "authType": "PASSWORD",
+                    "username": "imported_user",
+                    "basePath": "/var/files",
+                    "password": "HackerInjectedPlaintextPassword"
+                }
+            ]
+        """.trimIndent()
+
+        val result = repository.importProfiles(jsonPayload)
+        assertTrue("Import must succeed", result.isSuccess)
+        assertEquals(1, result.getOrNull())
+
+        val imported = repository.getConnection("imported-server-01")
+        assertNotNull(imported)
+        assertEquals("Imported Remote Box", imported?.name)
+        assertEquals("10.200.1.5", imported?.host)
+        assertNull("Password from import JSON must be stripped and not stored", imported?.password)
+
+        val populated = repository.populateWithSecrets(imported!!)
+        assertNull("No secret must be persisted from untrusted JSON import", populated.password)
     }
 }

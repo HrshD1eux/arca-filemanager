@@ -12,7 +12,9 @@ sealed interface NetworkBrowserUiState {
     data class Loading(val message: String = "Connecting to remote server...") : NetworkBrowserUiState
 
     data class Error(
-        val message: String,
+        val serverName: String? = null,
+        val message: String = "Your local files are still available.",
+        val detail: String? = null,
         val canRetry: Boolean = true
     ) : NetworkBrowserUiState
 

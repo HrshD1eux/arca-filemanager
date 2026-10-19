@@ -539,11 +539,31 @@ fun NetworkFileBrowserScreen(
                                     modifier = Modifier.size(40.dp)
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
+                                val titleText = if (state.serverName != null) {
+                                    "Could not connect to ${state.serverName}"
+                                } else {
+                                    "Could not connect"
+                                }
+                                Text(
+                                    text = titleText,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = state.message,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onErrorContainer
                                 )
+                                if (!state.detail.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = state.detail,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     if (state.canRetry) {
@@ -552,7 +572,7 @@ fun NetworkFileBrowserScreen(
                                         }
                                     }
                                     TextButton(onClick = onNavigateBack) {
-                                        Text("Go Back")
+                                        Text("Close")
                                     }
                                 }
                             }

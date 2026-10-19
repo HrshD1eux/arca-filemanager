@@ -119,7 +119,12 @@ class NetworkFileBrowserViewModel(
             try {
                 val savedConfig = repository.getConnection(connectionId)
                 if (savedConfig == null) {
-                    _uiState.value = NetworkBrowserUiState.Error("Server configuration not found.", canRetry = false)
+                    _uiState.value = NetworkBrowserUiState.Error(
+                        serverName = "Server",
+                        message = "Your local files are still available.",
+                        detail = "Server configuration not found.",
+                        canRetry = false
+                    )
                     return@launch
                 }
 
@@ -135,15 +140,25 @@ class NetworkFileBrowserViewModel(
 
                 val connectResult = provider.connect()
                 if (connectResult.isFailure) {
-                    val err = connectResult.exceptionOrNull()?.localizedMessage ?: "Unknown connection failure"
-                    _uiState.value = NetworkBrowserUiState.Error("Failed to connect to ${fullConfig.name}: $err", canRetry = true)
+                    val err = connectResult.exceptionOrNull()?.localizedMessage ?: "Connection dropped or refused"
+                    _uiState.value = NetworkBrowserUiState.Error(
+                        serverName = fullConfig.name,
+                        message = "Your local files are still available.",
+                        detail = err,
+                        canRetry = true
+                    )
                     return@launch
                 }
 
                 val startPath = initialPath ?: fullConfig.basePath.ifEmpty { "/" }
                 loadDirectory(startPath)
             } catch (e: Exception) {
-                _uiState.value = NetworkBrowserUiState.Error("Connection error: ${e.localizedMessage}", canRetry = true)
+                _uiState.value = NetworkBrowserUiState.Error(
+                    serverName = serverConfig?.name,
+                    message = "Your local files are still available.",
+                    detail = "Connection error: ${e.localizedMessage}",
+                    canRetry = true
+                )
             }
         }
     }

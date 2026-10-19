@@ -25,7 +25,8 @@ import java.io.OutputStream
  * - Self-signed certificate trust policy
  */
 class FtpsNetworkProvider(
-    config: NetworkServerConfig
+    config: NetworkServerConfig,
+    private val tlsValidator: com.Hrshd1eux.filemanager.core.network.tls.TlsCertificateValidator = com.Hrshd1eux.filemanager.core.network.tls.TlsCertificateValidator()
 ) : BaseNetworkProvider(
     config = config,
     protocol = NetworkProtocol.FTPS,
@@ -33,9 +34,32 @@ class FtpsNetworkProvider(
 ) {
     private val virtualNodes = mutableMapOf<String, NetworkNode>()
 
+    /**
+     * Optional presented X.509 certificate chain for TLS validation.
+     */
+    var presentedCertificates: Array<java.security.cert.X509Certificate>? = null
+
+    /**
+     * Verifies the presented TLS certificate chain against system trust or connection-scoped pin.
+     */
+    fun verifyTlsCertificate() {
+        presentedCertificates?.let { chain ->
+            tlsValidator.assertValid(
+                serverHost = config.host,
+                chain = chain,
+                connectionId = config.id,
+                allowExplicitPinnedCert = config.allowSelfSignedCert
+            )
+        }
+    }
+
     override suspend fun connect(): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             _connectionState.value = NetworkConnectionState.Connecting
+
+            // TLS Handshake & Certificate Verification
+            verifyTlsCertificate()
+
             _connectionState.value = NetworkConnectionState.Connected
             _connectionState.value = NetworkConnectionState.Authenticating
 

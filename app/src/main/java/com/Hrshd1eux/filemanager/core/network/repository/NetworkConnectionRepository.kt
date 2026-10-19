@@ -77,6 +77,8 @@ interface NetworkConnectionRepository {
     suspend fun saveConnection(config: NetworkServerConfig)
     suspend fun deleteConnection(id: String)
     suspend fun populateWithSecrets(config: NetworkServerConfig): NetworkServerConfig
+    suspend fun exportProfilesWithoutSecrets(): String
+    suspend fun importProfiles(jsonString: String): Result<Int>
 }
 
 /**
@@ -115,30 +117,42 @@ class NetworkConnectionRepositoryImpl(
             }
         }
 
-        // Pre-seed sample SFTP connections if storage is completely empty
+        // Pre-seed standard named bookmark profiles if storage is completely empty
         if (loadedList.isEmpty()) {
-            val sampleNas = NetworkServerConfig(
-                id = "sample-nas-001",
-                name = "NAS",
+            val homeNas = NetworkServerConfig(
+                id = "profile-home-nas",
+                name = "Home NAS",
                 protocol = NetworkProtocol.SFTP,
-                host = "192.168.1.20",
+                host = "192.168.1.50",
                 port = 22,
                 authType = NetworkAuthType.PASSWORD,
-                username = "admin",
-                basePath = "/"
+                username = "nasadmin",
+                basePath = "/shares"
             )
-            val sampleServer = NetworkServerConfig(
-                id = "sample-server-002",
-                name = "Server",
+            val officeServer = NetworkServerConfig(
+                id = "profile-office-server",
+                name = "Office Server",
                 protocol = NetworkProtocol.SFTP,
-                host = "example.local",
+                host = "office.corp.internal",
                 port = 22,
                 authType = NetworkAuthType.PASSWORD,
-                username = "user",
-                basePath = "/"
+                username = "engineer",
+                basePath = "/workspace"
             )
-            loadedList.add(sampleNas)
-            loadedList.add(sampleServer)
+            val backupServer = NetworkServerConfig(
+                id = "profile-backup-server",
+                name = "Backup Server",
+                protocol = NetworkProtocol.WEBDAV,
+                host = "backup.cloud.lan",
+                port = 443,
+                isImplicitTls = true,
+                authType = NetworkAuthType.PASSWORD,
+                username = "backup_agent",
+                basePath = "/dav/backup"
+            )
+            loadedList.add(homeNas)
+            loadedList.add(officeServer)
+            loadedList.add(backupServer)
             saveMetadataList(loadedList)
         }
 
@@ -203,6 +217,44 @@ class NetworkConnectionRepositoryImpl(
             privateKey = privateKey,
             passphrase = passphrase
         )
+    }
+
+    /**
+     * Exports all saved bookmark profiles to JSON, strictly stripping any passwords,
+     * private keys, or passphrases to ensure zero credential leakage in backups/exports.
+     */
+    override suspend fun exportProfilesWithoutSecrets(): String = withContext(ioDispatcher) {
+        val sanitizedConfigs = _connections.value.map { cfg ->
+            cfg.copy(password = null, privateKey = null, passphrase = null)
+        }
+        val dtos = sanitizedConfigs.map { NetworkConnectionDto.fromModel(it) }
+        json.encodeToString(dtos)
+    }
+
+    /**
+     * Safely imports bookmark profiles from JSON.
+     * All imported configurations are strictly sanitized (incoming secrets ignored) and validated.
+     */
+    override suspend fun importProfiles(jsonString: String): Result<Int> = withContext(ioDispatcher) {
+        runCatching {
+            val dtos = json.decodeFromString<List<NetworkConnectionDto>>(jsonString)
+            val importedConfigs = dtos.map { it.toModel() }
+            importedConfigs.forEach { it.validate() }
+
+            val currentMap = _connections.value.associateBy { it.id }.toMutableMap()
+            var addedCount = 0
+            for (imported in importedConfigs) {
+                // Ensure secrets are never taken from JSON import
+                val sanitized = imported.copy(password = null, privateKey = null, passphrase = null)
+                currentMap[sanitized.id] = sanitized
+                addedCount++
+            }
+
+            val updatedList = currentMap.values.toList()
+            saveMetadataList(updatedList)
+            _connections.value = updatedList
+            addedCount
+        }
     }
 
     private fun saveMetadataList(list: List<NetworkServerConfig>) {

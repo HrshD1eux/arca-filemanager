@@ -96,6 +96,32 @@ class SecureCredentialsStore(
     }
 
     /**
+     * Checks if a secret exists for a connection without loading or decrypting it into memory.
+     */
+    fun hasSecret(connectionId: String, secretKeyName: String): Boolean {
+        val key = storageKey(connectionId, secretKeyName)
+        return prefs?.contains(key) == true || memoryStore.containsKey(key)
+    }
+
+    /**
+     * Executes an operation with the secret as a [CharArray] and immediately wipes the array
+     * with null characters ('\u0000') upon completion, minimizing plaintext memory footprint.
+     */
+    inline fun <R> withSecretChars(
+        connectionId: String,
+        secretKeyName: String,
+        block: (CharArray) -> R
+    ): R? {
+        val secret = getSecret(connectionId, secretKeyName) ?: return null
+        val chars = secret.toCharArray()
+        return try {
+            block(chars)
+        } finally {
+            chars.fill('\u0000')
+        }
+    }
+
+    /**
      * Purges a specific secret from encrypted storage.
      */
     fun removeSecret(connectionId: String, secretKeyName: String) {
@@ -115,6 +141,20 @@ class SecureCredentialsStore(
             editor.apply()
         }
         memoryStore.keys.filter { it.startsWith(prefix) }.forEach { memoryStore.remove(it) }
+    }
+
+    /**
+     * Alias for purgeConnectionSecrets.
+     */
+    fun deleteCredentials(connectionId: String) {
+        purgeConnectionSecrets(connectionId)
+    }
+
+    /**
+     * Clears in-memory volatile credential cache.
+     */
+    fun clearVolatileCache() {
+        memoryStore.clear()
     }
 
     private fun storageKey(connectionId: String, secretKeyName: String): String {

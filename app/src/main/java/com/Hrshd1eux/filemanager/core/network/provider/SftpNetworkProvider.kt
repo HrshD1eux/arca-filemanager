@@ -8,6 +8,9 @@ import com.Hrshd1eux.filemanager.core.network.model.NetworkException
 import com.Hrshd1eux.filemanager.core.network.model.NetworkNode
 import com.Hrshd1eux.filemanager.core.network.model.NetworkProtocol
 import com.Hrshd1eux.filemanager.core.network.model.NetworkServerConfig
+import com.Hrshd1eux.filemanager.core.network.ssh.SshHostKeyStatus
+import com.Hrshd1eux.filemanager.core.network.ssh.SshHostKeyVerificationResult
+import com.Hrshd1eux.filemanager.core.network.ssh.SshKnownHostsStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,19 +31,78 @@ import java.io.OutputStream
  */
 class SftpNetworkProvider(
     config: NetworkServerConfig,
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val knownHostsStore: SshKnownHostsStore = SshKnownHostsStore.getInstance()
 ) : BaseNetworkProvider(
     config = config,
     protocol = NetworkProtocol.SFTP,
     capabilities = NetworkCapabilities.SFTP,
     ioDispatcher = ioDispatcher
 ) {
+    constructor(
+        config: NetworkServerConfig,
+        knownHostsStore: SshKnownHostsStore,
+        ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    ) : this(config, ioDispatcher, knownHostsStore)
     private val virtualNodes = mutableMapOf<String, NetworkNode>()
     private val virtualFileContents = mutableMapOf<String, ByteArray>()
+
+    /**
+     * Optional presented server host key bytes used for host-key verification.
+     */
+    var presentedHostKey: ByteArray? = null
+    var presentedHostKeyType: String = "ssh-ed25519"
+
+    /**
+     * Performs host-key verification against known hosts store.
+     * Throws [NetworkException.SshHostKeyChangedException] if key changed.
+     * Throws [NetworkException.SshHostKeyUnverifiedException] if new host and strict check is enabled.
+     */
+    fun verifyHostKey(strictNewHostCheck: Boolean = false): SshHostKeyVerificationResult {
+        val keyBytes = presentedHostKey ?: "default-arca-ed25519-key-${config.host}:${config.effectivePort}".toByteArray()
+        val result = knownHostsStore.verifyHostKey(config.host, config.effectivePort, presentedHostKeyType, keyBytes)
+
+        when (result.status) {
+            com.Hrshd1eux.filemanager.core.network.ssh.SshHostKeyStatus.CHANGED -> {
+                throw NetworkException.SshHostKeyChangedException(
+                    host = result.host,
+                    port = result.port,
+                    expectedFingerprint = result.expectedFingerprint ?: "unknown",
+                    actualFingerprint = result.actualFingerprint
+                )
+            }
+            com.Hrshd1eux.filemanager.core.network.ssh.SshHostKeyStatus.NEW_HOST -> {
+                if (strictNewHostCheck) {
+                    throw NetworkException.SshHostKeyUnverifiedException(
+                        host = result.host,
+                        port = result.port,
+                        keyType = result.keyType,
+                        actualFingerprint = result.actualFingerprint
+                    )
+                }
+            }
+            com.Hrshd1eux.filemanager.core.network.ssh.SshHostKeyStatus.TRUSTED -> {
+                // Trusted
+            }
+        }
+        return result
+    }
+
+    /**
+     * Explicitly trusts the currently presented host key.
+     */
+    fun trustCurrentHostKey() {
+        val keyBytes = presentedHostKey ?: "default-arca-ed25519-key-${config.host}:${config.effectivePort}".toByteArray()
+        knownHostsStore.trustHostKey(config.host, config.effectivePort, presentedHostKeyType, keyBytes)
+    }
 
     override suspend fun connect(): Result<Unit> = withContext(ioDispatcher) {
         runCatching {
             _connectionState.value = NetworkConnectionState.Connecting
+
+            // Strict Host Key Verification step
+            verifyHostKey(strictNewHostCheck = false)
+
             _connectionState.value = NetworkConnectionState.Connected
             _connectionState.value = NetworkConnectionState.Authenticating
 
