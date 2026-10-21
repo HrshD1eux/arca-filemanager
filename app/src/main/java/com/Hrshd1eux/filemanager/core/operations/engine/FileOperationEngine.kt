@@ -3,6 +3,11 @@ package com.Hrshd1eux.filemanager.core.operations.engine
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.operations.model.OperationResult
+import com.Hrshd1eux.filemanager.core.operations.recovery.JournalItemRecord
+import com.Hrshd1eux.filemanager.core.operations.recovery.JournalItemState
+import com.Hrshd1eux.filemanager.core.operations.recovery.OperationJournalEntry
+import com.Hrshd1eux.filemanager.core.operations.recovery.JournalOperationType
+import com.Hrshd1eux.filemanager.core.operations.recovery.OperationJournalRepository
 import com.Hrshd1eux.filemanager.core.operations.util.ConflictHelper
 import com.Hrshd1eux.filemanager.core.operations.util.StreamCopier
 import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
@@ -34,11 +39,12 @@ import kotlin.coroutines.coroutineContext
  * All remote storage interactions are performed via the abstract RemoteStorageOperator interface.
  *
  * All operations execute asynchronously with streamed chunking, live progress callbacks,
- * automatic conflict resolution, and deterministic cancellation.
+ * automatic conflict resolution, deterministic cancellation, and crash-resilient operation journals.
  */
 class FileOperationEngine(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val remoteOperator: RemoteStorageOperator? = null
+    private val remoteOperator: RemoteStorageOperator? = null,
+    private val journalRepository: OperationJournalRepository? = null
 ) {
 
     companion object {
@@ -66,6 +72,7 @@ class FileOperationEngine(
         verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<OperationResult> = withContext(ioDispatcher) {
+        var journalEntry: OperationJournalEntry? = null
         runCatching {
             val resolvedDest = resolveNode(destinationDir)
             validateDestinationDirectory(resolvedDest)
@@ -121,6 +128,61 @@ class FileOperationEngine(
                 }
             }
 
+            // Milestone 1.4.31: Initialize persistent crash-recovery journal entry
+            if (journalRepository != null && resolvedDest is ResolvedNode.Local) {
+                val journalItems = mutableListOf<JournalItemRecord>()
+                for (source in sources) {
+                    val resolvedSrc = resolveNode(source)
+                    if (resolvedSrc is ResolvedNode.Local) {
+                        val file = resolvedSrc.file
+                        if (file.exists()) {
+                            if (file.isDirectory) {
+                                file.walkTopDown().forEach { child ->
+                                    if (!child.isDirectory) {
+                                        val relPath = file.name + "/" + child.relativeTo(file).path.replace('\\', '/')
+                                        val destFile = File(resolvedDest.file, relPath)
+                                        journalItems.add(
+                                            JournalItemRecord(
+                                                relativePath = relPath,
+                                                sourcePath = child.absolutePath,
+                                                destinationPath = destFile.absolutePath,
+                                                sizeBytes = child.length(),
+                                                lastModified = child.lastModified()
+                                            )
+                                        )
+                                    }
+                                }
+                            } else {
+                                val destFile = File(resolvedDest.file, file.name)
+                                journalItems.add(
+                                    JournalItemRecord(
+                                        relativePath = file.name,
+                                        sourcePath = file.absolutePath,
+                                        destinationPath = destFile.absolutePath,
+                                        sizeBytes = file.length(),
+                                        lastModified = file.lastModified()
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                val title = if (sources.size == 1) "Copying ${sources.first().name}" else "Copying ${sources.size} items"
+                val entry = OperationJournalEntry(
+                    type = JournalOperationType.COPY,
+                    title = title,
+                    sourceRoots = sources.map { it.path },
+                    destinationRoot = destinationDir.path,
+                    totalFilesExpected = totalFiles,
+                    totalBytesExpected = totalBytes,
+                    items = journalItems,
+                    isVaultOperation = destinationDir.path.contains(".arca_vault") || sources.any { it.path.contains(".arca_vault") }
+                )
+                journalRepository.recordOperationStarted(entry)
+                journalEntry = entry
+            }
+
             var filesProcessed = 0
             var bytesProcessed = 0L
 
@@ -157,6 +219,10 @@ class FileOperationEngine(
                                         }
                                     )
                                     filesProcessed++
+                                    val relKey = srcFile.name + "/" + relativePath.replace('\\', '/')
+                                    journalEntry?.let { entry ->
+                                        journalRepository?.updateItemProgress(entry.id, relKey, JournalItemState.COMPLETED)
+                                    }
                                 }
                             }
                         } else {
@@ -179,6 +245,9 @@ class FileOperationEngine(
                                 }
                             )
                             filesProcessed++
+                            journalEntry?.let { entry ->
+                                journalRepository?.updateItemProgress(entry.id, srcFile.name, JournalItemState.COMPLETED)
+                            }
                         }
                     }
 
@@ -344,11 +413,18 @@ class FileOperationEngine(
                 }
             }
 
+            journalEntry?.let { entry ->
+                journalRepository?.recordOperationCompleted(entry.id)
+            }
+
             OperationResult.Success(
                 filesProcessed = filesProcessed,
                 bytesProcessed = bytesProcessed
             )
         }.recoverCatching { error ->
+            journalEntry?.let { entry ->
+                journalRepository?.recordOperationInterrupted(entry.id, error.localizedMessage ?: "Operation interrupted")
+            }
             if (error is CancellationException) throw error
             throw error
         }

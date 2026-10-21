@@ -130,6 +130,7 @@ import com.Hrshd1eux.filemanager.feature.browser.components.EncryptChoiceDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.QuickActionBottomSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.FileComparisonDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.FolderComparisonDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.InterruptedOperationRecoveryDialog
 import com.Hrshd1eux.filemanager.core.storage.util.FolderComparator
 import com.Hrshd1eux.filemanager.feature.browser.components.SelectionBottomBar
 import com.Hrshd1eux.filemanager.feature.browser.components.StagedMoveFloatingBar
@@ -1251,6 +1252,17 @@ fun FileBrowserScreen(
             progress = currentProgress,
             title = activeOperation?.title ?: activeOperationTitle,
             onCancel = { viewModel.cancelActiveOperation() }
+        )
+    }
+
+    // Interrupted Operation Recovery Dialog (Milestone 1.4.36)
+    val interruptedRecoveryReport by viewModel.interruptedRecoveryReport.collectAsStateWithLifecycle()
+    interruptedRecoveryReport?.let { report ->
+        InterruptedOperationRecoveryDialog(
+            report = report,
+            onResume = { viewModel.resumeInterruptedOperation(report.operationId) },
+            onRestart = { viewModel.restartInterruptedOperation(report.operationId) },
+            onDiscard = { viewModel.discardInterruptedOperation(report.operationId) }
         )
     }
 

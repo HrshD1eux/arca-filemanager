@@ -32,6 +32,10 @@ import com.Hrshd1eux.filemanager.core.operations.queue.OperationManager
 import com.Hrshd1eux.filemanager.core.operations.queue.OperationStatus
 import com.Hrshd1eux.filemanager.core.operations.queue.OperationType
 import com.Hrshd1eux.filemanager.core.operations.queue.QueuedOperation
+import com.Hrshd1eux.filemanager.core.operations.recovery.JournalOperationType
+import com.Hrshd1eux.filemanager.core.operations.recovery.OperationJournalRepository
+import com.Hrshd1eux.filemanager.core.operations.recovery.OperationRecoveryEngine
+import com.Hrshd1eux.filemanager.core.operations.recovery.RecoveryReport
 import com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.preferences.LastDestinationRepository
@@ -78,11 +82,16 @@ class FileBrowserViewModel(
     val recentsRepository: RecentsRepository = RecentsRepository(),
     val lastDestinationRepository: LastDestinationRepository = LastDestinationRepository(),
     val archivePreferencesRepository: com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository = com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository.getInstance(),
-    val appSettingsRepository: com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository = com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance()
+    val appSettingsRepository: com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository = com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance(),
+    val recoveryEngine: OperationRecoveryEngine? = null,
+    val journalRepository: OperationJournalRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BrowserUiState>(BrowserUiState.Loading)
     val uiState: StateFlow<BrowserUiState> = _uiState.asStateFlow()
+
+    private val _interruptedRecoveryReport = MutableStateFlow<RecoveryReport?>(null)
+    val interruptedRecoveryReport: StateFlow<RecoveryReport?> = _interruptedRecoveryReport.asStateFlow()
 
     val activeOperation: StateFlow<QueuedOperation?> = operationManager.activeOperation
     val waitingQueue: StateFlow<List<QueuedOperation>> = operationManager.waitingQueue
@@ -140,6 +149,85 @@ class FileBrowserViewModel(
                     else -> {}
                 }
             }
+        }
+        if (recoveryEngine != null && journalRepository != null) {
+            checkForInterruptedOperations()
+        }
+    }
+
+    /**
+     * Checks for interrupted operations in the persistent journal (Milestone 1.4.36).
+     */
+    fun checkForInterruptedOperations() {
+        val engine = recoveryEngine ?: return
+        val repo = journalRepository ?: return
+        viewModelScope.launch {
+            val interrupted = repo.getInterruptedOperations()
+            val first = interrupted.firstOrNull()
+            if (first != null) {
+                val assessment = engine.assessInterruptedOperation(first)
+                _interruptedRecoveryReport.value = RecoveryReport.fromAssessment(assessment)
+            } else {
+                _interruptedRecoveryReport.value = null
+            }
+        }
+    }
+
+    /**
+     * Resumes an interrupted operation from verified state (Milestone 1.4.36).
+     */
+    fun resumeInterruptedOperation(operationId: String) {
+        val engine = recoveryEngine ?: return
+        viewModelScope.launch {
+            val report = _interruptedRecoveryReport.value ?: return@launch
+            _interruptedRecoveryReport.value = null
+            val title = "Resuming ${report.operationType.displayName}"
+            operationManager.enqueue(title = title, type = when (report.operationType) {
+                JournalOperationType.COPY -> OperationType.COPY
+                JournalOperationType.MOVE -> OperationType.MOVE
+                JournalOperationType.ARCHIVE_EXTRACT -> OperationType.EXTRACT
+                JournalOperationType.ARCHIVE_COMPRESS -> OperationType.COMPRESS
+                JournalOperationType.BACKUP -> OperationType.COPY
+            }) { onProgress ->
+                val result = engine.resumeOperation(operationId, onProgress)
+                val opResult = result.getOrThrow()
+                _userMessage.emit(opResult.summary)
+            }
+        }
+    }
+
+    /**
+     * Restarts an interrupted operation from scratch (Milestone 1.4.36).
+     */
+    fun restartInterruptedOperation(operationId: String) {
+        val engine = recoveryEngine ?: return
+        viewModelScope.launch {
+            val report = _interruptedRecoveryReport.value ?: return@launch
+            _interruptedRecoveryReport.value = null
+            val title = "Restarting ${report.operationType.displayName}"
+            operationManager.enqueue(title = title, type = when (report.operationType) {
+                JournalOperationType.COPY -> OperationType.COPY
+                JournalOperationType.MOVE -> OperationType.MOVE
+                JournalOperationType.ARCHIVE_EXTRACT -> OperationType.EXTRACT
+                JournalOperationType.ARCHIVE_COMPRESS -> OperationType.COMPRESS
+                JournalOperationType.BACKUP -> OperationType.COPY
+            }) { onProgress ->
+                val result = engine.restartOperation(operationId, onProgress)
+                val opResult = result.getOrThrow()
+                _userMessage.emit(opResult.summary)
+            }
+        }
+    }
+
+    /**
+     * Discards an interrupted operation and cleans up all temporary artifacts (Milestone 1.4.36).
+     */
+    fun discardInterruptedOperation(operationId: String) {
+        val engine = recoveryEngine ?: return
+        viewModelScope.launch {
+            engine.discardOperation(operationId)
+            _interruptedRecoveryReport.value = null
+            _userMessage.emit("Interrupted operation discarded.")
         }
     }
 
