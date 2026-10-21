@@ -2,6 +2,9 @@ package com.Hrshd1eux.filemanager.core.network.diagnostics
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedDeque
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 enum class NetworkPrivacyEventType {
     CONNECT_ATTEMPT,
@@ -32,6 +35,15 @@ data class NetworkPrivacyEvent(
     val latencyMs: Long? = null
 )
 
+data class NetworkPrivacyStats(
+    val totalEvents: Int,
+    val successCount: Int,
+    val failureCount: Int,
+    val alertCount: Int,
+    val unexpectedExternalCount: Int,
+    val protocolCounts: Map<String, Int>
+)
+
 /**
  * Audit and diagnostic logger for remote network connections.
  *
@@ -46,6 +58,8 @@ class NetworkPrivacyDiagnostics(
     private val maxCapacity: Int = MAX_CAPACITY
 ) {
     private val eventQueue = ConcurrentLinkedDeque<NetworkPrivacyEvent>()
+    private val _eventsFlow = MutableStateFlow<List<NetworkPrivacyEvent>>(emptyList())
+    val eventsFlow: StateFlow<List<NetworkPrivacyEvent>> = _eventsFlow.asStateFlow()
 
     /**
      * Logs a network event with strict data sanitization.
@@ -76,6 +90,7 @@ class NetworkPrivacyDiagnostics(
         while (eventQueue.size > maxCapacity) {
             eventQueue.pollFirst()
         }
+        _eventsFlow.value = eventQueue.toList().asReversed()
         return event
     }
 
@@ -101,10 +116,51 @@ class NetworkPrivacyDiagnostics(
     }
 
     /**
+     * Calculates comprehensive diagnostic statistics.
+     */
+    fun getStats(): NetworkPrivacyStats {
+        val list = eventQueue.toList()
+        val total = list.size
+        val successes = list.count { it.eventType == NetworkPrivacyEventType.CONNECT_SUCCESS || it.eventType == NetworkPrivacyEventType.TRANSFER_COMPLETED }
+        val failures = list.count { it.eventType == NetworkPrivacyEventType.CONNECT_FAILURE }
+        val alerts = list.count { it.eventType == NetworkPrivacyEventType.SECURITY_ALERT }
+        val unexpected = list.count { it.triggerCategory == NetworkPrivacyTriggerCategory.UNEXPECTED_EXTERNAL }
+        val protoCounts = list.groupingBy { it.protocol }.eachCount()
+
+        return NetworkPrivacyStats(
+            totalEvents = total,
+            successCount = successes,
+            failureCount = failures,
+            alertCount = alerts,
+            unexpectedExternalCount = unexpected,
+            protocolCounts = protoCounts
+        )
+    }
+
+    /**
      * Clears all diagnostic events.
      */
     fun clear() {
         eventQueue.clear()
+        _eventsFlow.value = emptyList()
+    }
+
+    /**
+     * Exports a sanitized diagnostic log formatted for inspection.
+     */
+    fun exportDiagnosticsText(): String = buildString {
+        appendLine("=== ARCA NETWORK PRIVACY DIAGNOSTICS LOG ===")
+        appendLine("Generated At: ${System.currentTimeMillis()}")
+        val stats = getStats()
+        appendLine("Total Events: ${stats.totalEvents}")
+        appendLine("Security Alerts: ${stats.alertCount}")
+        appendLine("Unexpected Outbound Calls: ${stats.unexpectedExternalCount}")
+        appendLine()
+        appendLine("--- RECENT NETWORK EVENTS ---")
+        for (event in getRecentEvents(MAX_CAPACITY)) {
+            appendLine("[${event.timestamp}] ${event.protocol} -> ${event.destination} | ${event.eventType} | ${event.triggerCategory} | ${event.outcome}")
+        }
+        appendLine("=== END OF LOG ===")
     }
 
     private fun sanitizeDestination(destination: String): String {
@@ -138,6 +194,12 @@ class NetworkPrivacyDiagnostics(
         fun getInstance(): NetworkPrivacyDiagnostics {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: NetworkPrivacyDiagnostics().also { INSTANCE = it }
+            }
+        }
+
+        fun resetInstance() {
+            synchronized(this) {
+                INSTANCE = null
             }
         }
     }

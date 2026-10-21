@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
@@ -79,6 +80,7 @@ fun SecurityCenterScreen(
     modifier: Modifier = Modifier,
     onNavigateToVault: () -> Unit = {},
     onNavigateToPrivacy: () -> Unit = {},
+    onNavigateToNetworkDiagnostics: () -> Unit = {},
     viewModel: SecurityCenterViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -216,14 +218,28 @@ fun SecurityCenterScreen(
                     )
                 }
 
-                // Export Button
+                // Export & Diagnostics Buttons
                 item {
                     OutlinedButton(
-                        onClick = { viewModel.copyReportToClipboard(context) },
+                        onClick = onNavigateToNetworkDiagnostics,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lan,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("View Network Event Visibility & Diagnostics")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.copyReportToClipboard(context) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
