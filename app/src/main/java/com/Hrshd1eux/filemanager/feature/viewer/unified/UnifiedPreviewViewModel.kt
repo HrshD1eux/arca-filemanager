@@ -38,7 +38,7 @@ import java.io.File
 /**
  * Single, unified ViewModel driving preview screens across images, video, audio, text, and documents.
  */
-class UnifiedPreviewViewModel(
+class UnifiedPreviewViewModel @JvmOverloads constructor(
     private val categoryRepository: CategoryRepository = CategoryRepository(),
     private val operationEngine: FileOperationEngine = FileOperationEngine(),
     private val bitmapDecoder: ImageBitmapDecoder = AndroidImageBitmapDecoder(),

@@ -51,7 +51,7 @@ sealed interface ArchiveViewerUiState {
     data class Error(val message: String) : ArchiveViewerUiState
 }
 
-class ArchiveViewerViewModel(
+class ArchiveViewerViewModel @JvmOverloads constructor(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val zipEngine: ZipEngine = ZipEngine(ioDispatcher),
     private val sevenZEngine: SevenZEngine = SevenZEngine(ioDispatcher),

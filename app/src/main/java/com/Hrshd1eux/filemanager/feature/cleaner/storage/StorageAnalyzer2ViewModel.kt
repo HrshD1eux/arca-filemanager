@@ -49,7 +49,7 @@ data class StorageAnalyzer2UiState(
     val lastExecutionReport: CleanupExecutionReport? = null
 )
 
-class StorageAnalyzer2ViewModel(
+class StorageAnalyzer2ViewModel @JvmOverloads constructor(
     private val engine: StorageAnalyzer2Engine = StorageAnalyzer2Engine(),
     private val safetyValidator: CleanupSafetyValidator = CleanupSafetyValidator(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO

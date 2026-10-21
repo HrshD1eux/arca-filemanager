@@ -28,7 +28,7 @@ sealed interface LargeFilesUiState {
     data object Empty : LargeFilesUiState
 }
 
-class LargeFilesViewModel(
+class LargeFilesViewModel @JvmOverloads constructor(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val scanner: LargeFilesScanner = LargeFilesScanner(ioDispatcher),
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher)

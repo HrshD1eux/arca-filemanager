@@ -66,7 +66,7 @@ import java.io.File
 /**
  * ViewModel managing directory traversal, breadcrumb hierarchy, and browser state.
  */
-class FileBrowserViewModel(
+class FileBrowserViewModel @JvmOverloads constructor(
     val storageProvider: StorageProvider = LocalFileSystemProvider(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher),

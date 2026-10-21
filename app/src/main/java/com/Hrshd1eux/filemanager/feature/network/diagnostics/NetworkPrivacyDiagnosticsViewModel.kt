@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-class NetworkPrivacyDiagnosticsViewModel(
+class NetworkPrivacyDiagnosticsViewModel @JvmOverloads constructor(
     private val diagnostics: NetworkPrivacyDiagnostics = NetworkPrivacyDiagnostics.getInstance()
 ) : ViewModel() {
 

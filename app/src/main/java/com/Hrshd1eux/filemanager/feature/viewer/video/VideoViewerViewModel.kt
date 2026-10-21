@@ -43,7 +43,7 @@ sealed interface VideoViewerListState {
     data object Empty : VideoViewerListState
 }
 
-class VideoViewerViewModel(
+class VideoViewerViewModel @JvmOverloads constructor(
     private val categoryRepository: CategoryRepository = CategoryRepository(),
     private val operationEngine: FileOperationEngine = FileOperationEngine(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO

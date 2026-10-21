@@ -48,7 +48,7 @@ data class InstalledAppsUiState(
         get() = selectedPackageNames.isNotEmpty()
 }
 
-class InstalledAppsViewModel(
+class InstalledAppsViewModel @JvmOverloads constructor(
     application: Application,
     private val repository: InstalledAppsRepository = InstalledAppsRepository.getInstance(application),
     private val systemStorageRepository: SystemStorageRepository = SystemStorageRepository.getInstance(application)

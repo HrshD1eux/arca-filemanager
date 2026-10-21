@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class HomeViewModel(
+class HomeViewModel @JvmOverloads constructor(
     application: Application,
     private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
     private val recentsRepository: RecentsRepository = RecentsRepository(),

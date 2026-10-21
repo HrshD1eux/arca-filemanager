@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * Fully wired to real repositories, ensuring immediate reactivity,
  * meaningful error feedback, and persistence across app restarts.
  */
-class SettingsViewModel(
+class SettingsViewModel @JvmOverloads constructor(
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     private val appSettingsRepository: AppSettingsRepository = AppSettingsRepository.getInstance(),
     private val archivePreferencesRepository: ArchivePreferencesRepository = ArchivePreferencesRepository.getInstance(),

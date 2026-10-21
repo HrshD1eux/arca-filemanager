@@ -29,7 +29,7 @@ sealed interface DuplicateFinderUiState {
     data object Empty : DuplicateFinderUiState
 }
 
-class DuplicateFinderViewModel(
+class DuplicateFinderViewModel @JvmOverloads constructor(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val engine: DuplicateFinderEngine = DuplicateFinderEngine(ioDispatcher),
     private val operationEngine: FileOperationEngine = FileOperationEngine(ioDispatcher)

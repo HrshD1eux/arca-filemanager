@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class CategoryViewModel(
+class CategoryViewModel @JvmOverloads constructor(
     private val repository: CategoryRepository = CategoryRepository(),
     private val operationEngine: FileOperationEngine = FileOperationEngine(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO

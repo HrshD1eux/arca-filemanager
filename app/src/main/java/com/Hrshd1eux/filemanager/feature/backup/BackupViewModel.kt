@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class BackupViewModel(
+class BackupViewModel @JvmOverloads constructor(
     application: Application,
     private val repository: BackupProfileRepository = BackupProfileRepository.getInstance(application),
     private val backupEngine: BackupEngine = BackupEngine(repository = repository)

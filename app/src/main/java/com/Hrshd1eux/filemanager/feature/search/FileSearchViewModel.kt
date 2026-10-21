@@ -31,7 +31,7 @@ sealed interface SearchUiState {
 }
 
 @OptIn(FlowPreview::class)
-class FileSearchViewModel(
+class FileSearchViewModel @JvmOverloads constructor(
     val storageProvider: StorageProvider = LocalFileSystemProvider(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val searchEngine: FileSearchEngine = FileSearchEngine(ioDispatcher)

@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class SecurityCenterViewModel(
+class SecurityCenterViewModel @JvmOverloads constructor(
     private val auditEngine: SecurityAuditEngine = SecurityAuditEngine()
 ) : ViewModel() {
 

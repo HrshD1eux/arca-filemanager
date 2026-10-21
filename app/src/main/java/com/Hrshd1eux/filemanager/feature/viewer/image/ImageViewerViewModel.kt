@@ -39,7 +39,7 @@ sealed interface ImageViewerListState {
     data object Empty : ImageViewerListState
 }
 
-class ImageViewerViewModel(
+class ImageViewerViewModel @JvmOverloads constructor(
     private val categoryRepository: CategoryRepository = CategoryRepository(),
     private val bitmapDecoder: ImageBitmapDecoder = AndroidImageBitmapDecoder(),
     private val operationEngine: FileOperationEngine = FileOperationEngine(),
