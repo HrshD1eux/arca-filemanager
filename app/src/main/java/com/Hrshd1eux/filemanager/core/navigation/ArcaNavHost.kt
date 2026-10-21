@@ -30,6 +30,7 @@ import com.Hrshd1eux.filemanager.feature.cleaner.storage.StorageAnalyzerScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
 import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
 import com.Hrshd1eux.filemanager.feature.network.browser.NetworkFileBrowserScreen
+import com.Hrshd1eux.filemanager.feature.security.SecurityCenterScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
 import com.Hrshd1eux.filemanager.feature.vault.VaultScreen
 import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController
@@ -294,7 +295,21 @@ fun ArcaNavHost(
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
-                onNavigateToAbout = { navController.navigate(Screen.About) }
+                onNavigateToAbout = { navController.navigate(Screen.About) },
+                onNavigateToSecurityCenter = { navController.navigate(Screen.SecurityCenter) }
+            )
+        }
+
+        composable<Screen.SecurityCenter>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            SecurityCenterScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToVault = { navController.navigate(Screen.Vault) },
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
             )
         }
 

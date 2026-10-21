@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
@@ -73,6 +74,7 @@ fun SettingsScreen(
     onNavigateToPrivacy: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToAbout: () -> Unit = {},
+    onNavigateToSecurityCenter: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -234,6 +236,13 @@ fun SettingsScreen(
                         subtitle = "Auto-lock: ${vaultLockSettings.autoLockTimeout.displayName} • Screen-off lock: ${if (vaultLockSettings.lockOnScreenOff) "On" else "Off"}",
                         icon = Icons.Default.Lock,
                         onClick = { showVaultDialog = true }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsRow(
+                        title = "Security Center",
+                        subtitle = "Inspect verified security posture & technical claims",
+                        icon = Icons.Default.Shield,
+                        onClick = onNavigateToSecurityCenter
                     )
                 }
             }
