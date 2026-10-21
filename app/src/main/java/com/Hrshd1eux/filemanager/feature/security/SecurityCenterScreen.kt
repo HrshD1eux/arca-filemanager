@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -193,6 +192,11 @@ fun SecurityCenterScreen(
                     TruthfulNoticeBanner()
                 }
 
+                // Transparent Scope & Capability Breakdown
+                item {
+                    VerifiedCapabilitiesOverviewCard()
+                }
+
                 // Filter Chips
                 item {
                     CategoryFilterRow(
@@ -313,19 +317,19 @@ private fun OverallPostureCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 StatusMetricPill(
-                    label = "Verified Claims",
+                    label = "Active Policies",
                     count = report.verifiedCount,
                     color = VaultEmerald
                 )
                 StatusMetricPill(
-                    label = "Advisories",
-                    count = report.cautionCount + report.infoCount,
+                    label = "Platform Boundaries",
+                    count = report.infoCount,
                     color = Color(0xFF3B82F6)
                 )
                 StatusMetricPill(
-                    label = "Attention",
-                    count = report.actionCount,
-                    color = if (report.actionCount > 0) MaterialTheme.colorScheme.error else Color.Gray
+                    label = "Advisories",
+                    count = report.cautionCount + report.actionCount,
+                    color = if (report.actionCount > 0) MaterialTheme.colorScheme.error else Color(0xFFF59E0B)
                 )
             }
         }
@@ -387,18 +391,48 @@ private fun TruthfulNoticeBanner(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(
-                    text = "Zero Marketing Exaggeration",
+                    text = "Transparent Behavior & Verified Protections",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "ARCA does not use deceptive terms like 'military-grade' or 'unbreakable'. Every security protection is backed by standard cryptography and subject to honest platform limitations.",
+                    text = "ARCA explains verified local behavior, cryptographic specifications, and genuine platform boundaries rather than displaying permanent checkmarks or absolute claims. We never use deceptive terms like 'military-grade' or 'unbreakable'.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun VerifiedCapabilitiesOverviewCard(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = "What ARCA Does & Does Not Do",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "• Operates offline-first: Zero third-party trackers, zero advertising SDKs, and zero developer cloud endpoints.\n" +
+                        "• User-initiated remote networking: ARCA communicates over a network ONLY when you explicitly configure and connect to a remote server (SFTP, FTPS, FTP, SMB, WebDAV). Outbound traffic is strictly point-to-point.\n" +
+                        "• Cryptography at rest: Vault files are encrypted with AES-256-GCM. Decryption keys live in volatile RAM only while unlocked and are purged upon lock.\n" +
+                        "• Honest platform limits: ARCA operates within standard Android OS sandboxing and respects hardware wear-leveling realities on modern flash media.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -440,10 +474,11 @@ private fun SecurityClaimCard(
     var expanded by remember { mutableStateOf(false) }
 
     val (badgeColor, badgeIcon) = when (claim.status) {
-        SecurityCheckStatus.PASSED -> VaultEmerald to Icons.Default.CheckCircle
+        SecurityCheckStatus.ACTIVE_POLICY -> VaultEmerald to Icons.Default.Shield
+        SecurityCheckStatus.USER_CONFIGURED -> VaultEmerald to Icons.Default.Lock
+        SecurityCheckStatus.PLATFORM_REALITY -> Color(0xFF3B82F6) to Icons.Default.Info
         SecurityCheckStatus.CAUTION -> Color(0xFFF59E0B) to Icons.Default.Warning
         SecurityCheckStatus.ACTION_RECOMMENDED -> MaterialTheme.colorScheme.error to Icons.Default.Warning
-        SecurityCheckStatus.INFO -> Color(0xFF3B82F6) to Icons.Default.Info
     }
 
     Card(

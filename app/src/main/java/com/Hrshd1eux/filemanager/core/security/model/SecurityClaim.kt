@@ -15,12 +15,26 @@ enum class SecurityClaimCategory(val displayName: String) {
 
 /**
  * Status of an individual security check.
+ *
+ * Replaces simplistic permanent checkmarks with transparent behavioral classifications:
+ * - ACTIVE_POLICY: Verified local application policy or OS configuration
+ * - USER_CONFIGURED: Protection active for a user-configured feature
+ * - PLATFORM_REALITY: Transparent platform limitation or boundary
+ * - CAUTION: Elevated risk environment (e.g. root binary detection)
+ * - ACTION_RECOMMENDED: Explicit action recommended to enable protection
  */
 enum class SecurityCheckStatus(val label: String) {
-    PASSED("Verified"),
-    CAUTION("Caution"),
-    ACTION_RECOMMENDED("Attention"),
-    INFO("Informational")
+    ACTIVE_POLICY("Active Policy"),
+    USER_CONFIGURED("Configured Feature"),
+    PLATFORM_REALITY("Platform Boundary"),
+    CAUTION("Advisory"),
+    ACTION_RECOMMENDED("Attention");
+
+    companion object {
+        // Compatibility aliases
+        val PASSED get() = ACTIVE_POLICY
+        val INFO get() = PLATFORM_REALITY
+    }
 }
 
 /**
@@ -28,16 +42,16 @@ enum class SecurityCheckStatus(val label: String) {
  */
 enum class SecurityOverallStatus(val title: String, val description: String) {
     EXCELLENT(
-        "Optimal Security Posture",
-        "Hardware-backed keys, local isolation, and strict network verification are fully active."
+        "Verified Protections Active",
+        "Local protections and policy boundaries are active. Outbound network traffic is limited strictly to user-initiated connections."
     ),
     GOOD(
-        "Strong Security Posture",
-        "Key protections are active. Review minor informational advisories below."
+        "Verified Protections Active with Advisories",
+        "Key protections are active. Review informational advisories and platform boundaries below."
     ),
     ATTENTION_REQUIRED(
-        "Attention Recommended",
-        "One or more security settings or permissions require user review."
+        "Review Recommended",
+        "One or more security settings or storage permissions require user attention."
     )
 }
 
@@ -69,10 +83,10 @@ data class SecurityAuditReport(
     val timestamp: Long = System.currentTimeMillis(),
     val overallStatus: SecurityOverallStatus,
     val claims: List<SecurityClaim>,
-    val verifiedCount: Int = claims.count { it.status == SecurityCheckStatus.PASSED },
+    val verifiedCount: Int = claims.count { it.status == SecurityCheckStatus.ACTIVE_POLICY || it.status == SecurityCheckStatus.USER_CONFIGURED },
     val cautionCount: Int = claims.count { it.status == SecurityCheckStatus.CAUTION },
     val actionCount: Int = claims.count { it.status == SecurityCheckStatus.ACTION_RECOMMENDED },
-    val infoCount: Int = claims.count { it.status == SecurityCheckStatus.INFO }
+    val infoCount: Int = claims.count { it.status == SecurityCheckStatus.PLATFORM_REALITY }
 ) {
     /**
      * Formats a sanitized, secret-free diagnostic summary for export or clipboard copy.
@@ -81,8 +95,8 @@ data class SecurityAuditReport(
         appendLine("=== ARCA SECURITY CENTER AUDIT REPORT ===")
         appendLine("Timestamp: $timestamp")
         appendLine("Overall Status: ${overallStatus.title} (${overallStatus.name})")
-        appendLine("Verified Checks: $verifiedCount / ${claims.size}")
-        appendLine("Advisories: $cautionCount caution, $actionCount attention, $infoCount info")
+        appendLine("Active Policies & Features: $verifiedCount / ${claims.size}")
+        appendLine("Advisories & Platform Boundaries: $cautionCount caution, $actionCount attention, $infoCount platform boundaries")
         appendLine()
         appendLine("--- DETAILED CLAIMS & VERIFICATIONS ---")
         for (claim in claims) {

@@ -94,9 +94,9 @@ class SecurityAuditEngine(
         val isConfigured = metaFile.exists() && metaFile.length() > 0
 
         val (status, recommendation) = if (isConfigured) {
-            SecurityCheckStatus.PASSED to null
+            SecurityCheckStatus.USER_CONFIGURED to null
         } else {
-            SecurityCheckStatus.INFO to "Set up Private Vault to protect confidential documents with AES-256-GCM encryption."
+            SecurityCheckStatus.PLATFORM_REALITY to "Set up Private Vault to protect confidential documents with AES-256-GCM encryption."
         }
 
         return SecurityClaim(
@@ -110,7 +110,7 @@ class SecurityAuditEngine(
                 "Vault engine supports authenticated AES-256 in Galois/Counter Mode (GCM) with PBKDF2 key derivation (100,000 iterations)."
             },
             technicalProof = "Standard javax.crypto.Cipher implementation with AES/GCM/NoPadding, 128-bit authentication tags, and PBKDF2-HMAC-SHA256.",
-            platformLimitations = "Decryption keys remain strictly in volatile memory while the Vault is unlocked. If an unlocked device is seized while the Vault is open, or if memory is dumped via root access, decrypted data may be readable.",
+            platformLimitations = "Volatile Memory & Lock State Reality: Vault encryption protects files at rest on disk. When the Vault is unlocked, decryption keys reside in volatile system RAM to allow file access. Locking the Vault purges keys from memory immediately. Seizure of an unlocked device or root memory inspection could expose decrypted data.",
             actionRecommendation = recommendation
         )
     }
@@ -128,7 +128,7 @@ class SecurityAuditEngine(
             id = "claim_hardware_keystore",
             title = "Android KeyStore Master Key Isolation",
             category = SecurityClaimCategory.HARDWARE_KEYSTORE,
-            status = if (hasHardwareBacking) SecurityCheckStatus.PASSED else SecurityCheckStatus.CAUTION,
+            status = if (hasHardwareBacking) SecurityCheckStatus.ACTIVE_POLICY else SecurityCheckStatus.CAUTION,
             verifiedFact = "Cryptographic master keys are managed within Android KeyStore, isolating key material from standard application memory.",
             technicalProof = "KeyGenParameterSpec with PURPOSE_ENCRYPT or PURPOSE_DECRYPT and KeyProperties.BLOCK_MODE_GCM via '$keyStoreProvider'.",
             platformLimitations = "Hardware security module (TEE / StrongBox) presence depends on device chipset. On budget devices or emulators lacking secure hardware, software-backed keystore boundaries apply."
@@ -140,10 +140,10 @@ class SecurityAuditEngine(
             id = "claim_zero_telemetry",
             title = "Zero Telemetry, Trackers, or Cloud Analytics",
             category = SecurityClaimCategory.LOCAL_PRIVACY,
-            status = SecurityCheckStatus.PASSED,
+            status = SecurityCheckStatus.ACTIVE_POLICY,
             verifiedFact = "ARCA bundles zero third-party analytics SDKs, zero crash-reporting frameworks, zero ad libraries, and zero cloud telemetry endpoints.",
             technicalProof = "Verified via static analysis and automated regression audit (PrivacyAuditTest). No analytics permissions, no background tracking daemons.",
-            platformLimitations = "Local processing guarantees that ARCA will never transmit file metadata, filenames, or content to developer servers. User-configured network transfers connect directly to destinations specified by the user."
+            platformLimitations = "Network Functionality Reality: While ARCA operates offline-first and has zero developer servers or cloud telemetry, ARCA supports user-initiated remote network connections (SFTP, FTPS, FTP, SMB, WebDAV). When you configure a remote connection, ARCA communicates directly with the specific server host you designate. Outbound traffic is strictly point-to-point and directly initiated by you."
         )
     }
 
@@ -152,10 +152,10 @@ class SecurityAuditEngine(
             id = "claim_cleartext_traffic",
             title = "Cleartext Traffic Disabled by Default",
             category = SecurityClaimCategory.NETWORK_SECURITY,
-            status = SecurityCheckStatus.PASSED,
+            status = SecurityCheckStatus.ACTIVE_POLICY,
             verifiedFact = "Unencrypted HTTP and cleartext network transmissions are disabled at the Android Manifest policy level (usesCleartextTraffic=false).",
             technicalProof = "Enforced by Android OS Network Security Configuration and AndroidManifest.xml application attributes.",
-            platformLimitations = "If you configure an explicit legacy unencrypted FTP server on port 21, data and passwords travel unencrypted over your local Wi-Fi or LAN. ARCA provides visible warnings before initiating legacy FTP."
+            platformLimitations = "Applies to standard Android HTTP/HTTPS traffic. If you configure an explicit legacy unencrypted FTP server on port 21, data and passwords travel unencrypted over your local Wi-Fi or LAN. ARCA provides visible warnings before initiating legacy FTP."
         )
     }
 
@@ -164,10 +164,10 @@ class SecurityAuditEngine(
             id = "claim_ssh_pinning_tls_validation",
             title = "Strict SSH Host-Key Pinning & TLS Validation",
             category = SecurityClaimCategory.NETWORK_SECURITY,
-            status = SecurityCheckStatus.PASSED,
+            status = SecurityCheckStatus.ACTIVE_POLICY,
             verifiedFact = "SFTP connections enforce strict SSH host-key verification and block modified keys. FTPS and HTTPS WebDAV connections strictly validate X.509 TLS certificate chains.",
             technicalProof = "SshHostKeyVerifier with SHA-256 fingerprint matching against trusted hosts; TlsCertificateValidator enforcing valid PKIX certification paths.",
-            platformLimitations = "Network security relies on server identity verification. If you manually approve a changed host key or self-signed certificate without verifying the fingerprint out-of-band, active machine-in-the-middle attacks cannot be prevented."
+            platformLimitations = "Applies to user-configured secure remote protocols. Network security relies on server identity verification. If you manually approve a changed host key or self-signed certificate without verifying the fingerprint out-of-band, active machine-in-the-middle attacks cannot be prevented."
         )
     }
 
@@ -175,8 +175,8 @@ class SecurityAuditEngine(
         val accessState = StoragePermissionManager.getStorageAccessState(context)
 
         val (status, rec) = when (accessState.level) {
-            StorageAccessLevel.FULL_ALL_FILES -> SecurityCheckStatus.PASSED to null
-            StorageAccessLevel.SCOPED_FOLDER_TREES -> SecurityCheckStatus.INFO to "App has scoped folder access. You can grant All-Files access if you wish to browse the full device storage."
+            StorageAccessLevel.FULL_ALL_FILES -> SecurityCheckStatus.ACTIVE_POLICY to null
+            StorageAccessLevel.SCOPED_FOLDER_TREES -> SecurityCheckStatus.PLATFORM_REALITY to "App has scoped folder access. You can grant All-Files access if you wish to browse the full device storage."
             StorageAccessLevel.DENIED_CAN_REQUEST,
             StorageAccessLevel.DENIED_SETTINGS_REQUIRED -> SecurityCheckStatus.ACTION_RECOMMENDED to "Storage permission is required to browse files."
             StorageAccessLevel.REVOKED -> SecurityCheckStatus.ACTION_RECOMMENDED to "Storage permission was revoked. Re-grant access in Settings to resume browsing your files."
@@ -199,7 +199,7 @@ class SecurityAuditEngine(
             id = "claim_flash_wear_leveling",
             title = "Secure Deletion & NAND Flash Wear-Leveling",
             category = SecurityClaimCategory.FLASH_STORAGE_ERASURE,
-            status = SecurityCheckStatus.INFO,
+            status = SecurityCheckStatus.PLATFORM_REALITY,
             verifiedFact = "ARCA overwrites file headers and content blocks with zeroes before deleting filesystem pointers.",
             technicalProof = "Byte-level overwrite stream using java.io.FileOutputStream prior to File.delete() invocation.",
             platformLimitations = FLASH_WEAR_LEVELING_DISCLAIMER
@@ -223,7 +223,7 @@ class SecurityAuditEngine(
             )
         } else {
             Triple(
-                SecurityCheckStatus.PASSED,
+                SecurityCheckStatus.ACTIVE_POLICY,
                 "Device environment passes standard OS integrity checks (no su binaries detected; production release keys).",
                 if (isAdbEnabled) "USB debugging (ADB) is enabled on this device. Disable it when not developing to prevent unauthorized computer access." else null
             )

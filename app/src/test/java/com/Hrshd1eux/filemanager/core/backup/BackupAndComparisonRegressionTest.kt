@@ -510,6 +510,42 @@ class BackupAndComparisonRegressionTest {
         assertTrue("Source files must NEVER be deleted in mirror sync", srcFile.exists())
     }
 
+    @Test
+    fun backupEngine_mirrorMode_abortsPruningWhenCopyFails() = runTest {
+        val sourceDir = File(testRoot, "MirrorFailSrc").apply { mkdirs() }
+        val destDir = File(testRoot, "MirrorFailDst").apply { mkdirs() }
+
+        // Source file that cannot be read
+        val unreadableSrc = File(sourceDir, "unreadable.txt").apply {
+            writeText("Cannot read")
+            setReadable(false)
+        }
+        val staleDest = File(destDir, "preserve_if_failed.txt").apply {
+            writeText("Do not delete me if copy fails!")
+        }
+
+        val profile = BackupProfile(
+            id = "mirror_fail_profile",
+            name = "Mirror Fail Profile",
+            sourcePaths = listOf(sourceDir.absolutePath),
+            destinationPath = destDir.absolutePath,
+            mode = BackupMode.MIRROR,
+            verifyIntegrity = false
+        )
+
+        val report = backupEngine.executeBackup(profile, confirmedMirrorDeletion = true)
+
+        if (unreadableSrc.canRead()) {
+            // Windows OS might not support setReadable(false) fully; skip if OS ignores it
+            return@runTest
+        }
+
+        // Mirror pruning must be aborted because copy failed
+        assertEquals(BackupStatus.FAILED, report.status)
+        assertTrue("Destination file must be preserved when copy fails", staleDest.exists())
+        assertEquals(0, report.deletedInMirrorCount)
+    }
+
     // =========================================================================
     // 1.4.29 Backup Verification (Integrity & Failed Verification Reporting)
     // =========================================================================

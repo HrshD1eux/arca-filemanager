@@ -221,41 +221,15 @@ class BackupEngine(
                 }
             }
 
-            // 1. Preview analysis for mirror mode verification
+            // 1. Preview analysis for safe planning and change detection
             val preview = previewBackup(profile)
 
-            // Milestone 1.4.28 Guard: Require explicit confirmation for mirror mode deletion
+            // Milestone 1.4.28 Guard: Require explicit confirmation for mirror mode deletion BEFORE execution
             if (profile.mode == BackupMode.MIRROR && preview.filesToDeleteInMirror.isNotEmpty()) {
                 if (!confirmedMirrorDeletion) {
                     throw MirrorDeletionNotConfirmedException(
                         "Mirror mode requires explicit confirmation before deleting ${preview.filesToDeleteInMirror.size} files from destination (${FileFormatter.formatFileSize(preview.totalBytesToDelete)})."
                     )
-                }
-
-                // Execute safe destination-only deletions with pre-flight path revalidation
-                val destCanonical = destDir.canonicalPath
-                for (item in preview.filesToDeleteInMirror) {
-                    coroutineContext.ensureActive()
-                    val target = item.destinationFile ?: File(destDir, item.relativePath)
-                    try {
-                        val targetCanonical = target.canonicalPath
-                        // Verify target is strictly inside destination directory (anti-path-traversal)
-                        if (!targetCanonical.startsWith(destCanonical)) {
-                            throw SecurityException("Security violation: Target is outside destination directory: $targetCanonical")
-                        }
-                        if (isRestrictedPath(targetCanonical)) {
-                            throw SecurityException("Protected system path cannot be deleted: $targetCanonical")
-                        }
-                        if (target.exists()) {
-                            if (target.delete()) {
-                                deletedInMirrorCount++
-                            } else {
-                                errors.add(BackupError(target.path, "Failed to delete destination file in mirror sync"))
-                            }
-                        }
-                    } catch (e: Exception) {
-                        errors.add(BackupError(target.path, "Mirror deletion error: ${e.localizedMessage}"))
-                    }
                 }
             }
 
@@ -289,7 +263,7 @@ class BackupEngine(
             var filesProcessed = 0
             val speedTrackingStart = System.currentTimeMillis()
 
-            // 3. Process each file safely (Milestone 1.4.27: Copy Mode)
+            // 3. Process each file safely (Copy & Verify Phase)
             for ((sourceFile, sourceBase) in candidateFiles) {
                 coroutineContext.ensureActive()
                 filesProcessed++
@@ -301,15 +275,29 @@ class BackupEngine(
                 }
                 val targetFile = File(destDir, relativePath)
 
-                // Incremental / skip conditions
+                // Incremental / skip conditions with content verification
                 if (profile.mode != BackupMode.FULL && targetFile.exists() && targetFile.isFile) {
                     if (targetFile.length() == sourceFile.length() &&
                         abs(targetFile.lastModified() - sourceFile.lastModified()) < 2000L
                     ) {
-                        filesSkipped++
-                        bytesProcessed += sourceFile.length()
-                        emitProgress(onProgress, sourceFile.name, filesProcessed, totalFiles, bytesProcessed, totalBytes, speedTrackingStart)
-                        continue
+                        var isIdentical = true
+                        if (profile.verifyIntegrity) {
+                            val srcSha = checksumEngine.calculateAlgorithm(sourceFile, ChecksumAlgorithm.SHA_256).getOrNull()?.hashHex
+                            val tgtSha = checksumEngine.calculateAlgorithm(targetFile, ChecksumAlgorithm.SHA_256).getOrNull()?.hashHex
+                            if (srcSha != null && tgtSha != null && srcSha.equals(tgtSha, ignoreCase = true)) {
+                                verifiedCount++
+                                isIdentical = true
+                            } else if (srcSha != null && tgtSha != null) {
+                                // Content mismatch: re-copy to heal destination
+                                isIdentical = false
+                            }
+                        }
+                        if (isIdentical) {
+                            filesSkipped++
+                            bytesProcessed += sourceFile.length()
+                            emitProgress(onProgress, sourceFile.name, filesProcessed, totalFiles, bytesProcessed, totalBytes, speedTrackingStart)
+                            continue
+                        }
                     }
                 }
 
@@ -370,6 +358,43 @@ class BackupEngine(
                     if (tempTarget.exists()) tempTarget.delete()
                     filesFailed++
                     errors.add(BackupError(sourceFile.path, t.localizedMessage ?: "Unknown copy error"))
+                }
+            }
+
+            // 4. Mirror Mode Pruning (Strictly AFTER Copy & Verification)
+            // Safety Invariant: NEVER prune destination files if any copy or verification failed!
+            if (profile.mode == BackupMode.MIRROR && preview.filesToDeleteInMirror.isNotEmpty()) {
+                if (filesFailed > 0 || failedVerificationCount > 0) {
+                    errors.add(
+                        BackupError(
+                            profile.destinationPath,
+                            "Mirror pruning aborted: Destination files were NOT deleted because $filesFailed files failed to copy and $failedVerificationCount failed verification."
+                        )
+                    )
+                } else {
+                    val destCanonical = destDir.canonicalPath
+                    for (item in preview.filesToDeleteInMirror) {
+                        coroutineContext.ensureActive()
+                        val target = item.destinationFile ?: File(destDir, item.relativePath)
+                        try {
+                            val targetCanonical = target.canonicalPath
+                            if (!targetCanonical.startsWith(destCanonical)) {
+                                throw SecurityException("Security violation: Target is outside destination directory: $targetCanonical")
+                            }
+                            if (isRestrictedPath(targetCanonical)) {
+                                throw SecurityException("Protected system path cannot be deleted: $targetCanonical")
+                            }
+                            if (target.exists()) {
+                                if (target.delete()) {
+                                    deletedInMirrorCount++
+                                } else {
+                                    errors.add(BackupError(target.path, "Failed to delete destination file in mirror sync"))
+                                }
+                            }
+                        } catch (e: Exception) {
+                            errors.add(BackupError(target.path, "Mirror deletion error: ${e.localizedMessage}"))
+                        }
+                    }
                 }
             }
 

@@ -85,7 +85,7 @@ fun NetworkPrivacyDiagnosticsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Network Diagnostics",
+                        text = "ARCA-Recorded Network Connections",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -136,6 +136,11 @@ fun NetworkPrivacyDiagnosticsScreen(
             // Stats Header
             item {
                 DiagnosticsStatsCard(stats = viewModel.getStats())
+            }
+
+            // Observation Scope & Boundaries Notice
+            item {
+                ObservationScopeNoticeCard()
             }
 
             // Local-Only Privacy Guarantee Notice
@@ -216,13 +221,13 @@ private fun DiagnosticsStatsCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "Network Activity Overview",
+                        text = "Recorded Network Activity",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Real-time visibility into all local & remote connections",
+                        text = "Internal Network Layer: Visibility into connections observed by ARCA's protocol manager",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -237,7 +242,45 @@ private fun DiagnosticsStatsCard(
             ) {
                 MetricColumn(title = "Total Events", value = stats.totalEvents.toString(), color = MaterialTheme.colorScheme.primary)
                 MetricColumn(title = "Alerts", value = stats.alertCount.toString(), color = if (stats.alertCount > 0) Color(0xFFF59E0B) else Color.Gray)
-                MetricColumn(title = "Unexpected", value = stats.unexpectedExternalCount.toString(), color = if (stats.unexpectedExternalCount > 0) MaterialTheme.colorScheme.error else VaultEmerald)
+                MetricColumn(title = "Active Protocols", value = stats.protocolCounts.size.toString(), color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ObservationScopeNoticeCard(modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(18.dp)
+                    .padding(top = 2.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = "Observation Scope Disclosure",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "This log records only network events initiated and observed through ARCA's internal networking layer (SFTP, FTPS, FTP, SMB, WebDAV). It reflects connections managed by ARCA's connection manager; it does not capture low-level OS traffic, system DNS queries, platform background daemons, or other applications.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

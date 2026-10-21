@@ -141,7 +141,8 @@ class NetworkPrivacyDiagnosticsTest {
         diagnostics.recordEvent("1", "SFTP", "192.168.1.5", NetworkPrivacyEventType.CONNECT_SUCCESS)
         val text = diagnostics.exportDiagnosticsText()
 
-        assertTrue(text.contains("=== ARCA NETWORK PRIVACY DIAGNOSTICS LOG ==="))
+        assertTrue(text.contains("=== ARCA-RECORDED NETWORK CONNECTIONS LOG ==="))
+        assertTrue(text.contains(NetworkPrivacyDiagnostics.OBSERVATION_SCOPE_DISCLOSURE))
         assertTrue(text.contains("SFTP -> 192.168.1.5"))
         assertTrue(text.contains("=== END OF LOG ==="))
 

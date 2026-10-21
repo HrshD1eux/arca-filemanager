@@ -167,6 +167,34 @@ class SecurityCenterAuditTest {
     }
 
     @Test
+    fun localPrivacyClaim_disclosesUserInitiatedNetworkCapabilityWithoutBlanketExclusion() {
+        val engine = SecurityAuditEngine()
+        val report = engine.performAudit(testContext)
+        val privacyClaim = report.claims.first { it.category == SecurityClaimCategory.LOCAL_PRIVACY }
+
+        // Must state offline-first and zero analytics SDKs
+        assertTrue(privacyClaim.verifiedFact.contains("zero third-party analytics"))
+
+        // Must disclose that ARCA supports user-initiated remote connections (no false blanket "never communicates over network")
+        assertTrue(
+            "Privacy claim must explain user-initiated remote network connections (SFTP/SMB/FTP/WebDAV)",
+            privacyClaim.platformLimitations.contains("user-initiated") || privacyClaim.platformLimitations.contains("SFTP")
+        )
+    }
+
+    @Test
+    fun vaultClaim_disclosesVolatileMemoryLimitationWhenUnlocked() {
+        val engine = SecurityAuditEngine()
+        val report = engine.performAudit(testContext)
+        val vaultClaim = report.claims.first { it.category == SecurityClaimCategory.VAULT_ENCRYPTION }
+
+        assertTrue(
+            "Vault claim must disclose volatile RAM behavior and lock/unlock reality",
+            vaultClaim.platformLimitations.contains("volatile") || vaultClaim.platformLimitations.contains("RAM")
+        )
+    }
+
+    @Test
     fun networkSecurityClaim_specifiesHostKeyPinningAndTlsValidation() {
         val engine = SecurityAuditEngine()
         val report = engine.performAudit(testContext)

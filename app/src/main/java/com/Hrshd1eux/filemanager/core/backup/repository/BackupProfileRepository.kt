@@ -86,7 +86,7 @@ class BackupProfileRepository(context: Context? = null) {
                 name = "Camera Photos Backup",
                 sourcePaths = listOf("/storage/emulated/0/DCIM"),
                 destinationPath = "/storage/emulated/0/Backups/DCIM",
-                mode = BackupMode.INCREMENTAL,
+                mode = BackupMode.COPY,
                 exclusionPatterns = listOf("*.tmp", ".thumbnails", ".cache")
             ),
             BackupProfile(
@@ -94,7 +94,7 @@ class BackupProfileRepository(context: Context? = null) {
                 name = "Documents Backup",
                 sourcePaths = listOf("/storage/emulated/0/Documents"),
                 destinationPath = "/storage/emulated/0/Backups/Documents",
-                mode = BackupMode.INCREMENTAL,
+                mode = BackupMode.COPY,
                 exclusionPatterns = listOf("*.tmp", "*.part", "~*")
             )
         )

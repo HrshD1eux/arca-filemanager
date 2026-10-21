@@ -149,14 +149,15 @@ class NetworkPrivacyDiagnostics(
      * Exports a sanitized diagnostic log formatted for inspection.
      */
     fun exportDiagnosticsText(): String = buildString {
-        appendLine("=== ARCA NETWORK PRIVACY DIAGNOSTICS LOG ===")
+        appendLine("=== ARCA-RECORDED NETWORK CONNECTIONS LOG ===")
+        appendLine(OBSERVATION_SCOPE_DISCLOSURE)
         appendLine("Generated At: ${System.currentTimeMillis()}")
         val stats = getStats()
-        appendLine("Total Events: ${stats.totalEvents}")
+        appendLine("Total Recorded Events: ${stats.totalEvents}")
         appendLine("Security Alerts: ${stats.alertCount}")
-        appendLine("Unexpected Outbound Calls: ${stats.unexpectedExternalCount}")
+        appendLine("Active Protocols: ${stats.protocolCounts.keys.ifEmpty { listOf("None") }.joinToString()}")
         appendLine()
-        appendLine("--- RECENT NETWORK EVENTS ---")
+        appendLine("--- RECENT RECORDED NETWORK EVENTS ---")
         for (event in getRecentEvents(MAX_CAPACITY)) {
             appendLine("[${event.timestamp}] ${event.protocol} -> ${event.destination} | ${event.eventType} | ${event.triggerCategory} | ${event.outcome}")
         }
@@ -187,6 +188,9 @@ class NetworkPrivacyDiagnostics(
 
     companion object {
         const val MAX_CAPACITY = 200
+
+        const val OBSERVATION_SCOPE_DISCLOSURE =
+            "Observation Scope: This log records only network events initiated and observed through ARCA's internal networking layer (SFTP, FTPS, FTP, SMB, WebDAV). It reflects connections managed by ARCA's remote protocol clients; it does not capture low-level OS traffic, system DNS resolution, platform background services, or traffic from other applications."
 
         @Volatile
         private var INSTANCE: NetworkPrivacyDiagnostics? = null

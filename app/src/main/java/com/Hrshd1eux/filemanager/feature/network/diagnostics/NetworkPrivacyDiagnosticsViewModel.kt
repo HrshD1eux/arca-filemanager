@@ -58,8 +58,8 @@ class NetworkPrivacyDiagnosticsViewModel(
     fun copyLogToClipboard(context: Context) {
         val log = diagnostics.exportDiagnosticsText()
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("ARCA Network Diagnostics", log)
+        val clip = ClipData.newPlainText("ARCA-Recorded Network Connections", log)
         clipboard.setPrimaryClip(clip)
-        Toast.makeText(context, "Network diagnostics copied to clipboard", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Network connections log copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 }

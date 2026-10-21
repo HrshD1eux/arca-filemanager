@@ -5,12 +5,13 @@ import java.util.UUID
 
 @Serializable
 enum class BackupMode(val displayName: String, val description: String) {
-    INCREMENTAL("Copy (Incremental)", "Copies only new and modified files safely without deleting destination files"),
-    MIRROR("Mirror Sync", "Synchronizes destination to match source, deleting destination files missing from source"),
+    COPY("Safe Copy (Default)", "Copies source files to destination safely without modifying or deleting existing destination files"),
+    INCREMENTAL("Incremental Copy", "Copies new and modified files after verifying change detection (size, timestamp, hash)"),
+    MIRROR("Mirror Sync (Caution)", "Copies and verifies files first, then deletes destination files missing from source with explicit confirmation"),
     FULL("Full Backup", "Copies all selected files unconditionally");
 
     companion object {
-        val COPY get() = INCREMENTAL
+        val DEFAULT get() = COPY
     }
 }
 
@@ -30,7 +31,7 @@ data class BackupProfile(
     val name: String,
     val sourcePaths: List<String>,
     val destinationPath: String,
-    val mode: BackupMode = BackupMode.INCREMENTAL,
+    val mode: BackupMode = BackupMode.COPY,
     val includeHiddenFiles: Boolean = false,
     val exclusionPatterns: List<String> = listOf("*.tmp", "*.part", ".cache", ".thumbnails"),
     val verifyIntegrity: Boolean = false,
