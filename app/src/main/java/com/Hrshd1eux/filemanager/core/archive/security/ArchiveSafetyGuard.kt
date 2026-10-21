@@ -62,10 +62,17 @@ object ArchiveSafetyGuard {
      */
     fun resolveAndValidateTarget(entryName: String, destinationDir: File): File {
         val cleanName = sanitizeAndValidateEntryName(entryName)
+        if (cleanName.contains(':') || File(cleanName).isAbsolute) {
+            throw PathTraversalException(entryName, cleanName)
+        }
         val targetFile = File(destinationDir, cleanName)
 
         val destCanonical = destinationDir.canonicalFile
-        val targetCanonical = targetFile.canonicalFile
+        val targetCanonical = try {
+            targetFile.canonicalFile
+        } catch (_: java.io.IOException) {
+            throw PathTraversalException(entryName, targetFile.path)
+        }
 
         val destCanonicalPath = destCanonical.path
         val targetCanonicalPath = targetCanonical.path
