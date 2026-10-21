@@ -118,8 +118,122 @@ object StoragePermissionManager {
      * Returns all currently active persisted SAF tree URIs.
      */
     fun getPersistedTreeUris(context: Context): List<Uri> {
-        return context.contentResolver.persistedUriPermissions
-            .filter { it.isReadPermission }
-            .map { it.uri }
+        return try {
+            context.contentResolver.persistedUriPermissions
+                .filter { it.isReadPermission }
+                .map { it.uri }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private const val PREFS_NAME = "arca_storage_permission_prefs"
+    private const val KEY_WAS_GRANTED = "was_previously_granted"
+
+    /**
+     * Determines the comprehensive storage access state (Milestone 1.5.1).
+     */
+    fun getStorageAccessState(context: Context): StorageAccessState {
+        val hasAll = hasAllFilesAccess(context)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val wasGranted = prefs.getBoolean(KEY_WAS_GRANTED, false)
+
+        if (hasAll) {
+            if (!wasGranted) {
+                prefs.edit().putBoolean(KEY_WAS_GRANTED, true).apply()
+            }
+            return StorageAccessState.fullAccess()
+        }
+
+        // Check if user has scoped tree URIs granted (Milestone 1.5.4)
+        val treeUris = getPersistedTreeUris(context)
+        if (treeUris.isNotEmpty()) {
+            return StorageAccessState.scopedAccess(treeUris.map { it.toString() })
+        }
+
+        val isRevoked = wasGranted
+        val canRequestDirectly = Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+
+        return StorageAccessState.denied(
+            canRequestDirectly = canRequestDirectly,
+            wasPreviouslyGranted = wasGranted,
+            isRevoked = isRevoked
+        )
+    }
+
+    /**
+     * Creates an Intent to allow the user to select and grant a specific folder tree (Milestone 1.5.4).
+     */
+    fun createOpenDocumentTreeIntent(): Intent {
+        return Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+            )
+        }
+    }
+
+    /**
+     * Releases a previously persisted SAF document tree URI permission (Milestone 1.5.4).
+     */
+    fun releasePersistableUriPermission(context: Context, treeUri: Uri) {
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        try {
+            context.contentResolver.releasePersistableUriPermission(treeUri, flags)
+        } catch (_: SecurityException) {}
+    }
+
+    /**
+     * Returns a detailed diagnostics snapshot for transparent debugging (Milestone 1.5.5).
+     */
+    fun getDiagnostics(context: Context): StoragePermissionDiagnostics {
+        val hasAll = hasAllFilesAccess(context)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val wasGranted = prefs.getBoolean(KEY_WAS_GRANTED, false)
+        val isRevoked = wasGranted && !hasAll
+
+        val isManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else false
+
+        val legacyRead = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val legacyWrite = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val treeUris = getPersistedTreeUris(context)
+
+        val summary = buildString {
+            append("Android API: ${Build.VERSION.SDK_INT}. ")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                append("All Files Access (isExternalStorageManager): $isManager. ")
+            } else {
+                append("Legacy Permissions: Read=$legacyRead, Write=$legacyWrite. ")
+            }
+            append("Persisted SAF Trees: ${treeUris.size}. ")
+            if (isRevoked) {
+                append("Warning: Permission was previously granted and later revoked by system/user.")
+            }
+        }
+
+        return StoragePermissionDiagnostics(
+            apiLevel = Build.VERSION.SDK_INT,
+            isAllFilesSupported = isAllFilesAccessSupported(),
+            isExternalStorageManager = isManager,
+            hasLegacyReadPermission = legacyRead,
+            hasLegacyWritePermission = legacyWrite,
+            persistedUriCount = treeUris.size,
+            persistedUris = treeUris.map { it.toString() },
+            wasEverGranted = wasGranted,
+            isRevoked = isRevoked,
+            diagnosticSummary = summary
+        )
     }
 }

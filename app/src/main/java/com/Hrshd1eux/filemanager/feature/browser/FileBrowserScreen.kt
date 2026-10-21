@@ -46,6 +46,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -256,6 +257,16 @@ fun FileBrowserScreen(
     ) {
         val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
         viewModel.refresh(hasPermission)
+    }
+
+    val openDocumentTreeLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            StoragePermissionManager.takePersistableUriPermission(context, uri)
+            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+            viewModel.refresh(hasPermission = hasPermission || StoragePermissionManager.getPersistedTreeUris(context).isNotEmpty())
+        }
     }
 
     val requestStoragePermission: () -> Unit = {
@@ -606,6 +617,7 @@ fun FileBrowserScreen(
                     PermissionDeniedView(
                         reason = state.reason,
                         onGrantPermission = requestStoragePermission,
+                        onSelectScopedFolder = { openDocumentTreeLauncher.launch(null) },
                         onReadPrivacyStatement = onNavigateToPrivacy
                     )
                 }
@@ -1482,8 +1494,18 @@ private fun PermissionDeniedView(
     reason: String,
     onGrantPermission: () -> Unit,
     modifier: Modifier = Modifier,
+    onSelectScopedFolder: () -> Unit = {},
     onReadPrivacyStatement: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val accessState = remember(context) { StoragePermissionManager.getStorageAccessState(context) }
+    val titleText = if (accessState.isRevoked) "Storage Access Revoked" else "Storage Permission Required"
+    val explanationText = if (accessState.isRevoked) {
+        "Storage access was previously granted, but has been revoked by the system or in Settings. Re-grant access to resume browsing your files."
+    } else {
+        reason
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -1517,14 +1539,14 @@ private fun PermissionDeniedView(
                 }
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = "Storage Permission Required",
+                    text = titleText,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = reason,
+                    text = explanationText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1573,6 +1595,20 @@ private fun PermissionDeniedView(
                             "Grant Storage Access"
                         }
                     )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onSelectScopedFolder,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Choose Specific Folder (Scoped Access)")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(
