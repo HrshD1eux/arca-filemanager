@@ -18,9 +18,12 @@ enum class ChecksumAlgorithm(
 ) {
     CRC32("CRC32", "Error-detection code", false),
     MD5("MD5", "Legacy checksum", false),
+    SHA_1("SHA-1", "Legacy hash", false),
     SHA_256("SHA-256", "Secure hash", true),
     SHA_512("SHA-512", "High-security hash", true)
 }
+
+class FileChangedDuringVerificationException(message: String) : IllegalStateException(message)
 
 data class ChecksumItem(
     val algorithm: ChecksumAlgorithm,
@@ -99,7 +102,9 @@ class ChecksumEngine(
                 throw IllegalArgumentException("File does not exist: ${file.path}")
             }
             val startTime = System.currentTimeMillis()
-            val totalBytes = file.length()
+            val initialLength = file.length()
+            val initialLastModified = file.lastModified()
+            val totalBytes = initialLength
             val buffer = ByteArray(BUFFER_SIZE)
             var bytesReadTotal = 0L
 
@@ -119,6 +124,19 @@ class ChecksumEngine(
                 }
                 ChecksumAlgorithm.MD5 -> {
                     val digest = MessageDigest.getInstance("MD5")
+                    FileInputStream(file).use { fis ->
+                        var len: Int
+                        while (fis.read(buffer).also { len = it } != -1) {
+                            coroutineContext.ensureActive()
+                            digest.update(buffer, 0, len)
+                            bytesReadTotal += len
+                            onProgress?.invoke(bytesReadTotal, totalBytes)
+                        }
+                    }
+                    digest.digest().toHex()
+                }
+                ChecksumAlgorithm.SHA_1 -> {
+                    val digest = MessageDigest.getInstance("SHA-1")
                     FileInputStream(file).use { fis ->
                         var len: Int
                         while (fis.read(buffer).also { len = it } != -1) {
@@ -157,6 +175,14 @@ class ChecksumEngine(
                     digest.digest().toHex()
                 }
             }
+
+            // Milestone 1.4.22: Report when a file changes during verification
+            if (file.length() != initialLength || file.lastModified() != initialLastModified) {
+                throw FileChangedDuringVerificationException(
+                    "File '${file.name}' changed during verification: initial length/mtime ($initialLength, $initialLastModified) does not match final state (${file.length()}, ${file.lastModified()})."
+                )
+            }
+
             val elapsed = System.currentTimeMillis() - startTime
             ChecksumItem(algorithm, hashHex, elapsed)
         }

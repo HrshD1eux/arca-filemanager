@@ -388,7 +388,7 @@ private fun ChecksumItemCard(
                     val (badgeBg, badgeFg) = when (item.algorithm) {
                         ChecksumAlgorithm.SHA_256 -> Color(0xFF4CAF50).copy(alpha = 0.15f) to Color(0xFF2E7D32)
                         ChecksumAlgorithm.SHA_512 -> Color(0xFF4CAF50).copy(alpha = 0.15f) to Color(0xFF2E7D32)
-                        ChecksumAlgorithm.MD5 -> Color(0xFFFF9800).copy(alpha = 0.15f) to Color(0xFFE65100)
+                        ChecksumAlgorithm.MD5, ChecksumAlgorithm.SHA_1 -> Color(0xFFFF9800).copy(alpha = 0.15f) to Color(0xFFE65100)
                         ChecksumAlgorithm.CRC32 -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
                     }
 

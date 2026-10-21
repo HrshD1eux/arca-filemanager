@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -212,9 +213,34 @@ fun FileComparisonDialog(
                             }
                         }
                     } else {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = res.metadataMatchDisclaimer,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+
                         OutlinedButton(
                             onClick = {
                                 isCalculatingHash = true
+                                errorMessage = null
                                 coroutineScope.launch {
                                     val hashRes = comparisonEngine.compareFiles(
                                         file1 = File(file1.path),
@@ -224,6 +250,7 @@ fun FileComparisonDialog(
                                     )
                                     isCalculatingHash = false
                                     hashRes.onSuccess { comparisonResult = it }
+                                        .onFailure { errorMessage = it.localizedMessage ?: "Verification failed" }
                                 }
                             },
                             enabled = !isCalculatingHash,

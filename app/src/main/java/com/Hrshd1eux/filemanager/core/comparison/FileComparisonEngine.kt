@@ -32,8 +32,16 @@ data class DetailedFileComparison(
     val hash2: String? = null,
     val isHashMatch: Boolean? = null,
     val isIdentical: Boolean,
-    val summary: String
-)
+    val summary: String,
+    val isContentVerified: Boolean = isHashMatch != null,
+    val metadataMatchDisclaimer: String = METADATA_MATCH_DISCLAIMER
+) {
+    companion object {
+        const val METADATA_MATCH_DISCLAIMER =
+            "Notice: Matching metadata (name, size, modification date) suggests files are likely similar, " +
+            "but does NOT establish identical contents without cryptographic hash verification."
+    }
+}
 
 class FileComparisonEngine(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,

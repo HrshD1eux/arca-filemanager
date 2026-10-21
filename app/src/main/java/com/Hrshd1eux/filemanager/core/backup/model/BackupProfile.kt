@@ -5,9 +5,13 @@ import java.util.UUID
 
 @Serializable
 enum class BackupMode(val displayName: String, val description: String) {
-    INCREMENTAL("Incremental", "Copies only new and modified files"),
-    MIRROR("Mirror Sync", "Safely syncs all source files to destination non-destructively"),
-    FULL("Full Backup", "Copies all selected files unconditionally")
+    INCREMENTAL("Copy (Incremental)", "Copies only new and modified files safely without deleting destination files"),
+    MIRROR("Mirror Sync", "Synchronizes destination to match source, deleting destination files missing from source"),
+    FULL("Full Backup", "Copies all selected files unconditionally");
+
+    companion object {
+        val COPY get() = INCREMENTAL
+    }
 }
 
 @Serializable
