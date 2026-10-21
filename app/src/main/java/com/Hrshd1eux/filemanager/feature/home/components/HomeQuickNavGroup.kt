@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
@@ -46,6 +47,7 @@ fun HomeQuickNavGroup(
     onRecentsClick: () -> Unit,
     onVaultClick: () -> Unit,
     onNetworkClick: () -> Unit,
+    onInternalStorageClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     showVault: Boolean = true
 ) {
@@ -109,6 +111,20 @@ fun HomeQuickNavGroup(
                 title = "Network",
                 badgeText = "Offline / Local",
                 onClick = onNetworkClick
+            )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+
+            QuickNavItemRow(
+                icon = Icons.Default.Folder,
+                iconTint = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                title = "Internal Storage",
+                badgeText = "Main storage (/sdcard)",
+                onClick = onInternalStorageClick
             )
         }
     }

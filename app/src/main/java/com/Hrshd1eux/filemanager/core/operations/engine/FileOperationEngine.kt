@@ -546,10 +546,7 @@ class FileOperationEngine(
                         val file = resolved.file
                         if (!file.exists()) continue
                         val size = if (file.isDirectory) 0L else file.length()
-                        val deleted = file.deleteRecursively()
-                        if (!deleted) {
-                            throw IOException("Failed to delete local file/folder: ${target.path}")
-                        }
+                        com.Hrshd1eux.filemanager.core.trash.shredder.FileShredder.shred(file, ioDispatcher).getOrThrow()
                         filesProcessed++
                         bytesProcessed += size
                     }

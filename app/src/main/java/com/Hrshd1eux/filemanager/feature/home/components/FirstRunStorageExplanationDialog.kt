@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,7 +65,10 @@ fun FirstRunStorageExplanationDialog(
 
     AlertDialog(
         onDismissRequest = onContinueWithLimitedAccess,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         shape = RoundedCornerShape(24.dp),
         title = {
             Row(
@@ -105,8 +109,9 @@ fun FirstRunStorageExplanationDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(max = 340.dp)
                     .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Section 1: Why broader file access is useful
                 Text(
@@ -202,19 +207,21 @@ fun FirstRunStorageExplanationDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = onGrantAccess,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Grant Storage Access")
-            }
-        },
-        dismissButton = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Button(
+                    onClick = onGrantAccess,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Grant Storage Access")
+                }
+
                 OutlinedButton(
                     onClick = onContinueWithLimitedAccess,
                     shape = RoundedCornerShape(10.dp),
@@ -222,8 +229,6 @@ fun FirstRunStorageExplanationDialog(
                 ) {
                     Text("Continue with Limited Access")
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
 
                 TextButton(
                     onClick = onReadPrivacyStatement,
@@ -242,7 +247,8 @@ fun FirstRunStorageExplanationDialog(
                     )
                 }
             }
-        }
+        },
+        dismissButton = null
     )
 }
 

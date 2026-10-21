@@ -79,7 +79,7 @@ class FileBrowserViewModel @JvmOverloads constructor(
     private val operationManager: OperationManager = OperationManager(ioDispatcher),
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     val favoritesRepository: FavoritesRepository = FavoritesRepository(),
-    val recentsRepository: RecentsRepository = RecentsRepository(),
+    val recentsRepository: RecentsRepository = RecentsRepository.getInstance(),
     val lastDestinationRepository: LastDestinationRepository = LastDestinationRepository(),
     val archivePreferencesRepository: com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository = com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository.getInstance(),
     val appSettingsRepository: com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository = com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance(),

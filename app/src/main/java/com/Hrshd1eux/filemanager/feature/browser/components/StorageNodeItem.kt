@@ -349,16 +349,6 @@ fun StorageNodeItem(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Send to…") },
-                                leadingIcon = {
-                                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onSendToClick()
-                                }
-                            )
-                            DropdownMenuItem(
                                 text = { Text("Checksums") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))

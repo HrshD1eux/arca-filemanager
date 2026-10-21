@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderZip
@@ -49,7 +50,9 @@ import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 fun HomeCategoriesGrid(
     onCategoryClick: (CategoryFilter) -> Unit,
     modifier: Modifier = Modifier,
-    onDownloadsClick: (() -> Unit)? = null
+    onDownloadsClick: (() -> Unit)? = null,
+    onAppsClick: (() -> Unit)? = null,
+    onTrashClick: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -135,19 +138,31 @@ fun HomeCategoriesGrid(
 
             CategoryGridItem(
                 icon = Icons.Default.Android,
-                label = "APKs",
+                label = "Apps & APKs",
                 iconTint = Color(0xFF43A047), // Green
                 containerColor = Color(0xFF43A047).copy(alpha = 0.12f),
-                onClick = { onCategoryClick(CategoryFilter.APKS) },
+                onClick = {
+                    if (onAppsClick != null) {
+                        onAppsClick()
+                    } else {
+                        onCategoryClick(CategoryFilter.APKS)
+                    }
+                },
                 modifier = Modifier.weight(1f)
             )
 
             CategoryGridItem(
-                icon = Icons.Default.Category,
-                label = "Other",
-                iconTint = Color(0xFF78909C), // Slate
-                containerColor = Color(0xFF78909C).copy(alpha = 0.12f),
-                onClick = { onCategoryClick(CategoryFilter.OTHER) },
+                icon = Icons.Default.DeleteSweep,
+                label = "Trash",
+                iconTint = Color(0xFFE53935), // Red
+                containerColor = Color(0xFFE53935).copy(alpha = 0.12f),
+                onClick = {
+                    if (onTrashClick != null) {
+                        onTrashClick()
+                    } else {
+                        onCategoryClick(CategoryFilter.OTHER)
+                    }
+                },
                 modifier = Modifier.weight(1f)
             )
         }

@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel @JvmOverloads constructor(
     application: Application,
     private val favoritesRepository: FavoritesRepository = FavoritesRepository(),
-    private val recentsRepository: RecentsRepository = RecentsRepository(),
+    private val recentsRepository: RecentsRepository = RecentsRepository.getInstance(application),
     private val storageAnalyzer: LocalStorageAnalyzer = LocalStorageAnalyzer(),
     private val vaultLockManager: VaultLockManager = VaultLockManager.getInstance(application),
     private val appSettingsRepository: com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository = com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance(application)

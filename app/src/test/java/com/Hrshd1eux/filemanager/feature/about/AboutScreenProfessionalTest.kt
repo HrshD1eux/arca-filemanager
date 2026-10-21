@@ -90,7 +90,7 @@ class AboutScreenProfessionalTest {
         // 5. Support & Feedback
         assertTrue("Must include SupportAndFeedbackCard", content.contains("SupportAndFeedbackCard"))
         assertTrue("Must link to GitHub issues", content.contains("https://github.com/HrshD1eux/filemanager/issues"))
-        assertTrue("Must provide technical feedback email", content.contains("support@arca-filemanager.local"))
+        assertTrue("Must provide technical feedback email", content.contains("HrshD1eux@proton.me"))
 
         // 6. Legal Information
         assertTrue("Must include LegalInformationCard", content.contains("LegalInformationCard"))

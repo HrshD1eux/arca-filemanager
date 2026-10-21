@@ -37,7 +37,8 @@ class ViewModelReflectionInstantiationTest {
             HomeViewModel::class.java,
             BackupViewModel::class.java,
             InstalledAppsViewModel::class.java,
-            VaultViewModel::class.java
+            VaultViewModel::class.java,
+            com.Hrshd1eux.filemanager.feature.trash.TrashViewModel::class.java
         )
 
         for (clazz in androidViewModelClasses) {

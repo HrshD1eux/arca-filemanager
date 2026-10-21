@@ -373,7 +373,8 @@ class InstalledAppsRepository(
             false
         }
 
-        val permissionsCount = pkg.requestedPermissions?.size ?: 0
+        val permissions = pkg.requestedPermissions?.toList() ?: emptyList()
+        val permissionsCount = permissions.size
 
         return PackageExtraInfo(
             splitApks = splitList,
@@ -383,6 +384,7 @@ class InstalledAppsRepository(
             targetSdkVersion = appInfo.targetSdkVersion,
             minSdkVersion = minSdk,
             requestedPermissionsCount = permissionsCount,
+            declaredPermissions = permissions,
             processName = appInfo.processName,
             storageUuid = storageUuidStr,
             isHardwareAccelerated = isHwAccel,

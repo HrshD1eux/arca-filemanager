@@ -954,14 +954,6 @@ private fun CategoryListItemRow(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Send to…") },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onSendTo()
-                            }
-                        )
-                        DropdownMenuItem(
                             text = { Text("Show in folder") },
                             leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) },
                             onClick = {
@@ -1176,14 +1168,6 @@ private fun CategoryGridItemCard(
                                 onClick = {
                                     showMenu = false
                                     onShare()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Send to…") },
-                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    onSendTo()
                                 }
                             )
                             DropdownMenuItem(

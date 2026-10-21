@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -86,7 +87,8 @@ fun HomeScreen(
     onNavigateToBackup: () -> Unit = {},
     onNavigateToNetworkBrowser: (connectionId: String, title: String) -> Unit = { _, _ -> },
     onNavigateToSettings: () -> Unit,
-    onNavigateToAbout: () -> Unit,
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToTrash: () -> Unit = {},
     modifier: Modifier = Modifier,
     onNavigateToPrivacy: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
@@ -251,13 +253,13 @@ fun HomeScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(id = R.string.about_title)) },
+                                text = { Text("Trash") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.Info, contentDescription = null)
+                                    Icon(Icons.Default.DeleteSweep, contentDescription = null)
                                 },
                                 onClick = {
                                     showMenu = false
-                                    onNavigateToAbout()
+                                    onNavigateToTrash()
                                 }
                             )
                         }
@@ -289,7 +291,7 @@ fun HomeScreen(
                 )
             }
 
-            // 2. Quick Navigation Group: Favorites, Recent, Private Vault, Network
+            // 2. Quick Navigation Group: Favorites, Recent, Private Vault, Network, Internal Storage
             item {
                 HomeQuickNavGroup(
                     favoriteCount = favorites.size,
@@ -298,14 +300,19 @@ fun HomeScreen(
                     onFavoritesClick = { showFavoritesSheet = true },
                     onRecentsClick = { showRecentsSheet = true },
                     onVaultClick = onNavigateToVault,
-                    onNetworkClick = { showNetworkSheet = true }
+                    onNetworkClick = { showNetworkSheet = true },
+                    onInternalStorageClick = {
+                        onNavigateToBrowser(android.os.Environment.getExternalStorageDirectory().absolutePath, "Internal Storage")
+                    }
                 )
             }
 
-            // 3. Categories Grid: Images, Videos, Audio, Documents, Downloads, Archives, APKs, Other
+            // 3. Categories Grid: Images, Videos, Audio, Documents, Downloads, Archives, Apps & APKs, Trash
             item {
                 HomeCategoriesGrid(
-                    onCategoryClick = onNavigateToCategory
+                    onCategoryClick = onNavigateToCategory,
+                    onAppsClick = onNavigateToInstalledApps,
+                    onTrashClick = onNavigateToTrash
                 )
             }
 

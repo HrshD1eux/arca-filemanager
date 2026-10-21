@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -74,9 +75,11 @@ import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 fun DuplicateFinderScreen(
     rootPath: String? = null,
     onNavigateBack: () -> Unit,
+    onNavigateToPreview: ((filePath: String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: DuplicateFinderViewModel = viewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
     val activeProgress by viewModel.activeProgress.collectAsStateWithLifecycle()
@@ -337,7 +340,14 @@ fun DuplicateFinderScreen(
                                 group = group,
                                 selectedIds = selectedIds,
                                 onToggleFile = { viewModel.toggleSelection(it) },
-                                onInspectFile = { inspectedNode = it }
+                                onInspectFile = { inspectedNode = it },
+                                onPreviewFile = { file ->
+                                    if (onNavigateToPreview != null) {
+                                        onNavigateToPreview(file.path)
+                                    } else {
+                                        com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher.view(context, file)
+                                    }
+                                }
                             )
                         }
                     }
@@ -387,6 +397,7 @@ private fun DuplicateGroupCard(
     selectedIds: Set<String>,
     onToggleFile: (String) -> Unit,
     onInspectFile: (StorageNode) -> Unit,
+    onPreviewFile: (StorageNode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -493,6 +504,20 @@ private fun DuplicateGroupCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    IconButton(
+                        onClick = { onPreviewFile(file) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = "Preview file",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }

@@ -580,13 +580,13 @@ private fun SupportAndFeedbackCard(
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:support@arca-filemanager.local")
+                            data = Uri.parse("mailto:HrshD1eux@proton.me")
                             putExtra(Intent.EXTRA_SUBJECT, "ARCA Feedback (v$versionName)")
                         }
                         runCatching {
                             context.startActivity(Intent.createChooser(emailIntent, "Send Feedback"))
                         }.onFailure {
-                            Toast.makeText(context, "Contact: support@arca-filemanager.local", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Contact: HrshD1eux@proton.me", Toast.LENGTH_LONG).show()
                         }
                     }
                     .padding(vertical = 8.dp),
@@ -607,7 +607,7 @@ private fun SupportAndFeedbackCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "support@arca-filemanager.local",
+                        text = "HrshD1eux@proton.me",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -656,7 +656,7 @@ private fun LegalInformationCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Copyright © 2026 ARCA Contributors. All rights reserved.",
+                text = "Copyright © 2026 ARCA Contributors & hrshd1eux Studio. All rights of ARCA are reserved by hrshd1eux Studio.",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface

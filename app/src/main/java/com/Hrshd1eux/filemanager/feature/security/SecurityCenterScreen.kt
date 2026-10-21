@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -86,6 +88,7 @@ fun SecurityCenterScreen(
     val auditReport by viewModel.auditReport.collectAsStateWithLifecycle()
     val isAuditing by viewModel.isAuditing.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    var showBoundaryDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (auditReport == null) {
@@ -184,7 +187,10 @@ fun SecurityCenterScreen(
             ) {
                 // Header Posture Card
                 item {
-                    OverallPostureCard(report = report)
+                    OverallPostureCard(
+                        report = report,
+                        onPlatformBoundariesClick = { showBoundaryDialog = true }
+                    )
                 }
 
                 // Educational / Truthful Notice
@@ -258,12 +264,19 @@ fun SecurityCenterScreen(
             }
         }
     }
+
+    if (showBoundaryDialog) {
+        PlatformBoundaryExplanationDialog(
+            onDismiss = { showBoundaryDialog = false }
+        )
+    }
 }
 
 @Composable
 private fun OverallPostureCard(
     report: SecurityAuditReport,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPlatformBoundariesClick: () -> Unit = {}
 ) {
     val (statusColor, statusIcon) = when (report.overallStatus) {
         SecurityOverallStatus.EXCELLENT -> VaultEmerald to Icons.Default.Shield
@@ -324,7 +337,8 @@ private fun OverallPostureCard(
                 StatusMetricPill(
                     label = "Platform Boundaries",
                     count = report.infoCount,
-                    color = Color(0xFF3B82F6)
+                    color = Color(0xFF3B82F6),
+                    onClick = onPlatformBoundariesClick
                 )
                 StatusMetricPill(
                     label = "Advisories",
@@ -340,11 +354,15 @@ private fun OverallPostureCard(
 private fun StatusMetricPill(
     label: String,
     count: Int,
-    color: Color
+    color: Color,
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.12f)
+        color = color.copy(alpha = 0.12f),
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -363,6 +381,15 @@ private fun StatusMetricPill(
                 fontWeight = FontWeight.SemiBold,
                 color = color
             )
+            if (onClick != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Details",
+                    tint = color,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
         }
     }
 }
@@ -645,5 +672,103 @@ private fun SecurityClaimCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PlatformBoundaryExplanationDialog(
+    onDismiss: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = Color(0xFF3B82F6),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "What is a Platform Boundary?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "A Platform Boundary is a technical and physical security barrier enforced by the Android OS, Linux kernel, and device hardware that user-space apps cannot cross without root access:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                BoundaryPoint(
+                    title = "1. Linux UID Isolation & App Sandboxing",
+                    description = "Every Android app runs under an isolated Linux User ID (e.g. u0_a181). ARCA cannot read or inspect other apps' private internal databases (/data/data/<pkg>)."
+                )
+
+                BoundaryPoint(
+                    title = "2. Flash Wear-Leveling (FTL)",
+                    description = "UFS & eMMC flash memory controllers automatically remap logical write addresses. No app can guarantee the physical eradication of worn-out NAND cells without hardware-level crypto-erase."
+                )
+
+                BoundaryPoint(
+                    title = "3. Hardware Keystore & Secure Enclave",
+                    description = "Cryptographic keys generated inside the hardware TEE (StrongBox) never enter RAM. ARCA can ask the enclave to sign or decrypt, but the raw key is never exposed."
+                )
+
+                BoundaryPoint(
+                    title = "4. Scoped Storage & Platform Policies",
+                    description = "Android 11+ restricts access to system directories (Android/data, Android/obb) and OS firmware partitions protected by dm-verity."
+                )
+
+                BoundaryPoint(
+                    title = "5. Out-of-Scope Network Observability",
+                    description = "ARCA strictly monitors its own point-to-point network channels (SFTP, SMB, WebDAV), but cannot observe background network connections from third-party apps without a system VPN loopback."
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Got It")
+            }
+        }
+    )
+}
+
+@Composable
+private fun BoundaryPoint(
+    title: String,
+    description: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .padding(10.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

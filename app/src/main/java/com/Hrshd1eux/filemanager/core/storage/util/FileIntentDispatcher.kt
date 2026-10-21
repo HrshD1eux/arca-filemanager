@@ -26,6 +26,8 @@ object FileIntentDispatcher {
             return
         }
 
+        com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository.getInstance(context).recordAccess(node)
+
         try {
             val uri = getUriForNode(context, file)
             val mimeType = node.mimeType ?: FileTypeResolver.resolveMimeType(node.name)
@@ -54,6 +56,8 @@ object FileIntentDispatcher {
             Toast.makeText(context, "File does not exist", Toast.LENGTH_SHORT).show()
             return
         }
+
+        com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository.getInstance(context).recordAccess(node)
 
         try {
             val uri = getUriForNode(context, file)

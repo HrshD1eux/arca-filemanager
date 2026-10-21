@@ -508,13 +508,13 @@ private fun PrivacyContactCard(
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:support@arca-filemanager.local")
+                            data = Uri.parse("mailto:HrshD1eux@proton.me")
                             putExtra(Intent.EXTRA_SUBJECT, "Privacy Inquiry - ARCA")
                         }
                         runCatching {
                             context.startActivity(Intent.createChooser(emailIntent, "Send Privacy Inquiry"))
                         }.onFailure {
-                            Toast.makeText(context, "Contact: support@arca-filemanager.local", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Contact: HrshD1eux@proton.me", Toast.LENGTH_LONG).show()
                         }
                     }
                     .padding(vertical = 8.dp),
@@ -535,7 +535,7 @@ private fun PrivacyContactCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "support@arca-filemanager.local",
+                        text = "HrshD1eux@proton.me",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -27,6 +27,7 @@ data class PackageExtraInfo(
     val targetSdkVersion: Int = 0,
     val minSdkVersion: Int? = null,
     val requestedPermissionsCount: Int = 0,
+    val declaredPermissions: List<String> = emptyList(),
     val processName: String? = null,
     val storageUuid: String? = null,
     val isHardwareAccelerated: Boolean = false,

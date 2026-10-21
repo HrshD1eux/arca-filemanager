@@ -133,7 +133,7 @@ class PrivacyStatementVerificationTest {
         // 7. Contact & Privacy Inquiries
         assertTrue("Must disclose contact information", content.contains("Contact & Privacy Inquiries"))
         assertTrue("Must provide issue tracker", content.contains("github.com/HrshD1eux/filemanager/issues"))
-        assertTrue("Must provide contact email", content.contains("support@arca-filemanager.local"))
+        assertTrue("Must provide contact email", content.contains("HrshD1eux@proton.me"))
     }
 
     @Test

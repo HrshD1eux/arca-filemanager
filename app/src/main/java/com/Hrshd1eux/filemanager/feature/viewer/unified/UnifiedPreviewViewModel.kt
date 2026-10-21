@@ -325,6 +325,8 @@ class UnifiedPreviewViewModel @JvmOverloads constructor(
                 return@launch
             }
 
+            com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository.getInstance().recordAccess(node)
+
             val type = PreviewTypeResolver.resolve(node.name, node.mimeType)
             _previewType.value = type
 
@@ -389,10 +391,16 @@ class UnifiedPreviewViewModel @JvmOverloads constructor(
 
                 PreviewType.UNSUPPORTED -> {
                     val mime = node.mimeType ?: FileTypeResolver.resolveMimeType(file.name)
+                    val ext = file.extension.lowercase()
+                    val reason = if (ext.startsWith("crypt") || ext.matches(Regex("crypt\\d+"))) {
+                        "WhatsApp Encrypted Database (.${file.extension.uppercase()}): Encrypted using AES-256-GCM. Plaintext contents cannot be previewed because the decryption key is securely isolated inside WhatsApp's private app sandbox (/data/data/com.whatsapp/files/key)."
+                    } else {
+                        "No in-app preview available for .${file.extension.uppercase()} files."
+                    }
                     _previewState.value = PreviewState.Unsupported(
                         file = file,
                         mimeType = mime,
-                        reason = "No in-app preview available for .${file.extension.uppercase()} files."
+                        reason = reason
                     )
                 }
             }

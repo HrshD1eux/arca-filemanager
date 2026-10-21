@@ -185,6 +185,7 @@ class ImageViewerViewModel @JvmOverloads constructor(
     private fun loadCurrentImageBitmap() {
         loadBitmapJob?.cancel()
         val node = currentImage ?: return
+        com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository.getInstance().recordAccess(node)
 
         // Fast path: cached in memory
         val cached = bitmapCache[node.path]

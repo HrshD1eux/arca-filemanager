@@ -48,12 +48,13 @@ class ReleaseNavigationAuditTest {
             Screen.SecurityCenter,
             Screen.NetworkDiagnostics,
             Screen.Backup,
+            Screen.Trash,
             Screen.NetworkBrowser(connectionId = "test_conn")
         )
 
-        assertEquals("Screen sealed hierarchy must contain exactly 20 distinct route types", 20, allScreens.size)
+        assertEquals("Screen sealed hierarchy must contain exactly 21 distinct route types", 21, allScreens.size)
         val routeNames = allScreens.map { it::class.simpleName }.toSet()
-        assertEquals("Each route must have a unique class name", 20, routeNames.size)
+        assertEquals("Each route must have a unique class name", 21, routeNames.size)
     }
 
     @Test
@@ -68,6 +69,7 @@ class ReleaseNavigationAuditTest {
         assertNotNull(json.encodeToString(Screen.SecurityCenter))
         assertNotNull(json.encodeToString(Screen.NetworkDiagnostics))
         assertNotNull(json.encodeToString(Screen.Backup))
+        assertNotNull(json.encodeToString(Screen.Trash))
     }
 
     @Test

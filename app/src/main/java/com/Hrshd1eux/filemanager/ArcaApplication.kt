@@ -3,7 +3,11 @@ package com.Hrshd1eux.filemanager
 import android.app.Application
 import com.Hrshd1eux.filemanager.core.network.bridge.NetworkStorageOperator
 import com.Hrshd1eux.filemanager.core.operations.engine.RemoteStorageOperatorRegistry
-import kotlinx.coroutines.CoroutineScope
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.Hrshd1eux.filemanager.core.trash.worker.TrashAutoPurgeWorker
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -24,9 +28,14 @@ class ArcaApplication : Application() {
         // Register remote storage bridge into offline operations core
         RemoteStorageOperatorRegistry.register(NetworkStorageOperator())
 
-        // Prune any lingering temporary shared APK copies from previous sessions
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            com.Hrshd1eux.filemanager.core.storage.apk.ApkShareManager.getInstance().cleanupOldCopies(cacheDir)
+        // Schedule 30-day trash auto-purge via WorkManager
+        runCatching {
+            val purgeRequest = PeriodicWorkRequestBuilder<TrashAutoPurgeWorker>(24, TimeUnit.HOURS).build()
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                TrashAutoPurgeWorker.WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                purgeRequest
+            )
         }
     }
 }

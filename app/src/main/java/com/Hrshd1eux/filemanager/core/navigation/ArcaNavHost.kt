@@ -40,6 +40,7 @@ import com.Hrshd1eux.filemanager.feature.network.browser.NetworkFileBrowserScree
 import com.Hrshd1eux.filemanager.feature.network.diagnostics.NetworkPrivacyDiagnosticsScreen
 import com.Hrshd1eux.filemanager.feature.security.SecurityCenterScreen
 import com.Hrshd1eux.filemanager.feature.settings.SettingsScreen
+import com.Hrshd1eux.filemanager.feature.trash.TrashScreen
 import com.Hrshd1eux.filemanager.feature.vault.VaultScreen
 import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController
 import com.Hrshd1eux.filemanager.feature.viewer.audio.ui.AudioMiniPlayer
@@ -120,7 +121,8 @@ fun ArcaNavHost(
                 },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) },
-                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
+                onNavigateToTrash = { navController.navigate(Screen.Trash) }
             )
         }
 
@@ -225,7 +227,10 @@ fun ArcaNavHost(
             val route = backStackEntry.toRoute<Screen.DuplicateFinder>()
             DuplicateFinderScreen(
                 rootPath = route.rootPath,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPreview = { filePath ->
+                    navController.navigate(Screen.Preview(initialPath = filePath))
+                }
             )
         }
 
@@ -412,6 +417,17 @@ fun ArcaNavHost(
                 connectionId = route.connectionId,
                 initialPath = route.initialPath,
                 title = route.title,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.Trash>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            TrashScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

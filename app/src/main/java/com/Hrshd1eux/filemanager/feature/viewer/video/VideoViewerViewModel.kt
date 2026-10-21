@@ -264,6 +264,7 @@ class VideoViewerViewModel @JvmOverloads constructor(
 
     private fun loadCurrentVideoMetadata() {
         val node = currentVideo ?: return
+        com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository.getInstance().recordAccess(node)
         _playbackState.value = VideoPlaybackState.Preparing
         _currentPositionMs.value = 0L
         _durationMs.value = 0L

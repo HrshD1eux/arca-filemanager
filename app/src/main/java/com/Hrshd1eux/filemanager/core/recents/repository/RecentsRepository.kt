@@ -12,7 +12,8 @@ import kotlinx.serialization.json.Json
 
 class RecentsRepository(context: Context? = null) {
 
-    private val prefs: SharedPreferences? = context?.getSharedPreferences("arca_recents_prefs", Context.MODE_PRIVATE)
+    private val appContext: Context? = context?.applicationContext ?: com.Hrshd1eux.filemanager.ArcaApplication.instance
+    private val prefs: SharedPreferences? = appContext?.getSharedPreferences("arca_recents_prefs", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
 
     private val _recents = MutableStateFlow<List<RecentItem>>(loadRecents())
@@ -60,5 +61,14 @@ class RecentsRepository(context: Context? = null) {
     companion object {
         private const val KEY_RECENTS_JSON = "recents_history_json"
         const val MAX_RECENTS = 50
+
+        @Volatile
+        private var instance: RecentsRepository? = null
+
+        fun getInstance(context: Context? = null): RecentsRepository {
+            return instance ?: synchronized(this) {
+                instance ?: RecentsRepository(context).also { instance = it }
+            }
+        }
     }
 }
