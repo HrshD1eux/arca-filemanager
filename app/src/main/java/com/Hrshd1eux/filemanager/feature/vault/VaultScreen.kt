@@ -75,6 +75,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
@@ -873,6 +876,8 @@ private fun VaultEntryRow(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val view = LocalView.current
 
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -887,8 +892,16 @@ private fun VaultEntryRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    onClick = onItemClick,
-                    onLongClick = onItemLongClick
+                    onClick = {
+                        if (isSelectionMode) {
+                            SelectionHaptics.playSelectionFeedback(context, view)
+                        }
+                        onItemClick()
+                    },
+                    onLongClick = {
+                        SelectionHaptics.playLongPressFeedback(context, view)
+                        onItemLongClick()
+                    }
                 )
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -896,7 +909,10 @@ private fun VaultEntryRow(
             if (isSelectionMode) {
                 Checkbox(
                     checked = isSelected,
-                    onCheckedChange = { onItemClick() }
+                    onCheckedChange = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        onItemClick()
+                    }
                 )
                 Spacer(modifier = Modifier.width(6.dp))
             }

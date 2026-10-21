@@ -35,6 +35,8 @@ class SettingsViewModel @JvmOverloads constructor(
     val dynamicColor: StateFlow<Boolean> = appSettingsRepository.dynamicColor
     val showHiddenFiles: StateFlow<Boolean> = displayPreferencesRepository.showHiddenFiles
     val confirmDelete: StateFlow<Boolean> = appSettingsRepository.confirmDelete
+    val hapticFeedback: StateFlow<Boolean> = appSettingsRepository.hapticFeedback
+    val soundFeedback: StateFlow<Boolean> = appSettingsRepository.soundFeedback
 
     val enabledArchiveFormats: StateFlow<Set<ArchiveFormatOption>> = archivePreferencesRepository.enabledFormats
     val defaultArchiveFormat: StateFlow<ArchiveFormatOption> = archivePreferencesRepository.defaultFormat
@@ -70,6 +72,14 @@ class SettingsViewModel @JvmOverloads constructor(
 
     fun setConfirmDelete(confirm: Boolean) {
         appSettingsRepository.updateConfirmDelete(confirm)
+    }
+
+    fun setHapticFeedback(enabled: Boolean) {
+        appSettingsRepository.updateHapticFeedback(enabled)
+    }
+
+    fun setSoundFeedback(enabled: Boolean) {
+        appSettingsRepository.updateSoundFeedback(enabled)
     }
 
     fun setDefaultArchiveFormat(format: ArchiveFormatOption) {

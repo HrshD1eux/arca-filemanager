@@ -67,6 +67,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
@@ -643,10 +646,18 @@ private fun ArchiveEntryRow(
     onToggleSelection: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val view = LocalView.current
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = {
+                if (isSelectionMode) {
+                    SelectionHaptics.playSelectionFeedback(context, view)
+                }
+                onClick()
+            }),
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) {
@@ -665,7 +676,10 @@ private fun ArchiveEntryRow(
             if (!entry.isDirectory || isSelectionMode) {
                 Checkbox(
                     checked = isSelected,
-                    onCheckedChange = { onToggleSelection() }
+                    onCheckedChange = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        onToggleSelection()
+                    }
                 )
                 Spacer(modifier = Modifier.width(6.dp))
             }

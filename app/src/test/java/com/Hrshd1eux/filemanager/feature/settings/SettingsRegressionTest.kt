@@ -296,4 +296,42 @@ class SettingsRegressionTest {
         val msg = settingsViewModel.userMessage.first()
         assertEquals("At least one archive format must remain enabled.", msg)
     }
+
+    @Test
+    fun appSettingsRepository_hapticAndSoundFeedbackTogglesWork() = runTest {
+        // Defaults should be enabled
+        assertTrue(appSettingsRepository.hapticFeedback.value)
+        assertTrue(appSettingsRepository.soundFeedback.value)
+
+        // Toggle haptics
+        appSettingsRepository.updateHapticFeedback(false)
+        assertFalse(appSettingsRepository.hapticFeedback.value)
+        appSettingsRepository.updateHapticFeedback(true)
+        assertTrue(appSettingsRepository.hapticFeedback.value)
+
+        // Toggle sound
+        appSettingsRepository.updateSoundFeedback(false)
+        assertFalse(appSettingsRepository.soundFeedback.value)
+        appSettingsRepository.updateSoundFeedback(true)
+        assertTrue(appSettingsRepository.soundFeedback.value)
+    }
+
+    @Test
+    fun settingsViewModel_hapticAndSoundFeedbackWiredProperly() = runTest {
+        val settingsViewModel = SettingsViewModel(
+            displayPreferencesRepository = displayPreferencesRepository,
+            appSettingsRepository = appSettingsRepository,
+            archivePreferencesRepository = archivePreferencesRepository,
+            vaultLockManager = vaultLockManager
+        )
+
+        assertTrue(settingsViewModel.hapticFeedback.value)
+        assertTrue(settingsViewModel.soundFeedback.value)
+
+        settingsViewModel.setHapticFeedback(false)
+        assertFalse(settingsViewModel.hapticFeedback.value)
+
+        settingsViewModel.setSoundFeedback(false)
+        assertFalse(settingsViewModel.soundFeedback.value)
+    }
 }

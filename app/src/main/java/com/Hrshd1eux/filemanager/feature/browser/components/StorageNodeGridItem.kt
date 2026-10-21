@@ -31,8 +31,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
+import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.draganddrop.dragAndDropSource
@@ -63,6 +66,8 @@ fun StorageNodeGridItem(
     modifier: Modifier = Modifier
 ) {
     var isHoveredAsDropTarget by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val view = LocalView.current
 
     val dndTarget = remember(node) {
         object : DragAndDropTarget {
@@ -103,12 +108,14 @@ fun StorageNodeGridItem(
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) {
+                        SelectionHaptics.playSelectionFeedback(context, view)
                         onToggleSelection()
                     } else {
                         onClick()
                     }
                 },
                 onLongClick = {
+                    SelectionHaptics.playLongPressFeedback(context, view)
                     if (isSelectionMode) {
                         onToggleSelection()
                     } else if (onQuickActionClick != null) {
@@ -138,7 +145,10 @@ fun StorageNodeGridItem(
             if (isSelectionMode) {
                 Checkbox(
                     checked = isSelected,
-                    onCheckedChange = { onToggleSelection() },
+                    onCheckedChange = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        onToggleSelection()
+                    },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .size(24.dp)

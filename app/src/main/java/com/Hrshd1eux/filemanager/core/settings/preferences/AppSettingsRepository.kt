@@ -28,6 +28,12 @@ class AppSettingsRepository(context: Context? = null) {
     private val _confirmDelete = MutableStateFlow(loadConfirmDelete())
     val confirmDelete: StateFlow<Boolean> = _confirmDelete.asStateFlow()
 
+    private val _hapticFeedback = MutableStateFlow(loadHapticFeedback())
+    val hapticFeedback: StateFlow<Boolean> = _hapticFeedback.asStateFlow()
+
+    private val _soundFeedback = MutableStateFlow(loadSoundFeedback())
+    val soundFeedback: StateFlow<Boolean> = _soundFeedback.asStateFlow()
+
     private val _firstRunExplanationCompleted = MutableStateFlow(loadFirstRunExplanationCompleted())
     val firstRunExplanationCompleted: StateFlow<Boolean> = _firstRunExplanationCompleted.asStateFlow()
 
@@ -44,6 +50,16 @@ class AppSettingsRepository(context: Context? = null) {
     fun updateConfirmDelete(enabled: Boolean) {
         _confirmDelete.value = enabled
         prefs?.edit()?.putBoolean(KEY_CONFIRM_DELETE, enabled)?.apply()
+    }
+
+    fun updateHapticFeedback(enabled: Boolean) {
+        _hapticFeedback.value = enabled
+        prefs?.edit()?.putBoolean(KEY_HAPTIC_FEEDBACK, enabled)?.apply()
+    }
+
+    fun updateSoundFeedback(enabled: Boolean) {
+        _soundFeedback.value = enabled
+        prefs?.edit()?.putBoolean(KEY_SOUND_FEEDBACK, enabled)?.apply()
     }
 
     fun setFirstRunExplanationCompleted(completed: Boolean = true) {
@@ -70,6 +86,14 @@ class AppSettingsRepository(context: Context? = null) {
         return prefs?.getBoolean(KEY_CONFIRM_DELETE, true) ?: true
     }
 
+    private fun loadHapticFeedback(): Boolean {
+        return prefs?.getBoolean(KEY_HAPTIC_FEEDBACK, true) ?: true
+    }
+
+    private fun loadSoundFeedback(): Boolean {
+        return prefs?.getBoolean(KEY_SOUND_FEEDBACK, true) ?: true
+    }
+
     private fun loadFirstRunExplanationCompleted(): Boolean {
         return prefs?.getBoolean(KEY_FIRST_RUN_EXPLANATION_COMPLETED, false) ?: false
     }
@@ -79,6 +103,8 @@ class AppSettingsRepository(context: Context? = null) {
         private const val KEY_THEME_MODE = "app_theme_mode"
         private const val KEY_DYNAMIC_COLOR = "app_dynamic_color"
         private const val KEY_CONFIRM_DELETE = "app_confirm_delete"
+        private const val KEY_HAPTIC_FEEDBACK = "app_haptic_feedback"
+        private const val KEY_SOUND_FEEDBACK = "app_sound_feedback"
         private const val KEY_FIRST_RUN_EXPLANATION_COMPLETED = "app_first_run_storage_explanation_completed"
 
         @Volatile

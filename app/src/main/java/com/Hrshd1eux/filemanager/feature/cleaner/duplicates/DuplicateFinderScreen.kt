@@ -61,6 +61,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.cleaner.model.DuplicateGroup
@@ -400,6 +403,9 @@ private fun DuplicateGroupCard(
     onPreviewFile: (StorageNode) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val view = LocalView.current
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -455,7 +461,10 @@ private fun DuplicateGroupCard(
                 ) {
                     Checkbox(
                         checked = isSelected,
-                        onCheckedChange = { onToggleFile(file.id) }
+                        onCheckedChange = {
+                            SelectionHaptics.playSelectionFeedback(context, view)
+                            onToggleFile(file.id)
+                        }
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))

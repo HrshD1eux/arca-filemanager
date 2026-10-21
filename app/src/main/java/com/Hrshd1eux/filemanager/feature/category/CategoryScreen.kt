@@ -92,6 +92,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -827,14 +829,24 @@ private fun CategoryListItemRow(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val view = LocalView.current
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
+                onClick = {
+                    if (isSelectionMode) {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                    }
+                    onClick()
+                },
+                onLongClick = {
+                    SelectionHaptics.playLongPressFeedback(context, view)
+                    onLongClick()
+                }
             ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -861,7 +873,10 @@ private fun CategoryListItemRow(
             ) {
                 Checkbox(
                     checked = isSelected,
-                    onCheckedChange = { onClick() },
+                    onCheckedChange = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        onClick()
+                    },
                     colors = CheckboxDefaults.colors(
                         checkedColor = MaterialTheme.colorScheme.primary
                     ),
@@ -1062,14 +1077,24 @@ private fun CategoryGridItemCard(
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val view = LocalView.current
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
+                onClick = {
+                    if (isSelectionMode) {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                    }
+                    onClick()
+                },
+                onLongClick = {
+                    SelectionHaptics.playLongPressFeedback(context, view)
+                    onLongClick()
+                }
             ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -1109,7 +1134,10 @@ private fun CategoryGridItemCard(
                 if (isSelectionMode) {
                     Checkbox(
                         checked = isSelected,
-                        onCheckedChange = { onClick() },
+                        onCheckedChange = {
+                            SelectionHaptics.playSelectionFeedback(context, view)
+                            onClick()
+                        },
                         colors = CheckboxDefaults.colors(
                             checkedColor = MaterialTheme.colorScheme.primary
                         ),

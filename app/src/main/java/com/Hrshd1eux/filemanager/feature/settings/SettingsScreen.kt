@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -89,6 +91,8 @@ fun SettingsScreen(
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
     val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
     val confirmDelete by viewModel.confirmDelete.collectAsStateWithLifecycle()
+    val hapticFeedback by viewModel.hapticFeedback.collectAsStateWithLifecycle()
+    val soundFeedback by viewModel.soundFeedback.collectAsStateWithLifecycle()
     val enabledArchiveFormats by viewModel.enabledArchiveFormats.collectAsStateWithLifecycle()
     val defaultArchiveFormat by viewModel.defaultArchiveFormat.collectAsStateWithLifecycle()
     val defaultCompressionLevel by viewModel.defaultCompressionLevel.collectAsStateWithLifecycle()
@@ -201,6 +205,22 @@ fun SettingsScreen(
                         icon = Icons.Default.DeleteOutline,
                         checked = confirmDelete,
                         onCheckedChange = { viewModel.setConfirmDelete(it) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsToggleRow(
+                        title = "Haptic feedback",
+                        subtitle = "Vibrate when selecting files and items",
+                        icon = Icons.Default.Vibration,
+                        checked = hapticFeedback,
+                        onCheckedChange = { viewModel.setHapticFeedback(it) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsToggleRow(
+                        title = "Sound feedback",
+                        subtitle = "Play subtle tactile audio click when selecting files",
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
+                        checked = soundFeedback,
+                        onCheckedChange = { viewModel.setSoundFeedback(it) }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(

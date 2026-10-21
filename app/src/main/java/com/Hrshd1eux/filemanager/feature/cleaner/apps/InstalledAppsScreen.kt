@@ -66,6 +66,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -95,6 +97,7 @@ fun InstalledAppsScreen(
     viewModel: InstalledAppsViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -147,7 +150,10 @@ fun InstalledAppsScreen(
                     actions = {
                         val allSelected = uiState.filteredApps.isNotEmpty() &&
                                 uiState.selectedPackageNames.containsAll(uiState.filteredApps.map { it.packageName })
-                        IconButton(onClick = { viewModel.selectAll() }) {
+                        IconButton(onClick = {
+                            SelectionHaptics.playSelectionFeedback(context, view)
+                            viewModel.selectAll()
+                        }) {
                             Icon(
                                 imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
                                 contentDescription = if (allSelected) "Deselect All" else "Select All"
@@ -499,12 +505,14 @@ fun InstalledAppsScreen(
                                 isSelected = isSelected,
                                 onClick = {
                                     if (uiState.isSelectionMode) {
+                                        SelectionHaptics.playSelectionFeedback(context, view)
                                         viewModel.toggleAppSelection(app.packageName)
                                     } else {
                                         viewModel.selectAppForDetails(app)
                                     }
                                 },
                                 onLongClick = {
+                                    SelectionHaptics.playLongPressFeedback(context, view)
                                     viewModel.toggleAppSelection(app.packageName)
                                 }
                             )

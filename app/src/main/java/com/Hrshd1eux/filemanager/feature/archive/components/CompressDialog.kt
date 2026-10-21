@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,11 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -86,6 +90,7 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 
 import com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CompressDialog(
     sources: List<StorageNode>,
@@ -186,6 +191,11 @@ fun CompressDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 24.dp)
+            .widthIn(max = 560.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -346,9 +356,10 @@ fun CompressDialog(
                     Spacer(modifier = Modifier.height(4.dp))
                     val simpleCandidates = listOf(ArchiveFormatOption.ZIP, ArchiveFormatOption.SEVEN_Z, ArchiveFormatOption.TAR)
                     val simpleFormats = simpleCandidates.filter { it in enabledFormats }.ifEmpty { enabledFormats.toList() }
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         simpleFormats.forEach { format ->
                             FormatChip(format, selectedFormat) { selectedFormat = it }
@@ -365,9 +376,10 @@ fun CompressDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         LevelPresetChip("Store", CompressionLevelPreset.STORE, selectedPreset) {
                             selectedPreset = it
@@ -426,24 +438,21 @@ fun CompressDialog(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             val advancedFormats = ArchiveFormatOption.entries.filter { it in enabledFormats }
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                advancedFormats.chunked(3).forEach { rowFormats ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        rowFormats.forEach { format ->
-                                            FormatChip(format, selectedFormat) {
-                                                selectedFormat = it
-                                                if (it == ArchiveFormatOption.SEVEN_Z) {
-                                                    selectedMethod = CompressionMethodOption.LZMA2
-                                                    selectedPreset = CompressionLevelPreset.ULTRA
-                                                    customLevel = 9
-                                                    dictionarySizeMb = 64
-                                                } else if (it == ArchiveFormatOption.ZIP) {
-                                                    selectedMethod = CompressionMethodOption.DEFLATE
-                                                }
-                                            }
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                advancedFormats.forEach { format ->
+                                    FormatChip(format, selectedFormat) {
+                                        selectedFormat = it
+                                        if (it == ArchiveFormatOption.SEVEN_Z) {
+                                            selectedMethod = CompressionMethodOption.LZMA2
+                                            selectedPreset = CompressionLevelPreset.ULTRA
+                                            customLevel = 9
+                                            dictionarySizeMb = 64
+                                        } else if (it == ArchiveFormatOption.ZIP) {
+                                            selectedMethod = CompressionMethodOption.DEFLATE
                                         }
                                     }
                                 }
@@ -470,9 +479,10 @@ fun CompressDialog(
                                 )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 LevelPresetChip("Store", CompressionLevelPreset.STORE, selectedPreset) {
                                     selectedPreset = it
@@ -540,9 +550,10 @@ fun CompressDialog(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 supportedMethods.forEach { methodOption ->
                                     MethodChip(methodOption, selectedMethod) { selectedMethod = it }
@@ -584,9 +595,10 @@ fun CompressDialog(
                                 )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 for (tp in ThreadCountPreset.entries) {
                                     ThreadChip(tp.displayName, tp.count, selectedThreads) { selectedThreads = it }
@@ -618,9 +630,10 @@ fun CompressDialog(
                                 }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 for (dp in DictionarySizePreset.entries) {
                                     DictChip(dp.displayName, dp.sizeMb, dictionarySizeMb, enabled = is7zSelected) {
@@ -1036,8 +1049,7 @@ fun CompressDialog(
             ) {
                 Text("Cancel")
             }
-        },
-        modifier = modifier
+        }
     )
 
     if (showGeneratorDialog) {
@@ -1125,7 +1137,14 @@ private fun FormatChip(
     FilterChip(
         selected = option == selected,
         onClick = { onSelect(option) },
-        label = { Text(option.displayName, style = MaterialTheme.typography.labelSmall) },
+        label = {
+            Text(
+                text = option.displayName,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                softWrap = false
+            )
+        },
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = ZipOrange.copy(alpha = 0.15f),
             selectedLabelColor = ZipOrange
@@ -1143,7 +1162,14 @@ private fun LevelPresetChip(
     FilterChip(
         selected = selectedPreset == preset,
         onClick = { onSelect(preset) },
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                softWrap = false
+            )
+        },
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1160,7 +1186,14 @@ private fun MethodChip(
     FilterChip(
         selected = selectedMethod == method,
         onClick = { onSelect(method) },
-        label = { Text(method.displayName, style = MaterialTheme.typography.labelSmall) },
+        label = {
+            Text(
+                text = method.displayName,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                softWrap = false
+            )
+        },
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -1178,7 +1211,14 @@ private fun ThreadChip(
     FilterChip(
         selected = selectedThreads == threads,
         onClick = { onSelect(threads) },
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
     )
 }
 
@@ -1194,6 +1234,13 @@ private fun DictChip(
         selected = selectedSizeMb == sizeMb,
         onClick = { if (enabled) onSelect(sizeMb) },
         enabled = enabled,
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
     )
 }

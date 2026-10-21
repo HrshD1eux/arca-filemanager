@@ -64,8 +64,11 @@ import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draganddrop.toAndroidDragEvent
 import androidx.compose.ui.draw.clip
+import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import com.Hrshd1eux.filemanager.core.dragdrop.DragDropManager
 import com.Hrshd1eux.filemanager.core.dragdrop.DragDropPayload
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -96,6 +99,8 @@ fun StorageNodeCompactItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var isHoveredAsDropTarget by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val view = LocalView.current
 
     val dndTarget = remember(node) {
         object : DragAndDropTarget {
@@ -136,12 +141,16 @@ fun StorageNodeCompactItem(
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) {
+                        SelectionHaptics.playSelectionFeedback(context, view)
                         onToggleSelection()
                     } else {
                         onClick()
                     }
                 },
-                onLongClick = onToggleSelection
+                onLongClick = {
+                    SelectionHaptics.playLongPressFeedback(context, view)
+                    onToggleSelection()
+                }
             ),
         shape = RoundedCornerShape(8.dp),
         border = if (isHoveredAsDropTarget) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
@@ -164,7 +173,10 @@ fun StorageNodeCompactItem(
             if (isSelectionMode) {
                 Checkbox(
                     checked = isSelected,
-                    onCheckedChange = { onToggleSelection() },
+                    onCheckedChange = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        onToggleSelection()
+                    },
                     modifier = Modifier.padding(end = 4.dp)
                 )
             }
