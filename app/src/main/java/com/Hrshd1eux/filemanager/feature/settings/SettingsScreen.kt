@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
@@ -62,7 +63,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.R
+import com.Hrshd1eux.filemanager.core.lock.manager.AppLockManager
 import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
+import com.Hrshd1eux.filemanager.feature.lock.ui.AppLockSettingsDialog
 import com.Hrshd1eux.filemanager.feature.settings.components.ArchiveSettingsDialog
 import com.Hrshd1eux.filemanager.feature.settings.components.ThemeSelectionDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultLockSettingsDialog
@@ -107,6 +110,10 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showArchiveDialog by remember { mutableStateOf(false) }
     var showVaultDialog by remember { mutableStateOf(false) }
+    var showAppLockDialog by remember { mutableStateOf(false) }
+
+    val appLockManager = remember { AppLockManager.getInstance(context) }
+    val appLockSettings by appLockManager.settings.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -244,6 +251,13 @@ fun SettingsScreen(
                         icon = Icons.Default.Shield,
                         onClick = onNavigateToSecurityCenter
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsRow(
+                        title = "App Lock & Biometrics",
+                        subtitle = if (appLockSettings.isConfigured) "${appLockSettings.mode.displayName} active" else "Disabled • Configure PIN to lock app",
+                        icon = Icons.Default.Fingerprint,
+                        onClick = { showAppLockDialog = true }
+                    )
                 }
             }
 
@@ -303,6 +317,14 @@ fun SettingsScreen(
             onSaveSettings = { viewModel.updateVaultLockSettings(it) },
             onManualLock = { viewModel.lockVaultNow() },
             onDismiss = { showVaultDialog = false }
+        )
+    }
+
+    if (showAppLockDialog) {
+        AppLockSettingsDialog(
+            appLockManager = appLockManager,
+            settings = appLockSettings,
+            onDismiss = { showAppLockDialog = false }
         )
     }
 }

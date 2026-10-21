@@ -8,12 +8,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.Hrshd1eux.filemanager.core.lock.manager.AppLockManager
+import com.Hrshd1eux.filemanager.feature.lock.ui.AppLockOverlay
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -48,8 +54,27 @@ fun ArcaNavHost(
     navController: NavHostController = rememberNavController()
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val audioController = remember { AudioPlaybackController.getInstance(context) }
     val isExpanded by audioController.isExpanded.collectAsStateWithLifecycle()
+
+    val appLockManager = remember { AppLockManager.getInstance(context) }
+    val isAppLocked by appLockManager.isAppLocked.collectAsStateWithLifecycle()
+    val appLockSettings by appLockManager.settings.collectAsStateWithLifecycle()
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> appLockManager.onAppForegrounded()
+                Lifecycle.Event.ON_PAUSE -> appLockManager.onAppBackgrounded()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         NavHost(
@@ -389,6 +414,14 @@ fun ArcaNavHost(
             AudioPlayerModalSheet(
                 controller = audioController,
                 onDismiss = { audioController.collapsePlayer() }
+            )
+        }
+
+        // App Lock Fullscreen Overlay (if configured and locked)
+        if (isAppLocked && appLockSettings.isConfigured) {
+            AppLockOverlay(
+                appLockManager = appLockManager,
+                settings = appLockSettings
             )
         }
     }
