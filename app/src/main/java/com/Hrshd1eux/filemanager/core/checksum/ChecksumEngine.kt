@@ -320,7 +320,7 @@ class ChecksumEngine(
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
     companion object {
-        private const val BUFFER_SIZE = 64 * 1024
+        const val BUFFER_SIZE = 64 * 1024
     }
 }
 
