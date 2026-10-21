@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
@@ -78,6 +79,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onNavigateToAbout: () -> Unit = {},
     onNavigateToSecurityCenter: () -> Unit = {},
+    onNavigateToBackup: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -231,6 +233,13 @@ fun SettingsScreen(
 
             item {
                 SettingsCard {
+                    SettingsRow(
+                        title = "Backup Profiles & Sync",
+                        subtitle = "Safe Copy, Incremental, and Mirror sync policies",
+                        icon = Icons.Default.Backup,
+                        onClick = onNavigateToBackup
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = "Archive Formats",
                         subtitle = "Default: ${defaultArchiveFormat.displayName} • ${enabledArchiveFormats.size} format(s) enabled",

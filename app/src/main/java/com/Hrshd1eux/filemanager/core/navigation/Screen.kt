@@ -89,6 +89,9 @@ sealed interface Screen {
     data object NetworkDiagnostics : Screen
 
     @Serializable
+    data object Backup : Screen
+
+    @Serializable
     data class NetworkBrowser(
         val connectionId: String,
         val initialPath: String? = null,

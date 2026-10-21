@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
 import com.Hrshd1eux.filemanager.feature.archive.ArchiveViewerScreen
+import com.Hrshd1eux.filemanager.feature.backup.BackupScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.category.CategoryScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.InstalledAppsScreen
@@ -110,6 +111,9 @@ fun ArcaNavHost(
                 },
                 onNavigateToVault = {
                     navController.navigate(Screen.Vault)
+                },
+                onNavigateToBackup = {
+                    navController.navigate(Screen.Backup)
                 },
                 onNavigateToNetworkBrowser = { connectionId, title ->
                     navController.navigate(Screen.NetworkBrowser(connectionId = connectionId, title = title))
@@ -322,7 +326,19 @@ fun ArcaNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
                 onNavigateToAbout = { navController.navigate(Screen.About) },
-                onNavigateToSecurityCenter = { navController.navigate(Screen.SecurityCenter) }
+                onNavigateToSecurityCenter = { navController.navigate(Screen.SecurityCenter) },
+                onNavigateToBackup = { navController.navigate(Screen.Backup) }
+            )
+        }
+
+        composable<Screen.Backup>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            BackupScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

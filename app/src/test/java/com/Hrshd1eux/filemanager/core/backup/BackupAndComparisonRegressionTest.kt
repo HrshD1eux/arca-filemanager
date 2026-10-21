@@ -644,4 +644,174 @@ class BackupAndComparisonRegressionTest {
         val incompleteTarget = File(destDir, "huge_file.dat")
         assertFalse("Incomplete target file must not be committed to destination", incompleteTarget.exists())
     }
+
+    @Test
+    fun backupRegression_handlesRenamedSourceFilesCorrectlyInCopyAndMirrorModes() = runTest {
+        val sourceDir = File(testRoot, "RenameSrc").apply { mkdirs() }
+        val destDir = File(testRoot, "RenameDst").apply { mkdirs() }
+
+        val originalFile = File(sourceDir, "initial_doc.txt").apply {
+            writeText("Original Document Content")
+        }
+
+        val copyProfile = BackupProfile(
+            id = "rename_copy_profile",
+            name = "Rename Copy Profile",
+            sourcePaths = listOf(sourceDir.absolutePath),
+            destinationPath = destDir.absolutePath,
+            mode = BackupMode.COPY
+        )
+
+        // 1. Initial backup in COPY mode
+        val initialReport = backupEngine.executeBackup(copyProfile)
+        assertEquals(BackupStatus.SUCCESS, initialReport.status)
+        assertEquals(1, initialReport.filesCopied)
+        val destInitial = File(destDir, "initial_doc.txt")
+        assertTrue(destInitial.exists())
+
+        // 2. Rename file at source
+        val renamedFile = File(sourceDir, "renamed_doc.txt")
+        assertTrue(originalFile.renameTo(renamedFile))
+        assertFalse(originalFile.exists())
+        assertTrue(renamedFile.exists())
+
+        // 3. Run preview in COPY mode: should detect renamed file as COPY_NEW, 0 mirror deletions
+        val copyPreview = backupEngine.previewBackup(copyProfile)
+        assertEquals(1, copyPreview.filesToCopy.size)
+        assertEquals("renamed_doc.txt", copyPreview.filesToCopy[0].relativePath)
+        assertEquals(0, copyPreview.filesToDeleteInMirror.size)
+
+        // 4. Execute in COPY mode: initial_doc.txt remains safe in destination!
+        val copyReport2 = backupEngine.executeBackup(copyProfile)
+        assertEquals(BackupStatus.SUCCESS, copyReport2.status)
+        assertTrue("Original destination file must NOT be deleted in COPY mode", destInitial.exists())
+        assertTrue("Renamed file must be copied to destination", File(destDir, "renamed_doc.txt").exists())
+
+        // 5. Run preview in MIRROR mode: initial_doc.txt must be detected as DELETE_IN_MIRROR
+        val mirrorProfile = copyProfile.copy(mode = BackupMode.MIRROR)
+        val mirrorPreview = backupEngine.previewBackup(mirrorProfile)
+        assertEquals(1, mirrorPreview.filesToDeleteInMirror.size)
+        assertEquals("initial_doc.txt", mirrorPreview.filesToDeleteInMirror[0].relativePath)
+        assertTrue(mirrorPreview.requiresMirrorConfirmation)
+
+        // 6. Execute in MIRROR mode with confirmation
+        val mirrorReport = backupEngine.executeBackup(mirrorProfile, confirmedMirrorDeletion = true)
+        assertEquals(BackupStatus.SUCCESS, mirrorReport.status)
+        assertEquals(1, mirrorReport.deletedInMirrorCount)
+        assertFalse("Stale initial_doc.txt must be pruned in MIRROR mode", destInitial.exists())
+        assertTrue("Renamed file must remain in destination", File(destDir, "renamed_doc.txt").exists())
+        assertTrue("Source file must remain untouched", renamedFile.exists())
+    }
+
+    @Test
+    fun backupRegression_handlesDeletedSourceFilesCorrectlyInCopyAndMirrorModes() = runTest {
+        val sourceDir = File(testRoot, "DeleteSrc").apply { mkdirs() }
+        val destDir = File(testRoot, "DeleteDst").apply { mkdirs() }
+
+        val fileKeep = File(sourceDir, "keep.txt").apply { writeText("Keep this") }
+        val fileDelete = File(sourceDir, "remove.txt").apply { writeText("Delete this at source") }
+
+        val copyProfile = BackupProfile(
+            id = "delete_copy_profile",
+            name = "Delete Test Profile",
+            sourcePaths = listOf(sourceDir.absolutePath),
+            destinationPath = destDir.absolutePath,
+            mode = BackupMode.COPY
+        )
+
+        // Initial backup: both files copied to destination
+        backupEngine.executeBackup(copyProfile)
+        val destKeep = File(destDir, "keep.txt")
+        val destDelete = File(destDir, "remove.txt")
+        assertTrue(destKeep.exists())
+        assertTrue(destDelete.exists())
+
+        // Delete file at source
+        assertTrue(fileDelete.delete())
+        assertFalse(fileDelete.exists())
+
+        // Test in COPY mode: destination file MUST be preserved
+        val copyPreview = backupEngine.previewBackup(copyProfile)
+        assertEquals(0, copyPreview.filesToDeleteInMirror.size)
+        assertEquals(1, copyPreview.filesAlreadyMatching.size)
+
+        backupEngine.executeBackup(copyProfile)
+        assertTrue("Destination file must NOT be deleted when source is removed in COPY mode", destDelete.exists())
+
+        // Test in MIRROR mode: requires confirmation, prunes when confirmed
+        val mirrorProfile = copyProfile.copy(mode = BackupMode.MIRROR)
+        val mirrorPreview = backupEngine.previewBackup(mirrorProfile)
+        assertEquals(1, mirrorPreview.filesToDeleteInMirror.size)
+        assertEquals("remove.txt", mirrorPreview.filesToDeleteInMirror[0].relativePath)
+
+        val mirrorReport = backupEngine.executeBackup(mirrorProfile, confirmedMirrorDeletion = true)
+        assertEquals(1, mirrorReport.deletedInMirrorCount)
+        assertFalse("Destination file must be pruned in MIRROR mode", destDelete.exists())
+        assertTrue("Remaining file must be kept in destination", destKeep.exists())
+        assertTrue("Source keep file was never deleted", fileKeep.exists())
+    }
+
+    @Test
+    fun backupRegression_incrementalVerification_detectsCorruptedDestinationFile() = runTest {
+        val sourceDir = File(testRoot, "HealSrc").apply { mkdirs() }
+        val destDir = File(testRoot, "HealDst").apply { mkdirs() }
+
+        val validData = "Authentic Data Block Number 12345"
+        val corruptedData = "Corrupted Data Block Number 12345"
+        assertEquals(validData.length, corruptedData.length)
+
+        val srcFile = File(sourceDir, "document.dat").apply { writeText(validData) }
+        val destFile = File(destDir, "document.dat").apply { writeText(corruptedData) }
+
+        // Set identical timestamps
+        val testTime = 1715000000000L
+        srcFile.setLastModified(testTime)
+        destFile.setLastModified(testTime)
+
+        val profile = BackupProfile(
+            id = "heal_profile",
+            name = "Heal Corrupted Profile",
+            sourcePaths = listOf(sourceDir.absolutePath),
+            destinationPath = destDir.absolutePath,
+            mode = BackupMode.INCREMENTAL,
+            verifyIntegrity = true
+        )
+
+        // Without hash verification, sizes and timestamps match.
+        // BUT with verifyIntegrity = true, hash mismatch MUST be detected during incremental backup and healed!
+        val report = backupEngine.executeBackup(profile)
+        assertEquals(BackupStatus.SUCCESS, report.status)
+        assertEquals(1, report.filesCopied)
+        assertEquals(0, report.filesSkipped)
+        assertEquals(1, report.verifiedCount)
+
+        // Verify destination file was healed to match authentic source
+        assertEquals(validData, destFile.readText())
+    }
+
+    @Test
+    fun backupRegression_handlesRemovableStorageDisconnectionGracefully() = runTest {
+        val sourceDir = File(testRoot, "UsbSrc").apply { mkdirs() }
+        File(sourceDir, "important.pdf").apply { writeText("Important data") }
+
+        // Invalid or disconnected SD card / USB storage mount point
+        val disconnectedSdCardPath = if (System.getProperty("os.name")?.lowercase()?.contains("win") == true) {
+            "Z:\\NonExistentSdCardVolume\\ARCA_Backup"
+        } else {
+            "/mnt/media_rw/UNMOUNTED_SD_1234/ARCA_Backup"
+        }
+
+        val profile = BackupProfile(
+            id = "usb_disconnected_profile",
+            name = "SD Card Backup",
+            sourcePaths = listOf(sourceDir.absolutePath),
+            destinationPath = disconnectedSdCardPath,
+            mode = BackupMode.COPY
+        )
+
+        val report = backupEngine.executeBackup(profile)
+        assertEquals(BackupStatus.FAILED, report.status)
+        assertTrue(report.errors.isNotEmpty())
+        assertTrue("Source files must remain 100% untouched on storage error", File(sourceDir, "important.pdf").exists())
+    }
 }

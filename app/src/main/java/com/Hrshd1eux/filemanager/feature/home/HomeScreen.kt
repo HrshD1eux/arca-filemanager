@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
@@ -82,6 +83,7 @@ fun HomeScreen(
     onNavigateToLargeFiles: (rootPath: String?) -> Unit = {},
     onNavigateToDuplicateFinder: (rootPath: String?) -> Unit = {},
     onNavigateToVault: () -> Unit = {},
+    onNavigateToBackup: () -> Unit = {},
     onNavigateToNetworkBrowser: (connectionId: String, title: String) -> Unit = { _, _ -> },
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
@@ -226,6 +228,16 @@ fun HomeScreen(
                                 onClick = {
                                     showMenu = false
                                     onNavigateToDuplicateFinder(null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Backup Profiles") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Backup, contentDescription = null)
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onNavigateToBackup()
                                 }
                             )
                             DropdownMenuItem(
