@@ -403,9 +403,9 @@ fun VideoViewerScreen(
     if (showDeleteDialog && currentVideo != null) {
         DeleteConfirmationDialog(
             node = currentVideo,
-            onConfirmDelete = {
+            onConfirmDelete = { permanent ->
                 showDeleteDialog = false
-                viewModel.deleteCurrentVideo(onAllDeleted = onNavigateBack)
+                viewModel.deleteCurrentVideo(permanent = permanent, onAllDeleted = onNavigateBack)
             },
             onDismiss = { showDeleteDialog = false }
         )

@@ -13,6 +13,7 @@ import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import com.Hrshd1eux.filemanager.feature.category.CategoryRepository
 import com.Hrshd1eux.filemanager.feature.viewer.image.decoder.AndroidImageBitmapDecoder
 import com.Hrshd1eux.filemanager.feature.viewer.image.decoder.ImageBitmapDecoder
@@ -227,11 +228,15 @@ class ImageViewerViewModel @JvmOverloads constructor(
         }
     }
 
-    fun deleteCurrentImage(onAllDeleted: () -> Unit) {
+    fun deleteCurrentImage(permanent: Boolean = true, onAllDeleted: () -> Unit) {
         val node = currentImage ?: return
         viewModelScope.launch(ioDispatcher) {
-            val result = categoryRepository.deleteFile(node)
-            if (result.isSuccess) {
+            val success = if (!permanent) {
+                TrashManager.getInstance().moveToTrash(node).isSuccess
+            } else {
+                categoryRepository.deleteFile(node).isSuccess
+            }
+            if (success) {
                 bitmapCache.remove(node.path)
                 val currentList = _images.value.toMutableList()
                 val deletedIndex = _currentIndex.value

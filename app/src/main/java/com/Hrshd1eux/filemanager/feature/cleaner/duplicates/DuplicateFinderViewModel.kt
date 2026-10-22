@@ -8,6 +8,7 @@ import com.Hrshd1eux.filemanager.core.cleaner.model.ScanStage
 import com.Hrshd1eux.filemanager.core.operations.engine.FileOperationEngine
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -130,7 +131,7 @@ class DuplicateFinderViewModel @JvmOverloads constructor(
         _selectedIds.value = emptySet()
     }
 
-    fun deleteSelected() {
+    fun deleteSelected(permanent: Boolean = true) {
         val state = _uiState.value
         if (state !is DuplicateFinderUiState.Success) return
 
@@ -140,17 +141,29 @@ class DuplicateFinderViewModel @JvmOverloads constructor(
 
         viewModelScope.launch {
             _activeProgress.value = OperationProgress(totalFiles = toDelete.size)
-            val result = operationEngine.delete(
-                targets = toDelete,
-                onProgress = { _activeProgress.value = it }
-            )
-            _activeProgress.value = null
-            result.onSuccess {
-                clearSelection()
-                _userMessage.emit("Deleted ${toDelete.size} duplicate copies")
-                startScan()
-            }.onFailure { error ->
-                _userMessage.emit("Error: ${error.localizedMessage ?: "Deletion failed"}")
+            if (!permanent) {
+                val result = TrashManager.getInstance().moveToTrash(toDelete)
+                _activeProgress.value = null
+                result.onSuccess { count ->
+                    clearSelection()
+                    _userMessage.emit("Moved $count duplicate copies to Trash")
+                    startScan()
+                }.onFailure { error ->
+                    _userMessage.emit("Error: ${error.localizedMessage ?: "Failed to move to Trash"}")
+                }
+            } else {
+                val result = operationEngine.delete(
+                    targets = toDelete,
+                    onProgress = { _activeProgress.value = it }
+                )
+                _activeProgress.value = null
+                result.onSuccess {
+                    clearSelection()
+                    _userMessage.emit("Permanently deleted ${toDelete.size} duplicate copies")
+                    startScan()
+                }.onFailure { error ->
+                    _userMessage.emit("Error: ${error.localizedMessage ?: "Deletion failed"}")
+                }
             }
         }
     }

@@ -181,7 +181,8 @@ fun ArcaNavHost(
                 },
                 onNavigateToDirectory = { path ->
                     navController.navigate(Screen.Browser(initialPath = path, title = File(path).name))
-                }
+                },
+                onNavigateToInstalledApps = { navController.navigate(Screen.InstalledApps) }
             )
         }
 
@@ -247,7 +248,10 @@ fun ArcaNavHost(
                     navController.navigate(Screen.Category(categoryName = category.name))
                 },
                 onNavigateToLargeFiles = { navController.navigate(Screen.LargeFiles(rootPath = null)) },
-                onNavigateToDuplicateFinder = { navController.navigate(Screen.DuplicateFinder(rootPath = null)) }
+                onNavigateToDuplicateFinder = { navController.navigate(Screen.DuplicateFinder(rootPath = null)) },
+                onNavigateToPreview = { filePath ->
+                    navController.navigate(Screen.Preview(initialPath = filePath))
+                }
             )
         }
 
@@ -258,7 +262,8 @@ fun ArcaNavHost(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) {
             InstalledAppsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToApkCategory = { navController.navigate(Screen.Category(categoryName = "APKS")) }
             )
         }
 

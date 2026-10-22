@@ -775,11 +775,12 @@ fun NetworkFileBrowserScreen(
     nodeToDelete?.let { node ->
         DeleteConfirmationDialog(
             node = node,
-            onConfirmDelete = {
+            onConfirmDelete = { _ ->
                 viewModel.delete(listOf(node))
                 nodeToDelete = null
             },
-            onDismiss = { nodeToDelete = null }
+            onDismiss = { nodeToDelete = null },
+            allowTrash = false
         )
     }
 
@@ -788,11 +789,12 @@ fun NetworkFileBrowserScreen(
         if (nodes.isNotEmpty()) {
             DeleteConfirmationDialog(
                 node = nodes.first(),
-                onConfirmDelete = {
+                onConfirmDelete = { _ ->
                     viewModel.delete(nodes)
                     bulkNodesToDelete = null
                 },
-                onDismiss = { bulkNodesToDelete = null }
+                onDismiss = { bulkNodesToDelete = null },
+                allowTrash = false
             )
         }
     }

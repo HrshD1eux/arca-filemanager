@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Audiotrack
@@ -129,6 +132,7 @@ fun CategoryScreen(
     onNavigateToVideoViewer: (videoPath: String, categoryName: String?, rootPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToPreview: (filePath: String, categoryName: String?, rootPath: String?) -> Unit = onNavigateToImageViewer,
     onNavigateToDirectory: (path: String) -> Unit = {},
+    onNavigateToInstalledApps: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: CategoryViewModel = viewModel()
 ) {
@@ -265,6 +269,15 @@ fun CategoryScreen(
                         }
                     },
                     actions = {
+                        if (category == CategoryFilter.APKS && onNavigateToInstalledApps != null) {
+                            IconButton(onClick = onNavigateToInstalledApps) {
+                                Icon(
+                                    imageVector = Icons.Default.Apps,
+                                    contentDescription = "Installed Apps",
+                                    tint = categoryColor
+                                )
+                            }
+                        }
                         // View Mode Toggle (Grid / List)
                         IconButton(onClick = { viewModel.toggleViewMode() }) {
                             Icon(
@@ -302,6 +315,48 @@ fun CategoryScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            if (category == CategoryFilter.APKS && onNavigateToInstalledApps != null) {
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clickable { onNavigateToInstalledApps() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Apps,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Installed Applications",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Inspect system packages, app storage, and extract APKs",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
             // Sort Controls Header Bar (when files are loaded)
             if (uiState is CategoryUiState.Success) {
                 CategorySortControlBar(
@@ -463,8 +518,8 @@ fun CategoryScreen(
     nodeToDelete?.let { node ->
         DeleteConfirmationDialog(
             node = node,
-            onConfirmDelete = {
-                viewModel.deleteSingle(node)
+            onConfirmDelete = { permanent ->
+                viewModel.deleteSingle(node, permanent = permanent)
                 nodeToDelete = null
             },
             onDismiss = { nodeToDelete = null }
@@ -475,8 +530,8 @@ fun CategoryScreen(
     if (showBulkDeleteDialog && selectedNodes.isNotEmpty()) {
         BulkDeleteConfirmationDialog(
             selectedNodes = selectedNodes.toList(),
-            onConfirmDelete = {
-                viewModel.deleteSelected()
+            onConfirmDelete = { permanent ->
+                viewModel.deleteSelected(permanent = permanent)
                 showBulkDeleteDialog = false
             },
             onDismiss = { showBulkDeleteDialog = false }

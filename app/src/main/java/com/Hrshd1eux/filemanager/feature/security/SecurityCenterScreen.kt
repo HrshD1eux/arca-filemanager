@@ -8,6 +8,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -272,6 +274,7 @@ fun SecurityCenterScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun OverallPostureCard(
     report: SecurityAuditReport,
@@ -325,9 +328,10 @@ private fun OverallPostureCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatusMetricPill(
                     label = "Active Policies",
@@ -379,7 +383,9 @@ private fun StatusMetricPill(
                 text = "$count $label",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = color
+                color = color,
+                maxLines = 1,
+                softWrap = false
             )
             if (onClick != null) {
                 Spacer(modifier = Modifier.width(4.dp))

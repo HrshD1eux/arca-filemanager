@@ -25,9 +25,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Info
@@ -94,6 +96,7 @@ import com.Hrshd1eux.filemanager.feature.cleaner.storage.components.SystemStorag
 fun InstalledAppsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onNavigateToApkCategory: (() -> Unit)? = null,
     viewModel: InstalledAppsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -207,6 +210,15 @@ fun InstalledAppsScreen(
                         }
                     },
                     actions = {
+                        if (onNavigateToApkCategory != null) {
+                            IconButton(onClick = onNavigateToApkCategory) {
+                                Icon(
+                                    imageVector = Icons.Default.FolderZip,
+                                    contentDescription = "View APK Files",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                         // Inspect OS Storage button
                         IconButton(onClick = { viewModel.toggleSystemStorageDetails(true) }) {
                             Icon(
@@ -256,6 +268,49 @@ fun InstalledAppsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            if (onNavigateToApkCategory != null) {
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clickable { onNavigateToApkCategory() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FolderZip,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "View APK Installation Files",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Scan and manage standalone .apk/.xapk installer files",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
             // Category Separation Tabs: User Apps vs System Apps vs All Apps
             val tabOptions = listOf(
                 AppTypeFilter.USER to "User Apps (${uiState.report.userAppCount})",

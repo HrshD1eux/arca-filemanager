@@ -38,6 +38,7 @@ import com.Hrshd1eux.filemanager.core.operations.recovery.OperationRecoveryEngin
 import com.Hrshd1eux.filemanager.core.operations.recovery.RecoveryReport
 import com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import com.Hrshd1eux.filemanager.core.storage.preferences.LastDestinationRepository
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.provider.StorageProvider
@@ -689,7 +690,8 @@ class FileBrowserViewModel @JvmOverloads constructor(
 
     fun startDelete(
         targets: List<StorageNode>,
-        hasPermission: Boolean
+        hasPermission: Boolean,
+        permanent: Boolean = true
     ) {
         if (!hasPermission) {
             _uiState.value = BrowserUiState.PermissionRequired()
@@ -697,14 +699,26 @@ class FileBrowserViewModel @JvmOverloads constructor(
         }
 
         clearSelection()
-        val title = if (targets.size == 1) "Deleting ${targets.first().name}" else "Deleting ${targets.size} items"
-        operationManager.enqueue(title = title, type = OperationType.DELETE) { onProgress ->
-            val result = operationEngine.delete(
-                targets = targets,
-                onProgress = onProgress
-            )
-            val opResult = result.getOrThrow()
-            _userMessage.emit("Deleted ${opResult.filesProcessed} items.")
+        if (!permanent) {
+            viewModelScope.launch {
+                val result = TrashManager.getInstance().moveToTrash(targets)
+                result.onSuccess { count ->
+                    _userMessage.emit(if (count == 1) "Moved 1 item to Trash." else "Moved $count items to Trash.")
+                    refresh(hasPermission = hasPermission)
+                }.onFailure { err ->
+                    _userMessage.emit("Failed to move to Trash: ${err.localizedMessage ?: "Unknown error"}")
+                }
+            }
+        } else {
+            val title = if (targets.size == 1) "Deleting ${targets.first().name}" else "Deleting ${targets.size} items"
+            operationManager.enqueue(title = title, type = OperationType.DELETE) { onProgress ->
+                val result = operationEngine.delete(
+                    targets = targets,
+                    onProgress = onProgress
+                )
+                val opResult = result.getOrThrow()
+                _userMessage.emit("Deleted ${opResult.filesProcessed} items.")
+            }
         }
     }
 

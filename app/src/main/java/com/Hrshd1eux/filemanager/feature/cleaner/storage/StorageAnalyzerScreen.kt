@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -106,6 +107,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppInfo
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher
+import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.InstalledAppsViewModel
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.AppDetailsBottomSheet
 import com.Hrshd1eux.filemanager.feature.cleaner.apps.components.ShareApkBottomSheet
@@ -138,6 +140,7 @@ fun StorageAnalyzerScreen(
     onNavigateToLargeFiles: () -> Unit,
     onNavigateToDuplicateFinder: () -> Unit,
     modifier: Modifier = Modifier,
+    onNavigateToPreview: ((String) -> Unit)? = null,
     homeViewModel: HomeViewModel = viewModel(),
     appsViewModel: InstalledAppsViewModel = viewModel(),
     analyzer2ViewModel: StorageAnalyzer2ViewModel = viewModel()
@@ -338,7 +341,14 @@ fun StorageAnalyzerScreen(
                         onToggleSelection = { analyzer2ViewModel.toggleSelection(it) },
                         onSelectAll = { analyzer2ViewModel.selectAll() },
                         onClearSelection = { analyzer2ViewModel.clearSelection() },
-                        onReviewCleanup = { showCleanupReviewSheet = true }
+                        onReviewCleanup = { showCleanupReviewSheet = true },
+                        onPreviewFile = { node ->
+                            if (onNavigateToPreview != null) {
+                                onNavigateToPreview(node.path)
+                            } else {
+                                FileIntentDispatcher.view(context, node)
+                            }
+                        }
                     )
                 }
                 StorageAnalyzerTab.OLD_FILES -> {
@@ -798,7 +808,8 @@ private fun DuplicatesTabContent(
     onToggleSelection: (String) -> Unit,
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
-    onReviewCleanup: () -> Unit
+    onReviewCleanup: () -> Unit,
+    onPreviewFile: ((StorageNode) -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Duplicate disclaimer banner
@@ -871,7 +882,8 @@ private fun DuplicatesTabContent(
                     DuplicateGroupCard(
                         group = group,
                         selectedIds = uiState.selectedIds,
-                        onToggle = onToggleSelection
+                        onToggle = onToggleSelection,
+                        onPreviewFile = onPreviewFile
                     )
                 }
             }
@@ -1252,7 +1264,8 @@ private fun CleanupItemCard(
 private fun DuplicateGroupCard(
     group: DuplicateGroup,
     selectedIds: Set<String>,
-    onToggle: (String) -> Unit
+    onToggle: (String) -> Unit,
+    onPreviewFile: ((StorageNode) -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1311,7 +1324,7 @@ private fun DuplicateGroupCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onToggle(node.id) }
+                        .clip(RoundedCornerShape(8.dp))
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1319,8 +1332,33 @@ private fun DuplicateGroupCard(
                         checked = isSelected,
                         onCheckedChange = { onToggle(node.id) }
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Column(modifier = Modifier.weight(1f)) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    FileThumbnailView(
+                        node = node,
+                        categoryColor = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                if (onPreviewFile != null) {
+                                    onPreviewFile(node)
+                                } else {
+                                    onToggle(node.id)
+                                }
+                            }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                if (onPreviewFile != null) {
+                                    onPreviewFile(node)
+                                } else {
+                                    onToggle(node.id)
+                                }
+                            }
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = node.name,
@@ -1347,12 +1385,27 @@ private fun DuplicateGroupCard(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = FileFormatter.formatFileSize(node.size),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = FileFormatter.formatFileSize(node.size),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (onPreviewFile != null) {
+                            IconButton(
+                                onClick = { onPreviewFile(node) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Visibility,
+                                    contentDescription = "Preview file",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

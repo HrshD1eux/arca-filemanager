@@ -1033,13 +1033,14 @@ fun FileBrowserScreen(
     if (targetToDelete != null) {
         DeleteConfirmationDialog(
             node = targetToDelete,
-            onConfirmDelete = {
+            onConfirmDelete = { permanent ->
                 nodeToDelete = null
-                activeOperationTitle = "Deleting Files"
+                activeOperationTitle = if (permanent) "Deleting Files" else "Moving to Trash"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 viewModel.startDelete(
                     targets = listOf(targetToDelete),
-                    hasPermission = hasPermission
+                    hasPermission = hasPermission,
+                    permanent = permanent
                 )
             },
             onDismiss = { nodeToDelete = null }
@@ -1051,13 +1052,14 @@ fun FileBrowserScreen(
     if (targetBulkDelete != null) {
         BulkDeleteConfirmationDialog(
             selectedNodes = targetBulkDelete,
-            onConfirmDelete = {
+            onConfirmDelete = { permanent ->
                 bulkNodesToDelete = null
-                activeOperationTitle = "Deleting ${targetBulkDelete.size} Items"
+                activeOperationTitle = if (permanent) "Deleting ${targetBulkDelete.size} Items" else "Moving to Trash"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 viewModel.startDelete(
                     targets = targetBulkDelete,
-                    hasPermission = hasPermission
+                    hasPermission = hasPermission,
+                    permanent = permanent
                 )
             },
             onDismiss = { bulkNodesToDelete = null }

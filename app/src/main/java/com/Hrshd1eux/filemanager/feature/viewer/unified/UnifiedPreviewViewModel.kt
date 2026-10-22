@@ -12,6 +12,7 @@ import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.feature.category.CategoryRepository
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import com.Hrshd1eux.filemanager.feature.viewer.audio.util.AudioMetadataExtractor
@@ -212,22 +213,28 @@ class UnifiedPreviewViewModel @JvmOverloads constructor(
         loadPreviewForCurrentIndex()
     }
 
-    fun deleteCurrent(onDismissAfterDelete: () -> Unit) {
+    fun deleteCurrent(permanent: Boolean = true, onDismissAfterDelete: () -> Unit) {
         val node = currentFile ?: return
         viewModelScope.launch(ioDispatcher) {
-            val file = File(node.path)
-            runCatching { file.delete() }
-
-            val remaining = _files.value.toMutableList().apply { removeAt(_currentIndex.value) }
-            _files.value = remaining
-
-            if (remaining.isEmpty()) {
-                onDismissAfterDelete()
+            val success = if (!permanent) {
+                TrashManager.getInstance().moveToTrash(node).isSuccess
             } else {
-                if (_currentIndex.value >= remaining.size) {
-                    _currentIndex.value = remaining.size - 1
+                val file = File(node.path)
+                runCatching { file.delete() }.getOrDefault(false)
+            }
+
+            if (success) {
+                val remaining = _files.value.toMutableList().apply { removeAt(_currentIndex.value) }
+                _files.value = remaining
+
+                if (remaining.isEmpty()) {
+                    onDismissAfterDelete()
+                } else {
+                    if (_currentIndex.value >= remaining.size) {
+                        _currentIndex.value = remaining.size - 1
+                    }
+                    loadPreviewForCurrentIndex()
                 }
-                loadPreviewForCurrentIndex()
             }
         }
     }

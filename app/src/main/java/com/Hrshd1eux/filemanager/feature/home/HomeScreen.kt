@@ -252,16 +252,6 @@ fun HomeScreen(
                                     onNavigateToSettings()
                                 }
                             )
-                            DropdownMenuItem(
-                                text = { Text("Trash") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.DeleteSweep, contentDescription = null)
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToTrash()
-                                }
-                            )
                         }
                     }
                 },
@@ -311,7 +301,7 @@ fun HomeScreen(
             item {
                 HomeCategoriesGrid(
                     onCategoryClick = onNavigateToCategory,
-                    onAppsClick = onNavigateToInstalledApps,
+                    onAppsClick = { onNavigateToCategory(CategoryFilter.APKS) },
                     onTrashClick = onNavigateToTrash
                 )
             }

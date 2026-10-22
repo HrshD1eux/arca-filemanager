@@ -11,6 +11,7 @@ import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -221,28 +222,38 @@ class CategoryViewModel @JvmOverloads constructor(
         }
     }
 
-    fun deleteSelected(onDone: (Boolean) -> Unit = {}) {
+    fun deleteSelected(permanent: Boolean = true, onDone: (Boolean) -> Unit = {}) {
         val targets = _selectedNodes.value.toList()
         if (targets.isEmpty()) return
 
         viewModelScope.launch(ioDispatcher) {
             _isOperating.value = true
-            val result = operationEngine.delete(
-                targets = targets,
-                onProgress = { _operationProgress.value = it }
-            )
+            val success = if (!permanent) {
+                val res = TrashManager.getInstance().moveToTrash(targets)
+                res.isSuccess
+            } else {
+                val result = operationEngine.delete(
+                    targets = targets,
+                    onProgress = { _operationProgress.value = it }
+                )
+                result.isSuccess
+            }
             _isOperating.value = false
             _operationProgress.value = null
             clearSelection()
             refresh()
-            onDone(result.isSuccess)
+            onDone(success)
         }
     }
 
-    fun deleteSingle(node: StorageNode, onDone: (Boolean) -> Unit = {}) {
+    fun deleteSingle(node: StorageNode, permanent: Boolean = true, onDone: (Boolean) -> Unit = {}) {
         viewModelScope.launch(ioDispatcher) {
-            val result = repository.deleteFile(node)
-            if (result.isSuccess) {
+            val success = if (!permanent) {
+                TrashManager.getInstance().moveToTrash(node).isSuccess
+            } else {
+                repository.deleteFile(node).isSuccess
+            }
+            if (success) {
                 rawItems = rawItems.filter { it.path != node.path }
                 if (rawItems.isEmpty()) {
                     _uiState.value = CategoryUiState.Empty(getCategoryEmptyMessage(_category.value))

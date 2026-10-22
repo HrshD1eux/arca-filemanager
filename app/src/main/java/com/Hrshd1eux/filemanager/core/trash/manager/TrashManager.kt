@@ -30,10 +30,12 @@ class TrashManager(
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
     private val trashDir: File by lazy {
-        val root = baseTrashDir ?: if (runCatching { Environment.getExternalStorageState() }.getOrNull() == Environment.MEDIA_MOUNTED) {
-            File(Environment.getExternalStorageDirectory(), ".arca_trash")
-        } else {
-            val base = appContext?.filesDir ?: File(System.getProperty("java.io.tmpdir", "."))
+        val root = baseTrashDir ?: runCatching {
+            if (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED) {
+                File(Environment.getExternalStorageDirectory(), ".arca_trash")
+            } else null
+        }.getOrNull() ?: run {
+            val base = appContext?.filesDir ?: File(System.getProperty("java.io.tmpdir") ?: ".")
             File(base, ".arca_trash")
         }
         if (!root.exists()) {

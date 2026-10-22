@@ -250,9 +250,9 @@ fun ImageViewerScreen(
     if (showDeleteDialog && currentImage != null) {
         DeleteConfirmationDialog(
             node = currentImage,
-            onConfirmDelete = {
+            onConfirmDelete = { permanent ->
                 showDeleteDialog = false
-                viewModel.deleteCurrentImage(onAllDeleted = onNavigateBack)
+                viewModel.deleteCurrentImage(permanent = permanent, onAllDeleted = onNavigateBack)
             },
             onDismiss = { showDeleteDialog = false }
         )

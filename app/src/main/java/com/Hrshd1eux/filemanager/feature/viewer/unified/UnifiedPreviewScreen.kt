@@ -53,6 +53,7 @@ import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher
+import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 import com.Hrshd1eux.filemanager.feature.viewer.audio.util.AudioTimeFormatter
 import com.Hrshd1eux.filemanager.feature.viewer.unified.model.PreviewState
@@ -306,26 +307,13 @@ fun UnifiedPreviewScreen(
 
     // Delete Confirmation Dialog
     nodeToDelete?.let { node ->
-        AlertDialog(
-            onDismissRequest = { nodeToDelete = null },
-            title = { Text("Delete File?") },
-            text = { Text("Are you sure you want to permanently delete \"${node.name}\"?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        nodeToDelete = null
-                        viewModel.deleteCurrent(onDismissAfterDelete = onNavigateBack)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete")
-                }
+        DeleteConfirmationDialog(
+            node = node,
+            onConfirmDelete = { permanent ->
+                nodeToDelete = null
+                viewModel.deleteCurrent(permanent = permanent, onDismissAfterDelete = onNavigateBack)
             },
-            dismissButton = {
-                TextButton(onClick = { nodeToDelete = null }) {
-                    Text("Cancel")
-                }
-            }
+            onDismiss = { nodeToDelete = null }
         )
     }
 

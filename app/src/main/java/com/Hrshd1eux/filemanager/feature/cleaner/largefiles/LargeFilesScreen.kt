@@ -300,9 +300,9 @@ fun LargeFilesScreen(
             val selectedNodes = state.files.filter { selectedIds.contains(it.id) }
             BulkDeleteConfirmationDialog(
                 selectedNodes = selectedNodes,
-                onConfirmDelete = {
+                onConfirmDelete = { permanent ->
                     showDeleteConfirmDialog = false
-                    viewModel.deleteSelected()
+                    viewModel.deleteSelected(permanent = permanent)
                 },
                 onDismiss = { showDeleteConfirmDialog = false }
             )

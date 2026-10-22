@@ -12,6 +12,7 @@ import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import com.Hrshd1eux.filemanager.feature.category.CategoryRepository
 import com.Hrshd1eux.filemanager.feature.viewer.video.model.VideoMetadata
 import com.Hrshd1eux.filemanager.feature.viewer.video.util.VideoMetadataExtractor
@@ -284,12 +285,16 @@ class VideoViewerViewModel @JvmOverloads constructor(
         _seekTargetMs.value = null
     }
 
-    fun deleteCurrentVideo(onAllDeleted: () -> Unit) {
+    fun deleteCurrentVideo(permanent: Boolean = true, onAllDeleted: () -> Unit) {
         val node = currentVideo ?: return
         stopPlayback()
         viewModelScope.launch(ioDispatcher) {
-            val result = categoryRepository.deleteFile(node)
-            if (result.isSuccess) {
+            val success = if (!permanent) {
+                TrashManager.getInstance().moveToTrash(node).isSuccess
+            } else {
+                categoryRepository.deleteFile(node).isSuccess
+            }
+            if (success) {
                 val currentList = _videos.value.toMutableList()
                 val deletedIndex = _currentIndex.value
                 currentList.removeAt(deletedIndex)

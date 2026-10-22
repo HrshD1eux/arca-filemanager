@@ -1,6 +1,7 @@
 package com.Hrshd1eux.filemanager.feature.browser.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,12 +15,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,10 +47,12 @@ import java.io.File
 @Composable
 fun DeleteConfirmationDialog(
     node: StorageNode,
-    onConfirmDelete: () -> Unit,
+    onConfirmDelete: (permanent: Boolean) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    allowTrash: Boolean = true
 ) {
+    var permanentDelete by remember { mutableStateOf(!allowTrash) }
     var folderDetails by remember { mutableStateOf<FolderDetailsCalculator.FolderDetails?>(null) }
     var isCalculatingFolder by remember { mutableStateOf(false) }
 
@@ -69,19 +74,23 @@ fun DeleteConfirmationDialog(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.errorContainer),
+                        .background(
+                            if (permanentDelete) MaterialTheme.colorScheme.errorContainer
+                            else MaterialTheme.colorScheme.primaryContainer
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.DeleteForever,
+                        imageVector = if (permanentDelete) Icons.Default.DeleteForever else Icons.Default.Delete,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = if (permanentDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Delete ${if (node.isDirectory) "Folder" else "File"}?",
+                    text = if (permanentDelete) "Delete ${if (node.isDirectory) "Folder" else "File"} Permanently?"
+                    else "Move to Trash?",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -94,7 +103,11 @@ fun DeleteConfirmationDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Are you sure you want to permanently delete this item? This action cannot be undone.",
+                    text = if (permanentDelete) {
+                        "Are you sure you want to permanently delete this item? Data will be cryptographically shredded and this action cannot be undone."
+                    } else {
+                        "This item will be moved to Trash and kept for 30 days before permanent auto-purge. You can restore it anytime from Trash."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -138,18 +151,48 @@ fun DeleteConfirmationDialog(
                         )
                     }
                 }
+
+                if (allowTrash) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { permanentDelete = !permanentDelete }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = permanentDelete,
+                            onCheckedChange = { permanentDelete = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "Permanently delete (skip Trash)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = if (permanentDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Cryptographic multi-pass shredding",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = onConfirmDelete,
+                onClick = { onConfirmDelete(permanentDelete) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
+                    containerColor = if (permanentDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    contentColor = if (permanentDelete) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Delete Permanently")
+                Text(if (permanentDelete) "Delete Permanently" else "Move to Trash")
             }
         },
         dismissButton = {

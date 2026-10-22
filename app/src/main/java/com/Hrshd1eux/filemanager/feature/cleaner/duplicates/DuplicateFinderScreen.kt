@@ -68,6 +68,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.cleaner.model.DuplicateGroup
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
@@ -376,9 +377,9 @@ fun DuplicateFinderScreen(
             val selectedNodes = allFiles.filter { selectedIds.contains(it.id) }
             BulkDeleteConfirmationDialog(
                 selectedNodes = selectedNodes,
-                onConfirmDelete = {
+                onConfirmDelete = { permanent ->
                     showDeleteConfirmDialog = false
-                    viewModel.deleteSelected()
+                    viewModel.deleteSelected(permanent = permanent)
                 },
                 onDismiss = { showDeleteConfirmDialog = false }
             )
@@ -469,20 +470,14 @@ private fun DuplicateGroupCard(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    Box(
+                    FileThumbnailView(
+                        node = file,
+                        categoryColor = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = resolveFileIcon(file.name),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onPreviewFile(file) }
+                    )
 
                     Spacer(modifier = Modifier.width(12.dp))
 
