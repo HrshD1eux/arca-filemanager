@@ -89,7 +89,7 @@ class FileOperationEngine(
                         val file = resolvedSrc.file
                         if (file.exists()) {
                             if (file.isDirectory) {
-                                file.walkTopDown().forEach { f ->
+                                file.walkTopDown().onFail { _, _ -> }.forEach { f ->
                                     if (!f.isDirectory) {
                                         totalFiles++
                                         totalBytes += f.length()
@@ -137,7 +137,7 @@ class FileOperationEngine(
                         val file = resolvedSrc.file
                         if (file.exists()) {
                             if (file.isDirectory) {
-                                file.walkTopDown().forEach { child ->
+                                file.walkTopDown().onFail { _, _ -> }.forEach { child ->
                                     if (!child.isDirectory) {
                                         val relPath = file.name + "/" + child.relativeTo(file).path.replace('\\', '/')
                                         val destFile = File(resolvedDest.file, relPath)
@@ -200,7 +200,7 @@ class FileOperationEngine(
                             val targetSubDir = File(resolvedDest.file, srcFile.name)
                             if (!targetSubDir.exists()) targetSubDir.mkdirs()
 
-                            srcFile.walkTopDown().forEach { child ->
+                            srcFile.walkTopDown().onFail { _, _ -> }.forEach { child ->
                                 coroutineContext.ensureActive()
                                 val relativePath = child.relativeTo(srcFile).path
                                 val targetChild = File(targetSubDir, relativePath)
@@ -260,7 +260,7 @@ class FileOperationEngine(
                             val targetRemoteSubDir = resolvedDest.operator.resolveChild(resolvedDest.node, srcFile.name, isDirectory = true)
                             resolvedDest.operator.createDirectory(resolvedDest.node, srcFile.name)
 
-                            srcFile.walkTopDown().forEach { child ->
+                            srcFile.walkTopDown().onFail { _, _ -> }.forEach { child ->
                                 coroutineContext.ensureActive()
                                 val relPath = child.relativeTo(srcFile).path.replace('\\', '/')
                                 val targetChildRemote = resolvedDest.operator.resolveChild(targetRemoteSubDir, relPath, child.isDirectory)

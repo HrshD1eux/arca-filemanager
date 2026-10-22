@@ -57,6 +57,11 @@ class OperationManager(
             mutex.withLock {
                 _waitingQueue.value = _waitingQueue.value + operation
             }
+            runCatching {
+                com.Hrshd1eux.filemanager.ArcaApplication.instance?.let { ctx ->
+                    com.Hrshd1eux.filemanager.core.operations.service.FileOperationService.start(ctx)
+                }
+            }
             processNext()
         }
         return operation.id

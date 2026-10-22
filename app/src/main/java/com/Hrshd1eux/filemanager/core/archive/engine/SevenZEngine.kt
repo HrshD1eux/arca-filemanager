@@ -334,7 +334,7 @@ class SevenZEngine(
             var totalFiles = 0
             sources.forEach { source ->
                 if (source.isDirectory) {
-                    source.walkTopDown().forEach { f ->
+                    source.walkTopDown().onFail { _, _ -> }.forEach { f ->
                         if (!f.isDirectory) {
                             totalBytes += f.length()
                             totalFiles++
@@ -397,7 +397,7 @@ class SevenZEngine(
             var totalFiles = 0
             sources.forEach { source ->
                 if (source.isDirectory) {
-                    source.walkTopDown().forEach { f ->
+                    source.walkTopDown().onFail { _, _ -> }.forEach { f ->
                         if (!f.isDirectory) {
                             totalBytes += f.length()
                             totalFiles++
@@ -496,7 +496,7 @@ class SevenZEngine(
 
             if (source.isDirectory) {
                 val baseDir = source.parentFile ?: source
-                source.walkTopDown().forEach { file ->
+                source.walkTopDown().onFail { _, _ -> }.forEach { file ->
                     coroutineContext.ensureActive()
                     val relPath = file.relativeTo(baseDir).path.replace('\\', '/')
                     val entry = out.createArchiveEntry(file, relPath)

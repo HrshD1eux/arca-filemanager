@@ -4,6 +4,7 @@ import android.os.Environment
 import android.os.StatFs
 import com.Hrshd1eux.filemanager.core.storage.model.CategorySize
 import com.Hrshd1eux.filemanager.core.storage.model.StorageBreakdown
+import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import com.Hrshd1eux.filemanager.core.storage.model.StorageCategory
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -52,9 +53,8 @@ class LocalStorageAnalyzer(
         var archiveCount = 0
 
         runCatching {
-            rootFile.walkTopDown()
-                .onEnter { dir -> !dir.name.startsWith(".") }
-                .filter { it.isFile && !it.name.startsWith(".") }
+            SafeFileWalker.walkSafe(rootFile, includeHidden = false)
+                .filter { it.isFile }
                 .forEach { file ->
                     val ext = file.extension.lowercase()
                     val length = file.length()

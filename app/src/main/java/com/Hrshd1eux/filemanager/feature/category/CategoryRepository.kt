@@ -7,6 +7,7 @@ import com.Hrshd1eux.filemanager.core.display.model.SortOrder
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -45,10 +46,8 @@ class CategoryRepository(
             }
             val downloadItems = mutableListOf<StorageNode>()
             runCatching {
-                downloadDir.walkTopDown()
-                    .maxDepth(10)
-                    .onEnter { !it.name.startsWith(".") }
-                    .filter { it.isFile && !it.name.startsWith(".") }
+                SafeFileWalker.walkSafe(downloadDir, includeHidden = false, maxDepth = 10)
+                    .filter { it.isFile }
                     .forEach { file ->
                         downloadItems.add(file.toStorageNode())
                     }
@@ -58,19 +57,8 @@ class CategoryRepository(
 
         val result = mutableListOf<StorageNode>()
         runCatching {
-            rootFile.walkTopDown()
-                .maxDepth(12)
-                .onEnter { dir ->
-                    if (dir.name.startsWith(".")) return@onEnter false
-                    // Skip restricted system directories on Android (Android/data, Android/obb)
-                    if (dir.name.equals("data", ignoreCase = true) || dir.name.equals("obb", ignoreCase = true)) {
-                        if (dir.parentFile?.name.equals("Android", ignoreCase = true)) {
-                            return@onEnter false
-                        }
-                    }
-                    dir.canRead()
-                }
-                .filter { it.isFile && !it.name.startsWith(".") }
+            SafeFileWalker.walkSafe(rootFile, includeHidden = false, maxDepth = 12)
+                .filter { it.isFile }
                 .forEach { file ->
                     // Memory optimization: ONLY allocate StorageNode for matching files!
                     if (matchesCategory(file, category)) {

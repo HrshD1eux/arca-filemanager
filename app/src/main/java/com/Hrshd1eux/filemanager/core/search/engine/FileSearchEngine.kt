@@ -6,6 +6,7 @@ import com.Hrshd1eux.filemanager.core.search.model.SearchCriteria
 import com.Hrshd1eux.filemanager.core.search.model.SizeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -42,10 +43,10 @@ class FileSearchEngine(
         var lastEmitTime = System.currentTimeMillis()
 
         try {
-            rootFile.walkTopDown()
-                .onEnter { dir ->
-                    val normalized = dir.path.replace('\\', '/')
-                    dir.canRead() && !dir.name.equals("vault", ignoreCase = true) && !normalized.contains("/vault/") && !normalized.contains("/.vault/")
+            SafeFileWalker.walkSafe(rootFile, includeHidden = criteria.includeHidden)
+                .filter { dirOrFile ->
+                    val normalized = dirOrFile.path.replace('\\', '/')
+                    !dirOrFile.name.equals("vault", ignoreCase = true) && !normalized.contains("/vault/") && !normalized.contains("/.vault/")
                 }
                 .forEach { file ->
                     currentCoroutineContext().ensureActive()

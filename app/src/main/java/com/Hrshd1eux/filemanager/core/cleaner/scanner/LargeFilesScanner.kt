@@ -4,6 +4,7 @@ import android.os.Environment
 import com.Hrshd1eux.filemanager.core.cleaner.model.LargeFileThreshold
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -32,9 +33,8 @@ class LargeFilesScanner(
         val largeFiles = mutableListOf<StorageNode>()
 
         runCatching {
-            root.walkTopDown()
-                .onEnter { dir -> !dir.name.startsWith(".") }
-                .filter { it.isFile && !it.name.startsWith(".") && it.length() >= threshold.minBytes }
+            SafeFileWalker.walkSafe(root, includeHidden = false)
+                .filter { it.isFile && it.length() >= threshold.minBytes }
                 .forEach { file ->
                     largeFiles.add(file.toStorageNode())
                 }

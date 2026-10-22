@@ -24,10 +24,16 @@ class PdfPreviewRenderer(
     suspend fun open(): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
             val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            fileDescriptor = pfd
-            val r = PdfRenderer(pfd)
-            renderer = r
-            r.pageCount
+                ?: throw java.io.IOException("Unable to open file descriptor for ${file.path}")
+            try {
+                val r = PdfRenderer(pfd)
+                fileDescriptor = pfd
+                renderer = r
+                r.pageCount
+            } catch (e: Throwable) {
+                runCatching { pfd.close() }
+                throw e
+            }
         }
     }
 

@@ -80,7 +80,7 @@ class OperationRecoveryEngine(
 
         // 2. Scan destination for orphaned temporary artifacts (.tmp, .arca_backup_tmp)
         if (destRoot.exists() && destRoot.isDirectory) {
-            destRoot.walkTopDown().maxDepth(5).forEach { f ->
+            destRoot.walkTopDown().maxDepth(5).onFail { _, _ -> }.forEach { f ->
                 if (f.isFile && (f.name.endsWith(".tmp") || f.name.endsWith(".arca_backup_tmp"))) {
                     orphanTempFiles.add(f)
                 }
@@ -281,7 +281,7 @@ class OperationRecoveryEngine(
                 // Clean up orphan temp files
                 val destRoot = File(entry.destinationRoot)
                 if (destRoot.exists() && destRoot.isDirectory) {
-                    destRoot.walkTopDown().maxDepth(5).forEach { f ->
+                    destRoot.walkTopDown().maxDepth(5).onFail { _, _ -> }.forEach { f ->
                         if (f.isFile && (f.name.endsWith(".tmp") || f.name.endsWith(".arca_backup_tmp"))) {
                             f.delete()
                         }

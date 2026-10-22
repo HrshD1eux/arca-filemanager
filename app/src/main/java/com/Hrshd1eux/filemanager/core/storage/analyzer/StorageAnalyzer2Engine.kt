@@ -15,6 +15,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageBreakdown
 import com.Hrshd1eux.filemanager.core.storage.model.StorageCategory
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -64,13 +65,16 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    scannedDirs++
-                    if (!dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
+                        scannedDirs++
                         !dir.name.startsWith(".")
                     }
+                }
+                .onFail { file, _ ->
+                    inaccessiblePaths.add(file.absolutePath)
                 }
                 .filter { it.isFile && !it.name.startsWith(".") }
                 .forEach { file ->
@@ -125,13 +129,16 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    scannedDirs++
-                    if (!dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
+                        scannedDirs++
                         !dir.name.startsWith(".")
                     }
+                }
+                .onFail { file, _ ->
+                    inaccessiblePaths.add(file.absolutePath)
                 }
                 .filter { it.isFile && !it.name.startsWith(".") }
                 .forEach { file ->
@@ -184,13 +191,16 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    scannedDirs++
-                    if (!dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
+                        scannedDirs++
                         !dir.name.startsWith(".")
                     }
+                }
+                .onFail { file, _ ->
+                    inaccessiblePaths.add(file.absolutePath)
                 }
                 .filter { it.isFile && !it.name.startsWith(".") }
                 .forEach { file ->
@@ -242,13 +252,16 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    scannedDirs++
-                    if (!dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
+                        scannedDirs++
                         !dir.name.startsWith(".")
                     }
+                }
+                .onFail { file, _ ->
+                    inaccessiblePaths.add(file.absolutePath)
                 }
                 .filter { it.isDirectory && it.absolutePath != root.absolutePath && !it.name.startsWith(".") }
                 .forEach { dir ->
@@ -296,13 +309,16 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    scannedDirs++
-                    if (!dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
+                        scannedDirs++
                         !dir.name.startsWith(".")
                     }
+                }
+                .onFail { file, _ ->
+                    inaccessiblePaths.add(file.absolutePath)
                 }
                 .filter { it.isFile && !it.name.startsWith(".") && it.length() > 0 }
                 .forEach { file ->
@@ -409,13 +425,16 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    scannedDirs++
-                    if (!dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
+                        scannedDirs++
                         !dir.name.startsWith(".")
                     }
+                }
+                .onFail { file, _ ->
+                    inaccessiblePaths.add(file.absolutePath)
                 }
                 .filter { it.isFile && !it.name.startsWith(".") }
                 .forEach { file ->

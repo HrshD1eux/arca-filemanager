@@ -17,6 +17,9 @@ import com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver
 import com.Hrshd1eux.filemanager.core.archive.split.SplitResolution
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
+import com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository
+import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
+import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import kotlinx.coroutines.CoroutineDispatcher
@@ -140,6 +143,18 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
                 currentPassword = password
                 currentVirtualPath = ""
                 updateVisibleState()
+                runCatching {
+                    val node = StorageNode(
+                        id = file.absolutePath,
+                        name = file.name,
+                        path = file.absolutePath,
+                        isDirectory = false,
+                        size = file.length(),
+                        lastModified = file.lastModified(),
+                        mimeType = MimeTypeResolver.getMimeType(file.extension)
+                    )
+                    RecentsRepository.getInstance().recordAccess(node)
+                }
             } catch (e: ArchivePasswordRequiredException) {
                 _uiState.value = ArchiveViewerUiState.PasswordRequired(
                     archiveName = file.name,

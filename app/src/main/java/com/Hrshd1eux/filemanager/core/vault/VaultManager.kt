@@ -346,6 +346,9 @@ class VaultManager(
             if (!encFile.exists()) {
                 throw IllegalStateException("Encrypted payload missing: ${encFile.path}")
             }
+            if (entry.size > MAX_PREVIEW_MEMORY_BYTES || encFile.length() > MAX_PREVIEW_MEMORY_BYTES) {
+                throw IllegalArgumentException("File size exceeds 50MB in-memory preview limit. Please export to storage to view.")
+            }
 
             val byteOut = ByteArrayOutputStream()
             FileInputStream(encFile).use { fis ->
@@ -584,6 +587,7 @@ class VaultManager(
     }
 
     companion object {
+        const val MAX_PREVIEW_MEMORY_BYTES = 50 * 1024 * 1024L // 50MB safe memory ceiling for in-memory previews
         private const val META_FILE_NAME = "vault.meta"
         private const val MANIFEST_FILE_NAME = "manifest.enc"
         private const val DATA_DIR_NAME = "data"

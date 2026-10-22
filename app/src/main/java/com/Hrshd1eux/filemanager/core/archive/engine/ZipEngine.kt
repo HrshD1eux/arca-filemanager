@@ -274,7 +274,7 @@ class ZipEngine(
             var totalFiles = 0
             sources.forEach { source ->
                 if (source.isDirectory) {
-                    source.walkTopDown().forEach { f ->
+                    source.walkTopDown().onFail { _, _ -> }.forEach { f ->
                         if (!f.isDirectory) {
                             totalBytes += f.length()
                             totalFiles++
@@ -300,7 +300,7 @@ class ZipEngine(
                         }
                         if (source.isDirectory) {
                             val baseDir = source.parentFile ?: source
-                            source.walkTopDown().forEach { file ->
+                            source.walkTopDown().onFail { _, _ -> }.forEach { file ->
                                 coroutineContext.ensureActive()
                                 val relativePath = file.relativeTo(baseDir).path.replace('\\', '/')
                                 if (file.isDirectory) {
@@ -462,7 +462,7 @@ class ZipEngine(
             for (source in newSources) {
                 if (source.isDirectory) {
                     val baseDir = source.parentFile ?: source
-                    source.walkTopDown().forEach { file ->
+                    source.walkTopDown().onFail { _, _ -> }.forEach { file ->
                         val rel = file.relativeTo(baseDir).path.replace('\\', '/')
                         val finalPath = if (targetVirtualPath.isEmpty()) rel else "$targetVirtualPath/$rel"
                         entriesToAdd.add(finalPath to file)

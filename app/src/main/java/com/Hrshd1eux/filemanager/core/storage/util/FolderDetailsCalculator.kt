@@ -29,8 +29,7 @@ object FolderDetailsCalculator {
         var bytes = 0L
 
         try {
-            directory.walkTopDown()
-                .onEnter { it.canRead() }
+            SafeFileWalker.walkSafe(directory, includeHidden = true)
                 .forEach { file ->
                     if (file != directory) {
                         if (file.isDirectory) {

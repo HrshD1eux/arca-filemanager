@@ -197,4 +197,22 @@ class VaultManagerTest {
         assertTrue(preview.isSuccess)
         assertEquals(sampleContent, String(preview.getOrNull()!!, Charsets.UTF_8))
     }
+
+    @Test
+    fun vaultDecryptToMemory_rejectsFilesExceedingLimit() = runTest {
+        val password = "Password123!".toCharArray()
+        vaultManager.createVault(password)
+
+        val sampleFile = tempFolder.newFile("oversized.iso")
+        val importRes = vaultManager.importFiles(listOf(sampleFile))
+        val entry = importRes.getOrNull()!!.first()
+
+        // Fabricate entry exceeding 50MB
+        val oversizedEntry = entry.copy(size = 60L * 1024 * 1024)
+
+        val previewRes = vaultManager.decryptToMemory(oversizedEntry)
+        assertTrue(previewRes.isFailure)
+        assertTrue(previewRes.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(previewRes.exceptionOrNull()!!.message!!.contains("50MB"))
+    }
 }

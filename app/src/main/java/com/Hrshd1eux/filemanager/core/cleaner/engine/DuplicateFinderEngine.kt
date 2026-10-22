@@ -6,6 +6,7 @@ import com.Hrshd1eux.filemanager.core.cleaner.model.DuplicateScanResult
 import com.Hrshd1eux.filemanager.core.cleaner.model.ScanStage
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -40,9 +41,8 @@ class DuplicateFinderEngine(
         val sizeBuckets = HashMap<Long, MutableList<File>>()
 
         runCatching {
-            root.walkTopDown()
-                .onEnter { dir -> !dir.name.startsWith(".") }
-                .filter { it.isFile && !it.name.startsWith(".") && it.length() > 0 }
+            SafeFileWalker.walkSafe(root, includeHidden = false)
+                .filter { it.isFile && it.length() > 0 }
                 .forEach { file ->
                     coroutineContext.ensureActive()
                     val length = file.length()

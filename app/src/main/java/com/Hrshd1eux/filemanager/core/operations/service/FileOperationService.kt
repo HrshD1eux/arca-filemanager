@@ -1,14 +1,17 @@
 package com.Hrshd1eux.filemanager.core.operations.service
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.Hrshd1eux.filemanager.MainActivity
 import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.operations.queue.OperationManager
@@ -33,6 +36,11 @@ class FileOperationService : Service() {
         super.onCreate()
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannel()
+
+        // Immediate startForeground call to strictly satisfy Android 8+ foreground service launch timeout
+        val initialNotification = buildInitialNotification()
+        startForegroundWithType(initialNotification)
+
         observeOperations()
     }
 
@@ -64,6 +72,19 @@ class FileOperationService : Service() {
         }
     }
 
+    private fun startForegroundWithType(notification: Notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
     private fun observeOperations() {
         val operationManager = OperationManager.getInstance()
         observerJob = serviceScope.launch {
@@ -75,8 +96,8 @@ class FileOperationService : Service() {
             }.collect { (activeOp, waitingCount) ->
                 if (activeOp != null && activeOp.status == OperationStatus.RUNNING) {
                     val notification = buildNotification(activeOp, waitingCount)
-                    startForeground(NOTIFICATION_ID, notification)
-                } else {
+                    startForegroundWithType(notification)
+                } else if (activeOp == null && waitingCount == 0) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                 }
@@ -84,7 +105,29 @@ class FileOperationService : Service() {
         }
     }
 
-    private fun buildNotification(operation: QueuedOperation, waitingCount: Int): android.app.Notification {
+    private fun buildInitialNotification(): Notification {
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val openPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("File Operations")
+            .setContentText("Processing operations in background...")
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(openPendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
+    private fun buildNotification(operation: QueuedOperation, waitingCount: Int): Notification {
         val percent = (operation.progress.progressRatio * 100).toInt()
 
         // Privacy rule: Zero sensitive file or path metadata in notifications
@@ -131,11 +174,13 @@ class FileOperationService : Service() {
         const val ACTION_CANCEL_ACTIVE = "com.Hrshd1eux.filemanager.ACTION_CANCEL_ACTIVE"
 
         fun start(context: Context) {
-            val intent = Intent(context, FileOperationService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            runCatching {
+                val intent = Intent(context, FileOperationService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
             }
         }
     }
