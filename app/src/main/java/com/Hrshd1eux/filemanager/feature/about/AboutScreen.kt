@@ -651,7 +651,7 @@ private fun LegalInformationCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Copyright © 2026 ARCA Contributors & hrshd1eux Studio. All rights of ARCA are reserved by hrshd1eux Studio.",
+                text = "Copyright © 2026 ARCA Contributors & hrshd1eux Studio. All rights reserved under the Apache License, Version 2.0.",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
@@ -777,17 +777,31 @@ private fun LibraryDetailDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    runCatching {
-                        uriHandler.openUri(library.projectUrl)
-                    }.onFailure {
-                        clipboardManager.setText(AnnotatedString(library.projectUrl))
-                        Toast.makeText(context, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            uriHandler.openUri(library.licenseUrl)
+                        }.onFailure {
+                            clipboardManager.setText(AnnotatedString(library.licenseUrl))
+                            Toast.makeText(context, "License URL copied to clipboard", Toast.LENGTH_SHORT).show()
+                        }
                     }
+                ) {
+                    Text("License")
                 }
-            ) {
-                Text("Open Project")
+                Button(
+                    onClick = {
+                        runCatching {
+                            uriHandler.openUri(library.projectUrl)
+                        }.onFailure {
+                            clipboardManager.setText(AnnotatedString(library.projectUrl))
+                            Toast.makeText(context, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("Project")
+                }
             }
         },
         dismissButton = {

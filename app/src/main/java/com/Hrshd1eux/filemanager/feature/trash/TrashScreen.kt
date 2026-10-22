@@ -233,8 +233,8 @@ fun TrashScreen(
             text = {
                 Text(
                     text = "Are you sure you want to permanently delete all ${entries.size} items? " +
-                            "ARCA will cryptographically shred these files with multi-pass CSPRNG overwriting, " +
-                            "header zeroing, and hardware cache flush. Data recovery software will NOT be able to carve them back.",
+                            "ARCA will shred these files with multi-pass CSPRNG overwriting, header zeroing, and hardware cache flushes to defeat file carving tools. " +
+                            "(Note: On modern UFS/eMMC flash storage, hardware wear-leveling controllers independently govern physical block retirement.) This action cannot be undone.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -280,7 +280,7 @@ fun TrashScreen(
             text = {
                 Text(
                     text = "Permanently shred \"${target.originalName}\"? " +
-                            "Raw flash sectors will be overwritten with synchronous pseudo-random bytes and header zeroes. " +
+                            "File clusters will be overwritten with synchronous pseudo-random bytes and header zeroes, followed by hardware cache flushes to defeat file carving tools. " +
                             "This action cannot be undone.",
                     style = MaterialTheme.typography.bodyMedium
                 )

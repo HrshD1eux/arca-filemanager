@@ -400,7 +400,7 @@ class UnifiedPreviewViewModel @JvmOverloads constructor(
                     val mime = node.mimeType ?: FileTypeResolver.resolveMimeType(file.name)
                     val ext = file.extension.lowercase()
                     val reason = if (ext.startsWith("crypt") || ext.matches(Regex("crypt\\d+"))) {
-                        "WhatsApp Encrypted Database (.${file.extension.uppercase()}): Encrypted using AES-256-GCM. Plaintext contents cannot be previewed because the decryption key is securely isolated inside WhatsApp's private app sandbox (/data/data/com.whatsapp/files/key)."
+                        "Encrypted Database (.${file.extension.uppercase()}): Encrypted using AES-256-GCM by the originating application. Plaintext contents cannot be previewed because the decryption key is securely isolated within the originating application's private app sandbox."
                     } else {
                         "No in-app preview available for .${file.extension.uppercase()} files."
                     }

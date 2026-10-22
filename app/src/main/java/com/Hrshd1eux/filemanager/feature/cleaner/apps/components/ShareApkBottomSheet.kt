@@ -428,7 +428,7 @@ fun ShareApkBottomSheet(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "ARCA extracts unmodified installed APK packages for local backup and compatible sharing targets (Quick Share, WhatsApp, Drive). Paid, DRM-protected, or hardware-specific applications may require active store verification on the receiving device.",
+                        text = "ARCA extracts unmodified installed APK binaries strictly for personal backup and user-initiated sharing. ARCA does not circumvent DRM, digital signatures, or store licensing. Paid or hardware-restricted applications may require active store verification on receiving devices. Users are responsible for complying with applicable software licenses and copyright laws.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
                         fontSize = 11.sp
