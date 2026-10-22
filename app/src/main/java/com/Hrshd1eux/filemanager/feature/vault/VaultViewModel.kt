@@ -161,6 +161,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.value = VaultUiState.Loading
             vaultManager.createVault(password).onSuccess {
+                if (lockSettings.value.isBiometricEnabled) {
+                    vaultLockManager.saveBiometricVaultPassword(password)
+                }
                 currentPath = ""
                 selectedIds.clear()
                 isSearching = false
@@ -181,6 +184,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.value = VaultUiState.Loading
             vaultManager.unlock(password).onSuccess {
+                if (lockSettings.value.isBiometricEnabled) {
+                    vaultLockManager.saveBiometricVaultPassword(password)
+                }
                 currentPath = ""
                 selectedIds.clear()
                 isSearching = false
@@ -194,6 +200,54 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = VaultUiState.Locked(
                     error = error.localizedMessage ?: "Incorrect password. Please try again."
                 )
+            }
+        }
+    }
+
+    fun unlockWithBiometrics() {
+        val password = vaultLockManager.getBiometricVaultPassword()
+        if (password != null) {
+            unlockVault(password)
+        } else {
+            viewModelScope.launch {
+                _userMessage.emit("Biometric credential not available. Please unlock with master password.")
+            }
+        }
+    }
+
+    fun changePassword(oldPassword: CharArray, newPassword: CharArray) {
+        viewModelScope.launch {
+            _uiState.value = VaultUiState.Loading
+            vaultManager.changePassword(oldPassword, newPassword).onSuccess {
+                if (lockSettings.value.isBiometricEnabled) {
+                    vaultLockManager.saveBiometricVaultPassword(newPassword)
+                }
+                vaultLockManager.onUserInteraction()
+                refreshState()
+                _userMessage.emit("Vault master password changed successfully")
+            }.onFailure { error ->
+                refreshState()
+                _userMessage.emit("Failed to change password: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun deleteVault() {
+        viewModelScope.launch {
+            _uiState.value = VaultUiState.Loading
+            vaultLockManager.clearBiometricVaultPassword()
+            vaultManager.deleteVault().onSuccess {
+                stopIdleChecker()
+                currentPath = ""
+                selectedIds.clear()
+                isSearching = false
+                searchQuery = ""
+                VaultSearchEngine.clear()
+                _uiState.value = VaultUiState.Unconfigured
+                _userMessage.emit("Private Vault and all encrypted files were permanently deleted")
+            }.onFailure { error ->
+                refreshState()
+                _userMessage.emit("Failed to delete vault: ${error.localizedMessage}")
             }
         }
     }

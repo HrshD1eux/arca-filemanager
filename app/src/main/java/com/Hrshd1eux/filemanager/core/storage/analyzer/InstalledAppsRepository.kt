@@ -11,6 +11,7 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.Environment
 import android.os.Process
 import android.os.storage.StorageManager
 import androidx.collection.LruCache
@@ -102,6 +103,9 @@ class InstalledAppsRepository(
     }
 
     suspend fun getInstalledApps(forceRefresh: Boolean = false): InstalledAppsReport = withContext(ioDispatcher) {
+        if (forceRefresh) {
+            cachedReport = null
+        }
         if (!forceRefresh && cachedReport != null) {
             val current = cachedReport!!
             // If cached report is older than 30 mins, mark measurements stale
@@ -269,10 +273,18 @@ class InstalledAppsRepository(
                 val userHandle = Process.myUserHandle()
                 val stats = storageStatsManager.queryStatsForPackage(uuid, packageName, userHandle)
                 val rawApkSize = calculateApkSizeOnDisk(appInfo)
+
+                val extCacheBytes = runCatching {
+                    val extCacheDir = File(Environment.getExternalStorageDirectory(), "Android/data/$packageName/cache")
+                    if (extCacheDir.exists() && extCacheDir.canRead()) calculateDirSize(extCacheDir) else 0L
+                }.getOrDefault(0L)
+
+                val effectiveCacheBytes = maxOf(stats.cacheBytes, extCacheBytes)
+
                 AppStorageMeasurement.fromSystemStats(
                     appBytes = stats.appBytes,
                     dataBytes = stats.dataBytes,
-                    cacheBytes = stats.cacheBytes,
+                    cacheBytes = effectiveCacheBytes,
                     rawApkBytes = rawApkSize,
                     splitCount = extraInfo.splitApks.size,
                     timestampMillis = measuredTime,

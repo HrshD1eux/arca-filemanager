@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Visibility
@@ -115,7 +116,7 @@ fun SettingsScreen(
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showArchiveDialog by remember { mutableStateOf(false) }
-    var showVaultDialog by remember { mutableStateOf(false) }
+
     var showAppLockDialog by remember { mutableStateOf(false) }
 
     val appLockManager = remember { AppLockManager.getInstance(context) }
@@ -266,13 +267,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Archive,
                         onClick = { showArchiveDialog = true }
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SettingsRow(
-                        title = "Private Vault",
-                        subtitle = "Auto-lock: ${vaultLockSettings.autoLockTimeout.displayName} • Screen-off lock: ${if (vaultLockSettings.lockOnScreenOff) "On" else "Off"}",
-                        icon = Icons.Default.Lock,
-                        onClick = { showVaultDialog = true }
-                    )
+
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = "Security Center",
@@ -309,6 +304,13 @@ fun SettingsScreen(
                         icon = Icons.Default.Security,
                         onClick = onNavigateToPrivacy
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsRow(
+                        title = "App Updates & Internet Disclosure",
+                        subtitle = "Internet is strictly used to check and download releases from GitHub upon your request. Zero telemetry or user data is ever transmitted.",
+                        icon = Icons.Default.Download,
+                        onClick = onNavigateToAbout
+                    )
                 }
             }
 
@@ -340,14 +342,7 @@ fun SettingsScreen(
         )
     }
 
-    if (showVaultDialog) {
-        VaultLockSettingsDialog(
-            currentSettings = vaultLockSettings,
-            onSaveSettings = { viewModel.updateVaultLockSettings(it) },
-            onManualLock = { viewModel.lockVaultNow() },
-            onDismiss = { showVaultDialog = false }
-        )
-    }
+
 
     if (showAppLockDialog) {
         AppLockSettingsDialog(

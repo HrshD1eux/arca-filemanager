@@ -23,6 +23,7 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:requestLegacyExternalStorage="true"
+        android:enableOnBackInvokedCallback="true"
         android:dataExtractionRules="@null"
         android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"

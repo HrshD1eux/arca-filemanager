@@ -1,7 +1,9 @@
 package com.Hrshd1eux.filemanager.core.lock.biometric
 
+import android.app.Activity
 import android.content.Context
 import android.os.Build
+import android.os.CancellationSignal
 import com.Hrshd1eux.filemanager.core.lock.model.BiometricCapabilityStatus
 
 /**
@@ -60,6 +62,53 @@ class BiometricAuthCoordinator(
             }
         } else {
             return BiometricCapabilityStatus.NO_HARDWARE
+        }
+    }
+
+    /**
+     * Prompts the user with the system BiometricPrompt dialog.
+     */
+    fun authenticate(
+        activity: Activity,
+        title: String = "Unlock Private Vault",
+        subtitle: String = "Confirm biometric credential to proceed",
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                val prompt = android.hardware.biometrics.BiometricPrompt.Builder(activity)
+                    .setTitle(title)
+                    .setSubtitle(subtitle)
+                    .setNegativeButton("Cancel", activity.mainExecutor) { _, _ ->
+                        onError("Authentication cancelled")
+                    }
+                    .build()
+
+                val cancellationSignal = CancellationSignal()
+                prompt.authenticate(
+                    cancellationSignal,
+                    activity.mainExecutor,
+                    object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
+                            onSuccess()
+                        }
+
+                        override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+                            onError(errString?.toString() ?: "Authentication error")
+                        }
+
+                        override fun onAuthenticationFailed() {
+                            onError("Biometric verification failed")
+                        }
+                    }
+                )
+            } catch (t: Throwable) {
+                onError(t.localizedMessage ?: "Biometric prompt error")
+            }
+        } else {
+            // Fallback for pre-API 28
+            onSuccess()
         }
     }
 }

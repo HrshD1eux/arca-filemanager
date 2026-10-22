@@ -449,6 +449,124 @@ class VaultManager(
         }
     }
 
+    /**
+     * Completely wipes and permanently destroys the Private Vault, including all encrypted payloads,
+     * manifest, and metadata, resetting the vault to unconfigured status.
+     */
+    suspend fun deleteVault(): Result<Unit> = withContext(ioDispatcher) {
+        runCatching {
+            lock()
+            if (vaultDir.exists()) {
+                val success = vaultDir.deleteRecursively()
+                if (!success) {
+                    dataDir.listFiles()?.forEach { it.delete() }
+                    metaFile.delete()
+                    manifestFile.delete()
+                    vaultDir.delete()
+                }
+            }
+        }
+    }
+
+    /**
+     * Changes the master password for the Private Vault by re-encrypting all file payloads,
+     * re-encrypting the manifest with a newly derived master key, and updating the verification metadata.
+     */
+    suspend fun changePassword(
+        oldPassword: CharArray,
+        newPassword: CharArray,
+        onProgress: ((completedFiles: Int, totalFiles: Int) -> Unit)? = null
+    ): Result<Unit> = withContext(ioDispatcher) {
+        runCatching {
+            require(newPassword.isNotEmpty()) { "New vault password cannot be empty" }
+            if (!isConfigured()) {
+                throw IllegalStateException("Vault is not configured")
+            }
+
+            // 1. Verify old password
+            val metaJson = metaFile.readText()
+            val metadata = json.decodeFromString(VaultMetadata.serializer(), metaJson)
+            val oldSalt = hexToBytes(metadata.saltHex)
+            val oldKey = cryptoEngine.deriveKey(oldPassword, oldSalt)
+
+            try {
+                val tokenPayload = EncryptedPayload(
+                    iv = hexToBytes(metadata.verificationPayload.ivHex),
+                    ciphertextWithTag = hexToBytes(metadata.verificationPayload.ciphertextHex)
+                )
+                val decryptedToken = cryptoEngine.decryptPayload(tokenPayload, oldKey)
+                if (!decryptedToken.contentEquals(VERIFICATION_TOKEN_BYTES)) {
+                    throw GeneralSecurityException("Incorrect current vault password")
+                }
+
+                // 2. Ensure manifest is decrypted
+                val manifest: VaultManifest = currentManifest ?: run {
+                    val manifestRaw = manifestFile.readBytes()
+                    val iv = manifestRaw.copyOfRange(0, 12)
+                    val ciphertext = manifestRaw.copyOfRange(12, manifestRaw.size)
+                    val decryptedBytes = cryptoEngine.decryptPayload(EncryptedPayload(iv, ciphertext), oldKey)
+                    json.decodeFromString(VaultManifest.serializer(), String(decryptedBytes, Charsets.UTF_8))
+                }
+
+                // 3. Derive new master key
+                val newSalt = SecureRandomGenerator.generateSalt(32)
+                val newKey = cryptoEngine.deriveKey(newPassword, newSalt)
+
+                // 4. Re-encrypt all existing encrypted payload files in dataDir
+                val fileEntries = manifest.files.filter { !it.isDirectory && it.encryptedFileName.isNotEmpty() }
+                fileEntries.forEachIndexed { index, entry ->
+                    val encFile = File(dataDir, entry.encryptedFileName)
+                    if (encFile.exists()) {
+                        val tempDec = File(dataDir, "${entry.encryptedFileName}.tmp_dec")
+                        val tempNewEnc = File(dataDir, "${entry.encryptedFileName}.tmp_enc")
+                        try {
+                            cryptoEngine.decryptFile(
+                                sourceFile = encFile,
+                                destinationFile = tempDec,
+                                key = oldKey
+                            )
+                            cryptoEngine.encryptFile(
+                                sourceFile = tempDec,
+                                destinationFile = tempNewEnc,
+                                key = newKey
+                            )
+                            if (tempNewEnc.exists()) {
+                                encFile.delete()
+                                tempNewEnc.renameTo(encFile)
+                            }
+                        } finally {
+                            if (tempDec.exists()) tempDec.delete()
+                            if (tempNewEnc.exists()) tempNewEnc.delete()
+                        }
+                    }
+                    onProgress?.invoke(index + 1, fileEntries.size)
+                }
+
+                // 5. Re-encrypt and save manifest with new key
+                saveManifest(manifest, newKey)
+
+                // 6. Generate new verification metadata
+                val newVerifyPayload = cryptoEngine.encryptPayload(VERIFICATION_TOKEN_BYTES, newKey)
+                val updatedMetadata = VaultMetadata(
+                    saltHex = newSalt.toHexString(),
+                    verificationPayload = EncryptedPayloadDto(
+                        ivHex = newVerifyPayload.iv.toHexString(),
+                        ciphertextHex = newVerifyPayload.ciphertextWithTag.toHexString()
+                    ),
+                    createdAt = metadata.createdAt
+                )
+                metaFile.writeText(json.encodeToString(VaultMetadata.serializer(), updatedMetadata))
+
+                // 7. Update active key & manifest in memory
+                activeKey = newKey
+                currentManifest = manifest
+            } finally {
+                cryptoEngine.wipeSensitiveData(oldPassword)
+                cryptoEngine.wipeSensitiveData(newPassword)
+            }
+        }
+    }
+
     private fun saveManifest(manifest: VaultManifest, key: SecretKey) {
         val bytes = json.encodeToString(VaultManifest.serializer(), manifest).toByteArray(Charsets.UTF_8)
         val encrypted = cryptoEngine.encryptPayload(bytes, key)

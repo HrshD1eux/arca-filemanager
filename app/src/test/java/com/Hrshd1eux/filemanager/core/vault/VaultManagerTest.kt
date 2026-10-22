@@ -142,4 +142,59 @@ class VaultManagerTest {
         assertTrue(deleteFolderResult.isSuccess)
         assertEquals(0, vaultManager.getAllFiles().size)
     }
+
+    @Test
+    fun vaultDelete_wipesAllDataAndResetsToUnconfigured() = runTest {
+        val password = "MasterVaultPassword!".toCharArray()
+        vaultManager.createVault(password)
+        assertTrue(vaultManager.isConfigured())
+        assertTrue(vaultManager.isUnlocked())
+
+        val sampleFile = tempFolder.newFile("secret.txt").apply { writeText("super confidential") }
+        vaultManager.importFiles(listOf(sampleFile))
+        assertEquals(1, vaultManager.getAllFiles().size)
+
+        // Delete Vault
+        val deleteResult = vaultManager.deleteVault()
+        assertTrue(deleteResult.isSuccess)
+        assertFalse(vaultManager.isConfigured())
+        assertFalse(vaultManager.isUnlocked())
+        assertEquals(0, vaultManager.getAllFiles().size)
+    }
+
+    @Test
+    fun vaultChangePassword_reEncryptsDataAndAllowsNewUnlock() = runTest {
+        val oldPassword = "OldPassword123!".toCharArray()
+        val newPassword = "NewPassword456@!".toCharArray()
+
+        vaultManager.createVault(oldPassword)
+
+        val sampleContent = "Encrypted Financial Records 2026"
+        val sampleFile = tempFolder.newFile("records.txt").apply { writeText(sampleContent) }
+        val importRes = vaultManager.importFiles(listOf(sampleFile))
+        val entry = importRes.getOrNull()!!.first()
+
+        // Change password
+        val changeRes = vaultManager.changePassword(
+            oldPassword = "OldPassword123!".toCharArray(),
+            newPassword = "NewPassword456@!".toCharArray()
+        )
+        assertTrue(changeRes.isSuccess)
+        assertTrue(vaultManager.isUnlocked())
+
+        // Lock and unlock with old password -> should fail
+        vaultManager.lock()
+        val oldUnlock = vaultManager.unlock("OldPassword123!".toCharArray())
+        assertFalse(oldUnlock.isSuccess)
+
+        // Unlock with new password -> should succeed
+        val newUnlock = vaultManager.unlock("NewPassword456@!".toCharArray())
+        assertTrue(newUnlock.isSuccess)
+        assertEquals(1, vaultManager.getAllFiles().size)
+
+        // Verify data decrypts accurately with new password
+        val preview = vaultManager.decryptToMemory(vaultManager.getAllFiles().first())
+        assertTrue(preview.isSuccess)
+        assertEquals(sampleContent, String(preview.getOrNull()!!, Charsets.UTF_8))
+    }
 }

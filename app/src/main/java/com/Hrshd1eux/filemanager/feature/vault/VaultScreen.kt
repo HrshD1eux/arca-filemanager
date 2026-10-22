@@ -90,6 +90,12 @@ import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialo
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.CreateVaultSetup
+import android.app.Activity
+import androidx.compose.ui.platform.LocalContext
+import com.Hrshd1eux.filemanager.core.lock.biometric.BiometricAuthCoordinator
+import com.Hrshd1eux.filemanager.core.lock.model.BiometricCapabilityStatus
+import com.Hrshd1eux.filemanager.feature.vault.components.ChangeVaultPasswordDialog
+import com.Hrshd1eux.filemanager.feature.vault.components.DeleteVaultConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.UnlockVaultView
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultLockSettingsDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultMoveDialog
@@ -116,9 +122,16 @@ fun VaultScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val localProvider = remember { LocalFileSystemProvider() }
 
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val biometricCoordinator = remember { BiometricAuthCoordinator(context) }
+    val isBiometricReady = remember { biometricCoordinator.checkBiometricCapability() == BiometricCapabilityStatus.READY }
+
     var showImportPicker by remember { mutableStateOf(false) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showLockSettingsDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var showDeleteVaultDialog by remember { mutableStateOf(false) }
     var entryToRename by remember { mutableStateOf<VaultFileEntry?>(null) }
     var entryToMove by remember { mutableStateOf<VaultFileEntry?>(null) }
     var showBatchMoveDialog by remember { mutableStateOf(false) }
@@ -376,6 +389,23 @@ fun VaultScreen(
                         onUnlock = { password ->
                             viewModel.unlockVault(password)
                         },
+                        onUnlockWithBiometrics = if (lockSettings.isBiometricEnabled && isBiometricReady && viewModel.vaultLockManager.hasBiometricPassword()) {
+                            {
+                                if (activity != null) {
+                                    biometricCoordinator.authenticate(
+                                        activity = activity,
+                                        title = "Unlock Private Vault",
+                                        subtitle = "Verify biometrics to access encrypted vault",
+                                        onSuccess = { viewModel.unlockWithBiometrics() },
+                                        onError = { /* fallback to password */ }
+                                    )
+                                } else {
+                                    viewModel.unlockWithBiometrics()
+                                }
+                            }
+                        } else null,
+                        onDeleteVault = { showDeleteVaultDialog = true },
+                        isBiometricAvailable = lockSettings.isBiometricEnabled && isBiometricReady && viewModel.vaultLockManager.hasBiometricPassword(),
                         errorMessage = state.error
                     )
                 }
@@ -783,13 +813,38 @@ fun VaultScreen(
     if (showLockSettingsDialog) {
         VaultLockSettingsDialog(
             currentSettings = lockSettings,
+            isBiometricSupported = isBiometricReady,
             onSaveSettings = { newSettings ->
                 viewModel.updateLockSettings(newSettings)
             },
             onManualLock = {
                 viewModel.lockVault()
             },
+            onChangePassword = {
+                showChangePasswordDialog = true
+            },
+            onDeleteVault = {
+                showDeleteVaultDialog = true
+            },
             onDismiss = { showLockSettingsDialog = false }
+        )
+    }
+
+    if (showChangePasswordDialog) {
+        ChangeVaultPasswordDialog(
+            onConfirm = { oldPassword, newPassword ->
+                viewModel.changePassword(oldPassword, newPassword)
+            },
+            onDismiss = { showChangePasswordDialog = false }
+        )
+    }
+
+    if (showDeleteVaultDialog) {
+        DeleteVaultConfirmationDialog(
+            onConfirmDelete = {
+                viewModel.deleteVault()
+            },
+            onDismiss = { showDeleteVaultDialog = false }
         )
     }
 }

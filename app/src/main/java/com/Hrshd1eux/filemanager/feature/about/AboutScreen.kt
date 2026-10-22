@@ -328,7 +328,7 @@ private fun PrivacyStatementCard(
             )
             PrivacyPrincipleItem(
                 title = "User-Initiated Network Only",
-                desc = "Network access is used exclusively for remote protocols (SFTP, FTP, SMB, WebDAV) that you explicitly configure."
+                desc = "Network access is strictly used for remote storage protocols you configure and user-initiated app release checks via GitHub. Zero telemetry or user data is ever transmitted."
             )
 
             Spacer(modifier = Modifier.height(12.dp))

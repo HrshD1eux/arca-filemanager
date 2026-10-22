@@ -584,6 +584,8 @@ fun InstalledAppsScreen(
             app = uiState.selectedAppForDetails!!,
             onDismiss = { viewModel.selectAppForDetails(null) },
             onCopied = { viewModel.emitMessage(it) },
+            onOpenedSettings = { viewModel.onOpenedSettings() },
+            onRefresh = { viewModel.loadApps(forceRefresh = true) },
             onShareApk = { app ->
                 viewModel.selectAppForDetails(null)
                 viewModel.selectAppForShare(app)

@@ -19,5 +19,6 @@ data class VaultLockSettings(
     val isVaultHidden: Boolean = false,
     val secretCodeSalt: String = "",
     val secretCodeHash: String = "",
-    val encryptedSecretCode: String = ""
+    val encryptedSecretCode: String = "",
+    val isBiometricEnabled: Boolean = false
 )

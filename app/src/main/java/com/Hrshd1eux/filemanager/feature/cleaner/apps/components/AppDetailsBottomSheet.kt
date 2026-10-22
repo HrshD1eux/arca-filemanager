@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
@@ -88,6 +89,8 @@ fun AppDetailsBottomSheet(
     onDismiss: () -> Unit,
     onCopied: (String) -> Unit = {},
     onShareApk: (InstalledAppInfo) -> Unit = {},
+    onOpenedSettings: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -240,11 +243,25 @@ fun AppDetailsBottomSheet(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Text(
-                            text = app.storageMeasurement.getFreshnessLabel(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = app.storageMeasurement.getFreshnessLabel(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            IconButton(
+                                onClick = onRefresh,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh stats",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
 
                     // 1. Installed Package Runtime Footprint
@@ -643,6 +660,7 @@ fun AppDetailsBottomSheet(
                 OutlinedButton(
                     onClick = {
                         try {
+                            onOpenedSettings()
                             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                                 data = Uri.parse("package:${app.packageName}")
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK

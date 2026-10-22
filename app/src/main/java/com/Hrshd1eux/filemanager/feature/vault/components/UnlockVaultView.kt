@@ -18,6 +18,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -27,8 +29,10 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +52,9 @@ import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 @Composable
 fun UnlockVaultView(
     onUnlock: (CharArray) -> Unit,
+    onUnlockWithBiometrics: (() -> Unit)? = null,
+    onDeleteVault: (() -> Unit)? = null,
+    isBiometricAvailable: Boolean = false,
     errorMessage: String? = null,
     modifier: Modifier = Modifier
 ) {
@@ -178,6 +185,50 @@ fun UnlockVaultView(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
+        }
+
+        if (isBiometricAvailable && onUnlockWithBiometrics != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onUnlockWithBiometrics,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Fingerprint,
+                    contentDescription = null,
+                    tint = VaultEmerald,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Unlock with Biometrics",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        if (onDeleteVault != null) {
+            Spacer(modifier = Modifier.height(24.dp))
+            TextButton(
+                onClick = onDeleteVault
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DeleteForever,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Forgot master password? Wipe & Reset Vault",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }

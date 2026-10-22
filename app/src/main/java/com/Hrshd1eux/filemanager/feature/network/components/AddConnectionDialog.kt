@@ -69,7 +69,9 @@ import com.Hrshd1eux.filemanager.core.network.model.NetworkConnectionTestResult
 import com.Hrshd1eux.filemanager.core.network.model.NetworkProtocol
 import com.Hrshd1eux.filemanager.core.network.model.NetworkServerConfig
 import com.Hrshd1eux.filemanager.core.network.registry.NetworkProviderRegistry
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Dialog for adding a new remote network connection.
@@ -1144,15 +1146,26 @@ fun AddConnectionDialog(
                         scope.launch {
                             isTesting = true
                             testResult = null
-                            val config = buildConfig()
-                            val provider = NetworkProviderRegistry.createProvider(config)
-                            val res = provider.testConnection()
-                            testResult = res.getOrElse {
-                                NetworkConnectionTestResult(
-                                    isSuccess = false,
-                                    latencyMs = 0L,
-                                    errorMessage = it.message ?: "Failed"
-                                )
+                            testResult = withContext(Dispatchers.IO) {
+                                runCatching {
+                                    val config = buildConfig()
+                                    config.validate()
+                                    val provider = NetworkProviderRegistry.createProvider(config)
+                                    val res = provider.testConnection()
+                                    res.getOrElse {
+                                        NetworkConnectionTestResult(
+                                            isSuccess = false,
+                                            latencyMs = 0L,
+                                            errorMessage = it.message ?: "Failed"
+                                        )
+                                    }
+                                }.getOrElse { error ->
+                                    NetworkConnectionTestResult(
+                                        isSuccess = false,
+                                        latencyMs = 0L,
+                                        errorMessage = error.localizedMessage ?: error.message ?: "Connection error"
+                                    )
+                                }
                             }
                             isTesting = false
                         }

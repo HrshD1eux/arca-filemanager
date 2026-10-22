@@ -61,6 +61,7 @@ class InstalledAppsViewModel @JvmOverloads constructor(
     val userMessage: SharedFlow<String> = _userMessage.asSharedFlow()
 
     private var batchExportJob: Job? = null
+    private var hasNavigatedToSettings = false
 
     init {
         loadApps(forceRefresh = false)
@@ -82,12 +83,20 @@ class InstalledAppsViewModel @JvmOverloads constructor(
                     filter = current.typeFilter,
                     sortOrder = current.sortOrder
                 )
+                val updatedSelectedApp = current.selectedAppForDetails?.let { selected ->
+                    report.apps.find { it.packageName == selected.packageName } ?: selected
+                }
+                val updatedSelectedShare = current.selectedAppForShare?.let { selected ->
+                    report.apps.find { it.packageName == selected.packageName } ?: selected
+                }
                 _uiState.value = current.copy(
                     isLoading = false,
                     report = report,
                     filteredApps = filtered,
                     systemStorageBreakdown = systemBreakdown,
                     isUsageAccessGranted = usageGranted,
+                    selectedAppForDetails = updatedSelectedApp,
+                    selectedAppForShare = updatedSelectedShare,
                     errorMessage = null
                 )
             }.onFailure { error ->
@@ -102,9 +111,14 @@ class InstalledAppsViewModel @JvmOverloads constructor(
     /**
      * Checks if usage access permission has changed on resume, refreshing storage stats if newly granted.
      */
+    fun onOpenedSettings() {
+        hasNavigatedToSettings = true
+    }
+
     fun onResumeCheck() {
         val currentPermission = repository.hasUsageStatsPermission()
-        if (currentPermission != _uiState.value.isUsageAccessGranted) {
+        if (hasNavigatedToSettings || currentPermission != _uiState.value.isUsageAccessGranted) {
+            hasNavigatedToSettings = false
             loadApps(forceRefresh = true)
         }
     }

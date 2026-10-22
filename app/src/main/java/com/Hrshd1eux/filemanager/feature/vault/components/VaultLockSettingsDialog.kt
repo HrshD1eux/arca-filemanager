@@ -13,6 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AlertDialog
@@ -21,6 +23,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -45,14 +48,18 @@ import com.Hrshd1eux.filemanager.core.vault.stealth.VaultStealthSecurity
 @Composable
 fun VaultLockSettingsDialog(
     currentSettings: VaultLockSettings,
+    isBiometricSupported: Boolean = false,
     onSaveSettings: (VaultLockSettings) -> Unit,
     onManualLock: () -> Unit,
+    onChangePassword: () -> Unit = {},
+    onDeleteVault: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var selectedTimeout by remember { mutableStateOf(currentSettings.autoLockTimeout) }
     var lockOnBg by remember { mutableStateOf(currentSettings.lockOnBackground) }
     var lockOnScreenOff by remember { mutableStateOf(currentSettings.lockOnScreenOff) }
     var isVaultHidden by remember { mutableStateOf(currentSettings.isVaultHidden) }
+    var isBiometricEnabled by remember { mutableStateOf(currentSettings.isBiometricEnabled) }
 
     val initialCode = remember(currentSettings) {
         if (currentSettings.encryptedSecretCode.isNotBlank() && currentSettings.secretCodeSalt.isNotBlank()) {
@@ -188,6 +195,36 @@ fun VaultLockSettingsDialog(
                     )
                 }
 
+                if (isBiometricSupported) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { isBiometricEnabled = !isBiometricEnabled }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Biometric Unlock",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Unlock vault using enrolled fingerprint or face recognition",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = isBiometricEnabled,
+                            onCheckedChange = { isBiometricEnabled = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = VaultEmerald)
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(12.dp))
@@ -243,6 +280,54 @@ fun VaultLockSettingsDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Vault Management",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        onDismiss()
+                        onChangePassword()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Change Master Password")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        onDismiss()
+                        onDeleteVault()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.DeleteForever,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Delete Vault (Permanent)")
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Manual Lock Action
@@ -279,7 +364,8 @@ fun VaultLockSettingsDialog(
                         isVaultHidden = isVaultHidden,
                         secretCodeSalt = credentials?.saltHex ?: currentSettings.secretCodeSalt,
                         secretCodeHash = credentials?.hashHex ?: currentSettings.secretCodeHash,
-                        encryptedSecretCode = credentials?.encryptedPayloadHex ?: currentSettings.encryptedSecretCode
+                        encryptedSecretCode = credentials?.encryptedPayloadHex ?: currentSettings.encryptedSecretCode,
+                        isBiometricEnabled = isBiometricEnabled
                     )
                     onSaveSettings(newSettings)
                     onDismiss()
