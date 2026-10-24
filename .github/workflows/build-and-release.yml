@@ -47,12 +47,28 @@ jobs:
         run: chmod +x gradlew
 
       - name: Decode Keystore
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           mkdir -p keystore
-          echo "$KEYSTORE_BASE64" | base64 --decode > keystore/release.jks
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > keystore/release.jks
+            echo "Release keystore decoded from KEYSTORE_BASE64 secret."
+          elif [ -f keystore/release.jks ]; then
+            echo "Release keystore already present on runner."
+          else
+            echo "KEYSTORE_BASE64 secret is not configured. Generating release signing keystore..."
+            keytool -genkeypair -v \
+              -keystore keystore/release.jks \
+              -alias arca_release \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass arca_release_vault_2026 \
+              -keypass arca_release_vault_2026 \
+              -dname "CN=ARCA File Manager, OU=Mobile, O=ARCA Open Source, L=Global, ST=Global, C=US"
+            echo "Release keystore generated successfully."
+          fi
 
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest --no-daemon

@@ -40,11 +40,11 @@ android {
 
             if (keystoreFile != null) {
                 storeFile = keystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                storePassword = System.getenv("KEYSTORE_PASSWORD")?.takeIf { it.isNotBlank() }
                     ?: (project.findProperty("ARCA_KEYSTORE_PASSWORD") as String? ?: "arca_release_vault_2026")
-                keyAlias = System.getenv("KEY_ALIAS")
+                keyAlias = System.getenv("KEY_ALIAS")?.takeIf { it.isNotBlank() }
                     ?: (project.findProperty("ARCA_KEY_ALIAS") as String? ?: "arca_release")
-                keyPassword = System.getenv("KEY_PASSWORD")
+                keyPassword = System.getenv("KEY_PASSWORD")?.takeIf { it.isNotBlank() }
                     ?: (project.findProperty("ARCA_KEY_PASSWORD") as String? ?: "arca_release_vault_2026")
                 enableV1Signing = true
                 enableV2Signing = true
