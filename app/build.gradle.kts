@@ -9,12 +9,23 @@ android {
     namespace = "com.Hrshd1eux.filemanager"
     compileSdk = 35
 
+    val defaultVersionCode = 10602
+    val defaultVersionName = "1.6.2"
+
+    val dynamicVersionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull()
+        ?: System.getenv("VERSION_CODE")?.toIntOrNull()
+        ?: defaultVersionCode
+
+    val dynamicVersionName = (project.findProperty("versionName") as String?)
+        ?: System.getenv("VERSION_NAME")
+        ?: defaultVersionName
+
     defaultConfig {
         applicationId = "com.Hrshd1eux.filemanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10602
-        versionName = "1.6.2"
+        versionCode = dynamicVersionCode
+        versionName = dynamicVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

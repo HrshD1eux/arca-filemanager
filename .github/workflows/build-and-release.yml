@@ -36,6 +36,55 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Compute & Auto-Bump Version
+        id: versioning
+        run: |
+          # 1. Read base version from app/build.gradle.kts
+          CURRENT_VERSION_NAME=$(grep -o 'defaultVersionName = "[^"]*"' app/build.gradle.kts | head -1 | cut -d '"' -f 2)
+          if [ -z "$CURRENT_VERSION_NAME" ]; then
+            CURRENT_VERSION_NAME=$(grep -o 'versionName = "[^"]*"' app/build.gradle.kts | head -1 | cut -d '"' -f 2)
+          fi
+          if [ -z "$CURRENT_VERSION_NAME" ]; then
+            CURRENT_VERSION_NAME="1.6.2"
+          fi
+
+          CURRENT_VERSION_CODE=$(grep -o 'defaultVersionCode = [0-9]*' app/build.gradle.kts | head -1 | awk '{print $3}')
+          if [ -z "$CURRENT_VERSION_CODE" ]; then
+            CURRENT_VERSION_CODE=$(grep -o 'versionCode = [0-9]*' app/build.gradle.kts | head -1 | awk '{print $3}')
+          fi
+          if [ -z "$CURRENT_VERSION_CODE" ]; then
+            CURRENT_VERSION_CODE=10602
+          fi
+
+          echo "Current repo version: ${CURRENT_VERSION_NAME} (code: ${CURRENT_VERSION_CODE})"
+
+          # 2. Check if triggered by tag or manual dispatch with specific tag
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            RELEASE_TAG="${GITHUB_REF#refs/tags/}"
+            TARGET_VERSION_NAME="${RELEASE_TAG#v}"
+            TARGET_VERSION_CODE="${CURRENT_VERSION_CODE}"
+            AUTO_BUMPED="false"
+          elif [ -n "${{ inputs.release_tag }}" ]; then
+            RELEASE_TAG="${{ inputs.release_tag }}"
+            TARGET_VERSION_NAME="${RELEASE_TAG#v}"
+            TARGET_VERSION_CODE="${CURRENT_VERSION_CODE}"
+            AUTO_BUMPED="false"
+          else
+            # Auto-bump patch version on push to main: e.g. 1.6.2 -> 1.6.3
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION_NAME"
+            PATCH=$((PATCH + 1))
+            TARGET_VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}"
+            TARGET_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+            RELEASE_TAG="v${TARGET_VERSION_NAME}"
+            AUTO_BUMPED="true"
+          fi
+
+          echo "Target version: ${TARGET_VERSION_NAME} (code: ${TARGET_VERSION_CODE}), tag: ${RELEASE_TAG}"
+          echo "version_name=${TARGET_VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${TARGET_VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "auto_bumped=${AUTO_BUMPED}" >> "$GITHUB_OUTPUT"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -71,10 +120,15 @@ jobs:
           fi
 
       - name: Run Unit Tests
+        env:
+          VERSION_NAME: ${{ steps.versioning.outputs.version_name }}
+          VERSION_CODE: ${{ steps.versioning.outputs.version_code }}
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build Release APK
         env:
+          VERSION_NAME: ${{ steps.versioning.outputs.version_name }}
+          VERSION_CODE: ${{ steps.versioning.outputs.version_code }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -83,24 +137,7 @@ jobs:
       - name: Prepare Release Artifacts & Generate Checksums
         id: prep
         run: |
-          # 1. Determine version name and release tag
-          VERSION_NAME=$(grep -o 'versionName = "[^"]*"' app/build.gradle.kts | head -1 | cut -d '"' -f 2)
-          if [ -z "$VERSION_NAME" ]; then
-            VERSION_NAME="1.0.0"
-          fi
-
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            RELEASE_TAG="${GITHUB_REF#refs/tags/}"
-          elif [ -n "${{ inputs.release_tag }}" ]; then
-            RELEASE_TAG="${{ inputs.release_tag }}"
-          else
-            RELEASE_TAG="v${VERSION_NAME}"
-          fi
-
-          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
-
-          # 2. Package artifacts
+          RELEASE_TAG="${{ steps.versioning.outputs.release_tag }}"
           mkdir -p release-artifacts
           SOURCE_APK="app/build/outputs/apk/release/app-release.apk"
           TARGET_APK="release-artifacts/arca-filemanager-${RELEASE_TAG}.apk"
@@ -120,7 +157,7 @@ jobs:
       - name: Upload Artifacts to Actions Tab
         uses: actions/upload-artifact@v4
         with:
-          name: arca-release-apk-${{ steps.prep.outputs.release_tag }}
+          name: arca-release-apk-${{ steps.versioning.outputs.release_tag }}
           path: release-artifacts/*
           retention-days: 30
 
@@ -128,8 +165,8 @@ jobs:
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.create_release == true) }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.prep.outputs.release_tag }}
-          name: "ARCA File Manager ${{ steps.prep.outputs.release_tag }}"
+          tag_name: ${{ steps.versioning.outputs.release_tag }}
+          name: "ARCA File Manager ${{ steps.versioning.outputs.release_tag }}"
           generate_release_notes: true
           draft: false
           prerelease: false
@@ -138,3 +175,17 @@ jobs:
             release-artifacts/*.apk
             release-artifacts/*.sha256
             release-artifacts/checksums.txt
+
+      - name: Commit Auto-Bumped Version to Repository
+        if: ${{ steps.versioning.outputs.auto_bumped == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          sed -i "s/defaultVersionCode = .*/defaultVersionCode = ${{ steps.versioning.outputs.version_code }}/" app/build.gradle.kts
+          sed -i "s/defaultVersionName = .*/defaultVersionName = \"${{ steps.versioning.outputs.version_name }}\"/" app/build.gradle.kts
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/build.gradle.kts
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto-bump version to ${{ steps.versioning.outputs.version_name }} [skip ci]"
+            git push origin main
+          fi

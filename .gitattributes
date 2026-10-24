@@ -1,0 +1,15 @@
+# Set default behavior to automatically handle line endings for text files
+* text=auto
+
+# Declare binary files to prevent newline conversion and corruption
+*.ar binary
+*.arj binary
+*.Z binary
+*.iso binary
+*.apk binary
+*.jks binary
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
