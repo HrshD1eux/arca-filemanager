@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">ARCA</string>
-    <string name="app_tagline">Private &amp; Offline File Manager</string>
+    <string name="app_tagline">Private &amp; Local-First File Manager</string>
     <string name="home_title">My Files</string>
     <string name="settings_title">Settings</string>
     <string name="about_title">About</string>

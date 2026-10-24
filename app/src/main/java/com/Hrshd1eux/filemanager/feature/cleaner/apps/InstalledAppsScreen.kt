@@ -105,6 +105,7 @@ fun InstalledAppsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showSortSheet by remember { mutableStateOf(false) }
+    var showUsageAccessDialog by remember { mutableStateOf(false) }
 
     // Resume observer to detect when user returns from granting Usage Access
     DisposableEffect(lifecycleOwner) {
@@ -430,13 +431,7 @@ fun InstalledAppsScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable {
-                                try {
-                                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    }
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {
-                                }
+                                showUsageAccessDialog = true
                             }
                         )
                     }
@@ -619,6 +614,12 @@ fun InstalledAppsScreen(
             currentSortOrder = uiState.sortOrder,
             onSortSelected = { viewModel.setSortOrder(it) },
             onDismiss = { showSortSheet = false }
+        )
+    }
+
+    if (showUsageAccessDialog) {
+        com.Hrshd1eux.filemanager.feature.cleaner.apps.components.UsageAccessExplanationDialog(
+            onDismissRequest = { showUsageAccessDialog = false }
         )
     }
 }

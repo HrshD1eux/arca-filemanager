@@ -49,8 +49,8 @@ class ReleaseHardeningAuditTest {
         assertTrue("android:usesCleartextTraffic must be disabled",
             content.contains("android:usesCleartextTraffic=\"false\""))
 
-        // Ensure no active positive internet permission grant in manifest
-        assertFalse("Must not declare positive uses-permission for INTERNET",
+        // Ensure INTERNET permission is declared for user-configured remote servers and version checks
+        assertTrue("Must declare positive uses-permission for INTERNET",
             content.contains("<uses-permission android:name=\"android.permission.INTERNET\" />"))
     }
 

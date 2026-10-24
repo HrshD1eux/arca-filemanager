@@ -36,9 +36,9 @@ class PrivacyAuditTest {
         assertTrue("AndroidManifest.xml must exist", manifestFile.exists())
         val manifestContent = manifestFile.readText()
 
-        // 1. Assert INTERNET permission is never requested or is strictly removed
-        assertFalse(
-            "AndroidManifest must not declare positive uses-permission for INTERNET",
+        // 1. Assert INTERNET permission is declared for user-configured remote servers and version checks
+        assertTrue(
+            "AndroidManifest must declare positive uses-permission for INTERNET",
             manifestContent.contains("<uses-permission android:name=\"android.permission.INTERNET\" />")
         )
 

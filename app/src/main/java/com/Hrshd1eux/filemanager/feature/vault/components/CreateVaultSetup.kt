@@ -236,7 +236,7 @@ fun CreateVaultSetup(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "ARCA is completely offline with zero tracking. There is NO password reset, NO backdoor, and NO cloud recovery. If you forget this password, all files inside the vault are permanently lost.",
+                    text = "ARCA Private Vault is completely local-first with zero tracking. There is NO password reset, NO backdoor, and NO cloud recovery. If you forget this password, all files inside the vault are permanently lost.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )

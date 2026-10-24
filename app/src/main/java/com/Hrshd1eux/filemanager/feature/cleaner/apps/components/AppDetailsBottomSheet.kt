@@ -98,6 +98,7 @@ fun AppDetailsBottomSheet(
     var isHardTruthExpanded by remember { mutableStateOf(false) }
     var isExtraInfoExpanded by remember { mutableStateOf(false) }
     var isPermissionsExpanded by remember { mutableStateOf(false) }
+    var showUsageAccessDialog by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -392,13 +393,7 @@ fun AppDetailsBottomSheet(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 OutlinedButton(
                                     onClick = {
-                                        try {
-                                            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                            }
-                                            context.startActivity(intent)
-                                        } catch (_: Exception) {
-                                        }
+                                        showUsageAccessDialog = true
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(8.dp)
@@ -682,6 +677,12 @@ fun AppDetailsBottomSheet(
                 }
             }
         }
+    }
+
+    if (showUsageAccessDialog) {
+        UsageAccessExplanationDialog(
+            onDismissRequest = { showUsageAccessDialog = false }
+        )
     }
 }
 

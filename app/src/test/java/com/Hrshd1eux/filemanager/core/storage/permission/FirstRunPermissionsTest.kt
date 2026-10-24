@@ -74,7 +74,7 @@ class FirstRunPermissionsTest {
         assertNotNull(reason)
         assertTrue("Must explain file browsing and organization", reason.contains("browse") && reason.contains("organize"))
         assertTrue("Must explain archives and compression", reason.contains("compress") || reason.contains("archive"))
-        assertTrue("Must guarantee offline operations with zero analytics", reason.contains("100% offline") && reason.contains("zero analytics"))
+        assertTrue("Must guarantee zero analytics and local-first operations", reason.contains("local-first") && reason.contains("zero analytics"))
     }
 
     @Test
@@ -102,7 +102,7 @@ class FirstRunPermissionsTest {
         // Required rationale content
         assertTrue("Dialog must reference Android limitation disclaimer", code.contains("ANDROID_STORAGE_LIMITATION_DISCLAIMER"))
         assertTrue("Dialog must explain Archive Studio capabilities", code.contains("Archive Studio"))
-        assertTrue("Dialog must state 100% Offline & Private guarantee", code.contains("100% Offline & Private"))
+        assertTrue("Dialog must state Private & Zero Telemetry guarantee", code.contains("Private & Zero Telemetry"))
 
         // Dismissal must gracefully transition to limited access rather than blocking
         assertTrue("Dismissal must map to onContinueWithLimitedAccess", code.contains("onDismissRequest = onContinueWithLimitedAccess"))

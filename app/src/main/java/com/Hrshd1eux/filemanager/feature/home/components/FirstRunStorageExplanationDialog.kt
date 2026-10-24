@@ -50,7 +50,7 @@ import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManage
  * 1. Explains why broader file access is useful (browsing, archives, storage breakdown, moving).
  * 2. Explicitly communicates Android platform limitations (all-files access is not a universal
  *    pass to other apps' private sandboxes or restricted system directories).
- * 3. Highlights 100% offline, zero-telemetry privacy design.
+ * 3. Highlights private, zero-telemetry design with isolated user-configured network storage.
  * 4. Provides clear Grant Access vs. Continue with Limited Access actions.
  * 5. Direct access to Privacy Statement.
  */
@@ -190,7 +190,7 @@ fun FirstRunStorageExplanationDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "100% Offline & Private",
+                                text = "Private & Zero Telemetry",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = VaultEmerald

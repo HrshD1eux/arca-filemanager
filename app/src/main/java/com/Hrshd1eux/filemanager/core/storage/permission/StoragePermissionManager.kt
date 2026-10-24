@@ -106,7 +106,7 @@ object StoragePermissionManager {
      * Transparent explanation of why broader file access is useful in ARCA.
      */
     const val STORAGE_EXPLANATION_WHY_BROADER_ACCESS: String =
-        "ARCA uses storage access to browse, organize, move, and compress files on your device and SD cards, as well as calculate storage metrics and verify archive integrity. ARCA operates 100% offline with zero analytics, tracking, or cloud uploads."
+        "ARCA uses storage access to browse, organize, move, and compress files on your device and SD cards, as well as calculate storage metrics and verify archive integrity. ARCA operates local-first with zero telemetry, zero analytics tracking, and no cloud uploads. Remote networking (SFTP, FTP, SMB, WebDAV) and version checks are strictly user-initiated and isolated from offline core engines."
 
     /**
      * Explanation of functionality available in limited access mode.

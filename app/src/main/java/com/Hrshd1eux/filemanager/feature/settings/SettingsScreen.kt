@@ -118,6 +118,7 @@ fun SettingsScreen(
     var showArchiveDialog by remember { mutableStateOf(false) }
 
     var showAppLockDialog by remember { mutableStateOf(false) }
+    var showUsageAccessDialog by remember { mutableStateOf(false) }
 
     val appLockManager = remember { AppLockManager.getInstance(context) }
     val appLockSettings by appLockManager.settings.collectAsStateWithLifecycle()
@@ -240,8 +241,12 @@ fun SettingsScreen(
                         subtitle = if (hasUsageAccess) "Granted • Storage Analyzer app stats enabled" else "Optional • Required for app size breakdown",
                         icon = Icons.Default.Security,
                         onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            if (!hasUsageAccess) {
+                                showUsageAccessDialog = true
+                            } else {
+                                runCatching {
+                                    context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                }
                             }
                         }
                     )
@@ -300,14 +305,14 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = "Privacy Statement",
-                        subtitle = "Zero telemetry, zero ads, offline-only",
+                        subtitle = "Zero telemetry, zero ads, local-first",
                         icon = Icons.Default.Security,
                         onClick = onNavigateToPrivacy
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = "App Updates & Internet Disclosure",
-                        subtitle = "Internet is strictly used to check and download releases from GitHub upon your request. Zero telemetry or user data is ever transmitted.",
+                        subtitle = "Internet is strictly used for user-initiated remote storage (SFTP, FTP, SMB, WebDAV) and official GitHub release checks. Zero telemetry or user data is ever transmitted.",
                         icon = Icons.Default.Download,
                         onClick = onNavigateToAbout
                     )
@@ -349,6 +354,12 @@ fun SettingsScreen(
             appLockManager = appLockManager,
             settings = appLockSettings,
             onDismiss = { showAppLockDialog = false }
+        )
+    }
+
+    if (showUsageAccessDialog) {
+        com.Hrshd1eux.filemanager.feature.cleaner.apps.components.UsageAccessExplanationDialog(
+            onDismissRequest = { showUsageAccessDialog = false }
         )
     }
 }

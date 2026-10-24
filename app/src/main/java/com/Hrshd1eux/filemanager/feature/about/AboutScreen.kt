@@ -203,7 +203,7 @@ private fun AppHeader(
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "Private & Offline File Manager",
+            text = "Private & Local-First File Manager",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.primary
@@ -323,8 +323,8 @@ private fun PrivacyStatementCard(
                 desc = "No registration, profile creation, or external cloud accounts."
             )
             PrivacyPrincipleItem(
-                title = "Offline Execution",
-                desc = "Files and encryption keys reside solely on your physical device."
+                title = "Local Execution & Isolated Networking",
+                desc = "Files and encryption keys reside solely on your physical device. Remote networking is strictly isolated from local engines."
             )
             PrivacyPrincipleItem(
                 title = "User-Initiated Network Only",

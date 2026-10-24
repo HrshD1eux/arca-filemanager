@@ -169,7 +169,7 @@ private fun PrivacyHeroCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Offline-First Privacy Guarantee",
+                        text = "Local-First & Transparent Privacy Guarantee",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -272,6 +272,10 @@ private fun PermissionsDisclosureCard(
                 desc = "Prevents the Android operating system from prematurely killing active archive compression, extraction, or file transfer tasks when you navigate away from the app."
             )
             DisclosureItem(
+                title = "Internet Access (INTERNET)",
+                desc = "Declared to permit user-initiated remote storage protocol connections (FTP, FTPS, SFTP, SMB, WebDAV) and optional release update checks against official GitHub releases. Strictly point-to-point with zero telemetry."
+            )
+            DisclosureItem(
                 title = "Explicitly Excluded Permissions",
                 desc = "ACCESS_NETWORK_STATE is stripped via manifest rules. ARCA requests ZERO location, camera, microphone, contacts, calendar, or device telephony/IMEI permissions."
             )
@@ -312,6 +316,10 @@ private fun NetworkFeaturesDisclosureCard(
             DisclosureItem(
                 title = "Protocol Encryption Standards",
                 desc = "SFTP uses SSHv2 encryption, FTPS uses TLS, and WebDAV can use HTTPS. Cleartext protocols (Plaintext FTP or cleartext HTTP WebDAV) are supported for local LAN environments but carry explicit warnings in the connection dialog."
+            )
+            DisclosureItem(
+                title = "App Update Checks",
+                desc = "When you explicitly tap 'Check for Updates' in About or Settings, ARCA queries the public GitHub Releases API to compare the current version tag. No device identifiers, user accounts, or telemetry data are included in this query."
             )
             DisclosureItem(
                 title = "Zero Passive Background Connections",

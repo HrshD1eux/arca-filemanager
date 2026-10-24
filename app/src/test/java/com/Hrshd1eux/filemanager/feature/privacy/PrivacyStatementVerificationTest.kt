@@ -68,8 +68,8 @@ class PrivacyStatementVerificationTest {
     fun verifyManifest_zeroNetworkPermissionsAndHardenedFlags() {
         val manifest = getSourceFile("src/main/AndroidManifest.xml").readText()
 
-        assertFalse(
-            "AndroidManifest must not declare positive uses-permission for INTERNET",
+        assertTrue(
+            "AndroidManifest must declare positive uses-permission for INTERNET",
             manifest.contains("<uses-permission android:name=\"android.permission.INTERNET\" />")
         )
         assertTrue(
@@ -103,6 +103,7 @@ class PrivacyStatementVerificationTest {
         assertTrue("Must explain All Files Access", content.contains("All Files Access (MANAGE_EXTERNAL_STORAGE)"))
         assertTrue("Must explain Notifications", content.contains("Notifications (POST_NOTIFICATIONS)"))
         assertTrue("Must explain Foreground Service", content.contains("Foreground Service (DATA_SYNC)"))
+        assertTrue("Must explain Internet Access", content.contains("Internet Access (INTERNET)"))
         assertTrue("Must disclose excluded permissions", content.contains("Explicitly Excluded Permissions"))
 
         // 3. Network Features
@@ -110,6 +111,7 @@ class PrivacyStatementVerificationTest {
         assertTrue("Must explain user-initiated only", content.contains("100% User-Initiated"))
         assertTrue("Must explain direct point-to-point", content.contains("Direct Point-to-Point Communication"))
         assertTrue("Must explain protocol encryption", content.contains("Protocol Encryption Standards"))
+        assertTrue("Must explain App Update Checks", content.contains("App Update Checks"))
 
         // 4. Zero External Transmission
         assertTrue("Must state zero external transmission", content.contains("Zero External Services & No Data Transmission"))

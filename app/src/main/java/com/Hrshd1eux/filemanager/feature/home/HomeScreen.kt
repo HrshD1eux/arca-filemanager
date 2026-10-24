@@ -429,7 +429,7 @@ private fun HomeOfflineStatusBanner(
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = "ARCA • 100% Offline & Private (View Privacy Statement)",
+            text = "ARCA • Private & Local-First (View Privacy Statement)",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )
