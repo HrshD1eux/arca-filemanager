@@ -1,6 +1,7 @@
 package com.Hrshd1eux.filemanager.feature.about
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandLess
@@ -63,15 +65,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
 import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.version.AppVersionInfo
@@ -83,8 +86,9 @@ import com.Hrshd1eux.filemanager.feature.about.model.OpenSourceRegistry
  * Dedicated professional About Screen for ARCA.
  *
  * Provides:
- * - ARCA brand emblem and dynamic package metadata
+ * - ARCA brand emblem and dynamic package metadata (with safe adaptive-icon handling)
  * - Concise, professional product description
+ * - Transparent app updates & isolated internet disclosure
  * - Privacy principles with direct link to Privacy Statement
  * - Open-source licenses and third-party acknowledgements
  * - Transparent support and feedback options
@@ -144,6 +148,10 @@ fun AboutScreen(
             }
 
             item {
+                AppUpdatesDisclosureCard(versionName = versionInfo.versionName)
+            }
+
+            item {
                 PrivacyStatementCard(onViewPrivacyStatement = onNavigateToPrivacy)
             }
 
@@ -182,19 +190,46 @@ private fun AppHeader(
     versionInfo: AppVersionInfo,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val appIconBitmap = remember(context) {
+        runCatching {
+            val drawable = context.packageManager.getApplicationIcon(context.packageName)
+            val sizePx = (72 * context.resources.displayMetrics.density).toInt().coerceAtLeast(144)
+            drawable.toBitmap(width = sizePx, height = sizePx, config = Bitmap.Config.ARGB_8888).asImageBitmap()
+        }.getOrNull()
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            painter = painterResource(id = R.mipmap.ic_launcher),
-            contentDescription = "ARCA App Icon",
-            modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(16.dp))
-        )
+        if (appIconBitmap != null) {
+            Image(
+                bitmap = appIconBitmap,
+                contentDescription = "ARCA App Icon",
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(16.dp))
+            )
+        } else {
+            Surface(
+                modifier = Modifier.size(72.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                tonalElevation = 2.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.FolderZip,
+                        contentDescription = "ARCA App Icon",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "ARCA",
@@ -276,6 +311,83 @@ private fun ProductDescriptionCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun AppUpdatesDisclosureCard(
+    versionName: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CloudDownload,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "App Updates & Internet Disclosure",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "ARCA requires Internet permission solely for user-initiated remote storage protocols (SFTP, FTP, SMB, WebDAV) and checking for official app releases. All local file management, compression, and encryption engines are strictly offline and isolated from network connections.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Official release packages, changelogs, and SHA-256 checksums are published on GitHub Releases.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = {
+                    runCatching {
+                        uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/releases")
+                    }.onFailure {
+                        Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/releases", Toast.LENGTH_LONG).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CloudDownload,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Check Releases on GitHub")
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }

@@ -14,6 +14,7 @@ import java.io.File
  * 1. Dedicated About screen contains all required professional elements:
  *    - Brand emblem and dynamic version
  *    - Professional product description
+ *    - App updates & internet disclosure
  *    - Privacy Statement
  *    - Open-source licenses and acknowledgements
  *    - Authentic support and feedback channels
@@ -25,6 +26,7 @@ import java.io.File
  *    - Unsupported security claims ("military-grade security", "100% secure", "impossible to hack")
  *    - Fake company details
  * 3. Settings connects cleanly to the dedicated About screen.
+ * 4. Launcher icon does not invoke painterResource on adaptive icon drawables (preventing Compose crashes).
  */
 class AboutScreenProfessionalTest {
 
@@ -78,27 +80,32 @@ class AboutScreenProfessionalTest {
         assertTrue("Must include ProductDescriptionCard", content.contains("ProductDescriptionCard"))
         assertTrue("Must describe ARCA as offline-first file manager", content.contains("ARCA is an offline-first file management"))
 
-        // 3. Privacy Statement
+        // 3. App Updates & Internet Disclosure
+        assertTrue("Must include AppUpdatesDisclosureCard", content.contains("AppUpdatesDisclosureCard"))
+        assertTrue("Must disclose Internet usage strictly for remote storage protocols",
+            content.contains("remote storage protocols (SFTP, FTP, SMB, WebDAV)"))
+
+        // 4. Privacy Statement
         assertTrue("Must include PrivacyStatementCard", content.contains("PrivacyStatementCard"))
         assertTrue("Must include Zero Telemetry", content.contains("Zero Telemetry"))
         assertTrue("Must include Read Detailed Privacy Statement", content.contains("Read Detailed Privacy Statement"))
 
-        // 4. Open-Source Licenses
+        // 5. Open-Source Licenses
         assertTrue("Must include OpenSourceLicensesCard", content.contains("OpenSourceLicensesCard"))
         assertTrue("Must reference OpenSourceRegistry", content.contains("OpenSourceRegistry.libraries"))
 
-        // 5. Support & Feedback
+        // 6. Support & Feedback
         assertTrue("Must include SupportAndFeedbackCard", content.contains("SupportAndFeedbackCard"))
         assertTrue("Must link to GitHub issues", content.contains("https://github.com/HrshD1eux/filemanager/issues"))
         assertTrue("Must provide technical feedback email", content.contains("HrshD1eux@proton.me"))
 
-        // 6. Legal Information
+        // 7. Legal Information
         assertTrue("Must include LegalInformationCard", content.contains("LegalInformationCard"))
         assertTrue("Must include Copyright notice", content.contains("Copyright © 2026 ARCA Contributors"))
         assertTrue("Must include Apache License 2.0 reference", content.contains("Licensed under the Apache License, Version 2.0"))
         assertTrue("Must include Disclaimer", content.contains("Disclaimer:"))
 
-        // 7. Diagnostics
+        // 8. Diagnostics
         assertTrue("Must include DeviceDiagnosticsCard", content.contains("DeviceDiagnosticsCard"))
     }
 
@@ -126,6 +133,17 @@ class AboutScreenProfessionalTest {
     }
 
     @Test
+    fun aboutScreen_safeIconLoading_neverCallsPainterResourceOnAdaptiveIcon() {
+        val aboutFile = getSourceFile("src/main/java/com/Hrshd1eux/filemanager/feature/about/AboutScreen.kt")
+        val content = aboutFile.readText()
+
+        // painterResource(id = R.mipmap.ic_launcher) throws IllegalArgumentException on Android 8+
+        // because ic_launcher is an AdaptiveIconDrawable which Compose painterResource does not support.
+        assertFalse("Must NOT use painterResource with ic_launcher",
+            content.contains("painterResource(id = R.mipmap.ic_launcher)"))
+    }
+
+    @Test
     fun settingsScreen_integratesWithDedicatedAboutScreen() {
         val settingsFile = getSourceFile("src/main/java/com/Hrshd1eux/filemanager/feature/settings/SettingsScreen.kt")
         val content = settingsFile.readText()
@@ -135,6 +153,10 @@ class AboutScreenProfessionalTest {
         assertTrue("SettingsScreen must include About ARCA navigation row",
             content.contains("title = \"About ARCA\""))
         assertTrue("SettingsScreen About row must trigger onNavigateToAbout",
+            content.contains("onClick = onNavigateToAbout"))
+        assertTrue("SettingsScreen must include App Updates & Internet Disclosure navigation row",
+            content.contains("title = \"App Updates & Internet Disclosure\""))
+        assertTrue("SettingsScreen App Updates row must trigger onNavigateToAbout",
             content.contains("onClick = onNavigateToAbout"))
     }
 }
