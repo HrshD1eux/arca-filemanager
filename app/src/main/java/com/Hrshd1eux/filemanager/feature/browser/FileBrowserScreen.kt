@@ -233,6 +233,7 @@ fun FileBrowserScreen(
     var showSortBottomSheet by remember { mutableStateOf(false) }
 
     var quickActionNode by remember { mutableStateOf<StorageNode?>(null) }
+    var apkToInstall by remember { mutableStateOf<File?>(null) }
     var nodeToEncrypt by remember { mutableStateOf<StorageNode?>(null) }
     var archiveToAddItems by remember { mutableStateOf<StorageNode?>(null) }
 
@@ -678,6 +679,8 @@ fun FileBrowserScreen(
                                                     viewModel.navigateInto(node, hasPermission)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
+                                                } else if (node.name.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(node.name)) {
+                                                    apkToInstall = File(node.path)
                                                 } else {
                                                     onNavigateToPreview(node.path, null, File(node.path).parent)
                                                 }
@@ -713,6 +716,8 @@ fun FileBrowserScreen(
                                                     viewModel.navigateInto(node, hasPermission)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
+                                                } else if (node.name.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(node.name)) {
+                                                    apkToInstall = File(node.path)
                                                 } else {
                                                     onNavigateToPreview(node.path, null, File(node.path).parent)
                                                 }
@@ -793,6 +798,8 @@ fun FileBrowserScreen(
                                                     viewModel.navigateInto(node, hasPermission)
                                                 } else if (FileTypeResolver.canPreviewArchive(node.name)) {
                                                     onNavigateToArchiveViewer(node.path, node.name)
+                                                } else if (node.name.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(node.name)) {
+                                                    apkToInstall = File(node.path)
                                                 } else {
                                                     onNavigateToPreview(node.path, null, File(node.path).parent)
                                                 }
@@ -1326,9 +1333,14 @@ fun FileBrowserScreen(
                         if (node.isDirectory) {
                             val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                             viewModel.navigateInto(node, hasPermission)
+                        } else if (node.name.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(node.name)) {
+                            apkToInstall = File(node.path)
                         } else {
                             FileIntentDispatcher.view(context, node)
                         }
+                    }
+                    QuickActionType.INSTALL -> {
+                        apkToInstall = File(node.path)
                     }
                     QuickActionType.OPEN_ARCHIVE -> {
                         onNavigateToArchiveViewer(node.path, node.name)
@@ -1345,6 +1357,13 @@ fun FileBrowserScreen(
                 }
             },
             onDismiss = { quickActionNode = null }
+        )
+    }
+
+    apkToInstall?.let { file ->
+        com.Hrshd1eux.filemanager.feature.apk.components.ApkInstallBottomSheet(
+            apkFile = file,
+            onDismiss = { apkToInstall = null }
         )
     }
 

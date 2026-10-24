@@ -157,6 +157,7 @@ fun CategoryScreen(
     }
 
     var showSortSheet by remember { mutableStateOf(false) }
+    var apkToInstall by remember { mutableStateOf<File?>(null) }
     var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var showBulkDeleteDialog by remember { mutableStateOf(false) }
@@ -411,7 +412,8 @@ fun CategoryScreen(
                                             rootPath = rootPath,
                                             onNavigateToArchiveViewer = onNavigateToArchiveViewer,
                                             onNavigateToPreview = onNavigateToPreview,
-                                            audioItems = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) }
+                                            audioItems = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) },
+                                            onInstallApk = { apkToInstall = it }
                                         )
                                     }
                                 },
@@ -455,7 +457,8 @@ fun CategoryScreen(
                                             rootPath = rootPath,
                                             onNavigateToArchiveViewer = onNavigateToArchiveViewer,
                                             onNavigateToPreview = onNavigateToPreview,
-                                            audioItems = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) }
+                                            audioItems = state.items.filter { !it.isDirectory && FileTypeResolver.isAudio(it.name) },
+                                            onInstallApk = { apkToInstall = it }
                                         )
                                     }
                                 },
@@ -575,6 +578,13 @@ fun CategoryScreen(
         )
     }
 
+    apkToInstall?.let { file ->
+        com.Hrshd1eux.filemanager.feature.apk.components.ApkInstallBottomSheet(
+            apkFile = file,
+            onDismiss = { apkToInstall = null }
+        )
+    }
+
     // File Properties Bottom Sheet
     inspectedNode?.let { node ->
         FilePropertiesSheet(
@@ -591,15 +601,20 @@ private fun handleItemClick(
     rootPath: String?,
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit,
     onNavigateToPreview: (filePath: String, categoryName: String?, rootPath: String?) -> Unit,
-    audioItems: List<StorageNode> = emptyList()
+    audioItems: List<StorageNode> = emptyList(),
+    onInstallApk: ((File) -> Unit)? = null
 ) {
     if (FileTypeResolver.canPreviewArchive(node.name)) {
         onNavigateToArchiveViewer(node.path, node.name)
     } else if (FileTypeResolver.isAudio(node.name) && categoryName.equals("AUDIO", ignoreCase = true)) {
         val audioList = if (audioItems.isNotEmpty()) audioItems else listOf(node)
         AudioPlaybackController.getInstance(context).playTrack(node, audioList)
-    } else if (FileTypeResolver.isPackage(node.name)) {
-        FileIntentDispatcher.view(context, node)
+    } else if (FileTypeResolver.isPackage(node.name) || node.name.endsWith(".apk", ignoreCase = true)) {
+        if (onInstallApk != null) {
+            onInstallApk(File(node.path))
+        } else {
+            FileIntentDispatcher.view(context, node)
+        }
     } else {
         onNavigateToPreview(node.path, categoryName, rootPath)
     }

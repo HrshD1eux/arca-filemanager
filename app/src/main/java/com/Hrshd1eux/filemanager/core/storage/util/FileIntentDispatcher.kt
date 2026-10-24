@@ -28,6 +28,17 @@ object FileIntentDispatcher {
 
         com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository.getInstance(context).recordAccess(node)
 
+        val isApk = node.name.endsWith(".apk", ignoreCase = true) ||
+            node.mimeType == com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller.MIME_TYPE_APK ||
+            FileTypeResolver.resolveMimeType(node.name) == com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller.MIME_TYPE_APK
+
+        if (isApk) {
+            com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller.install(context, file).onFailure { e ->
+                Toast.makeText(context, "Cannot launch installer: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+
         try {
             val uri = getUriForNode(context, file)
             val mimeType = node.mimeType ?: FileTypeResolver.resolveMimeType(node.name)

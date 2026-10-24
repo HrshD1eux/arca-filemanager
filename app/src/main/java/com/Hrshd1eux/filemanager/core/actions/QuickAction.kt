@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FolderOpen
@@ -35,7 +36,8 @@ enum class QuickActionType(
     PROPERTIES("Properties", Icons.Outlined.Info),
     EXTRACT("Extract", Icons.Default.Unarchive),
     TEST("Test", Icons.Default.TaskAlt),
-    ADD("Add", Icons.Default.Add)
+    ADD("Add", Icons.Default.Add),
+    INSTALL("Install", Icons.Default.InstallMobile)
 }
 
 /**
@@ -78,15 +80,34 @@ enum class QuickActionContext {
                 QuickActionType.ENCRYPT,
                 QuickActionType.SHARE
             )
-            FILE -> listOf(
-                QuickActionType.OPEN,
-                QuickActionType.SHARE,
-                QuickActionType.COPY,
-                QuickActionType.MOVE,
-                QuickActionType.COMPRESS,
-                QuickActionType.ENCRYPT,
-                QuickActionType.PROPERTIES
-            )
+            FILE -> {
+                val isApk = node != null && (
+                    node.name.endsWith(".apk", ignoreCase = true) ||
+                    FileTypeResolver.isPackage(node.name)
+                )
+                if (isApk) {
+                    listOf(
+                        QuickActionType.INSTALL,
+                        QuickActionType.OPEN,
+                        QuickActionType.SHARE,
+                        QuickActionType.COPY,
+                        QuickActionType.MOVE,
+                        QuickActionType.COMPRESS,
+                        QuickActionType.ENCRYPT,
+                        QuickActionType.PROPERTIES
+                    )
+                } else {
+                    listOf(
+                        QuickActionType.OPEN,
+                        QuickActionType.SHARE,
+                        QuickActionType.COPY,
+                        QuickActionType.MOVE,
+                        QuickActionType.COMPRESS,
+                        QuickActionType.ENCRYPT,
+                        QuickActionType.PROPERTIES
+                    )
+                }
+            }
             ARCHIVE -> {
                 val isReadOnlyArchive = node != null && (
                     FileTypeResolver.isRar(node.name) ||
