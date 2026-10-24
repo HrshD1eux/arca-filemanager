@@ -59,7 +59,11 @@ object MimeTypeResolver {
         "rar" to "application/x-rar-compressed",
 
         // Packages
-        "apk" to "application/vnd.android.package-archive"
+        "apk" to "application/vnd.android.package-archive",
+        "xapk" to "application/vnd.android.package-archive",
+        "apks" to "application/vnd.android.package-archive",
+        "apkm" to "application/vnd.android.package-archive",
+        "aab" to "application/vnd.android.package-archive"
     )
 
     fun getMimeType(extension: String?): String? {

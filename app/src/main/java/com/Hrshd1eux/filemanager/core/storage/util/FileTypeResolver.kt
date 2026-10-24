@@ -28,7 +28,7 @@ object FileTypeResolver {
     )
 
     private val packageExtensions = setOf(
-        "apk", "apks", "xapk", "aab", "jar"
+        "apk", "apks", "xapk", "apkm", "aab", "jar"
     )
 
     private val codeExtensions = setOf(

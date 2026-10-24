@@ -118,6 +118,30 @@ class CategoryRepositoryTest {
         assertEquals("document1.pdf", docFiles.first().name)
     }
 
+    @Test
+    fun getFilesForCategory_apksScansPrimaryAndSubdirsCorrectly() = runTest {
+        // Create an APK in root
+        File(rootDir, "root_app.apk").apply { writeBytes(ByteArray(1024)) }
+        // Create an APK in Download folder
+        val downloadDir = File(rootDir, "Download").apply { mkdir() }
+        File(downloadDir, "downloaded_app.apk").apply { writeBytes(ByteArray(2048)) }
+        File(downloadDir, "bundle_app.xapk").apply { writeBytes(ByteArray(4096)) }
+        // Create an APK in nested subfolder
+        val subDir = File(rootDir, "Custom/Apps").apply { mkdirs() }
+        File(subDir, "custom_app.apks").apply { writeBytes(ByteArray(512)) }
+        // Create a non-apk file
+        File(downloadDir, "image.png").apply { writeBytes(ByteArray(100)) }
+
+        val apkFiles = repository.getFilesForCategory(CategoryFilter.APKS, rootDir.absolutePath)
+        assertEquals(4, apkFiles.size)
+        val apkNames = apkFiles.map { it.name }.toSet()
+        assertTrue(apkNames.contains("root_app.apk"))
+        assertTrue(apkNames.contains("downloaded_app.apk"))
+        assertTrue(apkNames.contains("bundle_app.xapk"))
+        assertTrue(apkNames.contains("custom_app.apks"))
+        assertFalse(apkNames.contains("image.png"))
+    }
+
     @Test(expected = IOException::class)
     fun getFilesForCategory_inaccessibleStorageThrowsException() = runTest {
         repository.getFilesForCategory(CategoryFilter.IMAGES, "/inaccessible/or/removed/storage/path")

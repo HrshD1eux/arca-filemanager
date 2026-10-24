@@ -245,7 +245,7 @@ fun CategoryScreen(
                     title = {
                         Column {
                             Text(
-                                text = category.displayName,
+                                text = if (category == CategoryFilter.APKS) "Apps & APKs" else category.displayName,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -598,6 +598,8 @@ private fun handleItemClick(
     } else if (FileTypeResolver.isAudio(node.name) && categoryName.equals("AUDIO", ignoreCase = true)) {
         val audioList = if (audioItems.isNotEmpty()) audioItems else listOf(node)
         AudioPlaybackController.getInstance(context).playTrack(node, audioList)
+    } else if (FileTypeResolver.isPackage(node.name)) {
+        FileIntentDispatcher.view(context, node)
     } else {
         onNavigateToPreview(node.path, categoryName, rootPath)
     }

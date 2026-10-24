@@ -31,28 +31,79 @@ class CategoryRepository(
         if (!rootFile.exists()) {
             throw IOException("Storage location is unavailable or removed: $basePath")
         }
-        if (!rootFile.canRead()) {
-            throw SecurityException("Storage location is not accessible: $basePath")
-        }
 
         if (category == CategoryFilter.DOWNLOADS) {
-            val downloadPath = runCatching {
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)?.absolutePath
-            }.getOrNull() ?: "$basePath/Download"
+            val candidateDirs = listOfNotNull(
+                runCatching { Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) }.getOrNull(),
+                File(basePath, "Download"),
+                File(basePath, "Downloads")
+            ).filter { it.exists() && it.isDirectory }
 
-            val downloadDir = File(downloadPath)
-            if (!downloadDir.exists() || !downloadDir.canRead()) {
-                return@withContext emptyList()
+            val downloadItems = LinkedHashMap<String, StorageNode>()
+            for (dir in candidateDirs) {
+                runCatching {
+                    SafeFileWalker.walkSafe(dir, includeHidden = false, maxDepth = 10)
+                        .filter { it.isFile }
+                        .forEach { file ->
+                            runCatching { file.toStorageNode() }.getOrNull()?.let { node ->
+                                downloadItems.putIfAbsent(node.path, node)
+                            }
+                        }
+                }
             }
-            val downloadItems = mutableListOf<StorageNode>()
+            return@withContext downloadItems.values.toList()
+        }
+
+        if (category == CategoryFilter.APKS) {
+            val result = LinkedHashMap<String, StorageNode>()
+
+            // 1. High-priority scan of standard locations where user downloads APK installer packages
+            val primaryDirs = listOfNotNull(
+                runCatching { Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) }.getOrNull(),
+                File(basePath, "Download"),
+                File(basePath, "Downloads"),
+                File(basePath, "Documents"),
+                File(basePath, "Bluetooth"),
+                File(basePath, "Telegram"),
+                File(basePath, "WhatsApp/Media/WhatsApp Documents")
+            ).filter { it.exists() && it.isDirectory }
+
+            for (dir in primaryDirs) {
+                runCatching {
+                    SafeFileWalker.walkSafe(dir, includeHidden = false, maxDepth = 6)
+                        .filter { it.isFile }
+                        .forEach { file ->
+                            if (matchesCategory(file, CategoryFilter.APKS)) {
+                                runCatching { file.toStorageNode() }.getOrNull()?.let { node ->
+                                    result.putIfAbsent(node.path, node)
+                                }
+                            }
+                        }
+                }
+            }
+
+            // Also check direct files located in the root directory
             runCatching {
-                SafeFileWalker.walkSafe(downloadDir, includeHidden = false, maxDepth = 10)
+                rootFile.listFiles()?.filter { it.isFile && matchesCategory(it, CategoryFilter.APKS) }?.forEach { file ->
+                    runCatching { file.toStorageNode() }.getOrNull()?.let { node ->
+                        result.putIfAbsent(node.path, node)
+                    }
+                }
+            }
+
+            // 2. Comprehensive full filesystem traversal for APKs anywhere else on storage
+            runCatching {
+                SafeFileWalker.walkSafe(rootFile, includeHidden = false, maxDepth = 12)
                     .filter { it.isFile }
                     .forEach { file ->
-                        downloadItems.add(file.toStorageNode())
+                        if (matchesCategory(file, CategoryFilter.APKS)) {
+                            runCatching { file.toStorageNode() }.getOrNull()?.let { node ->
+                                result.putIfAbsent(node.path, node)
+                            }
+                        }
                     }
             }
-            return@withContext downloadItems
+            return@withContext result.values.toList()
         }
 
         val result = mutableListOf<StorageNode>()
@@ -60,9 +111,10 @@ class CategoryRepository(
             SafeFileWalker.walkSafe(rootFile, includeHidden = false, maxDepth = 12)
                 .filter { it.isFile }
                 .forEach { file ->
-                    // Memory optimization: ONLY allocate StorageNode for matching files!
                     if (matchesCategory(file, category)) {
-                        result.add(file.toStorageNode())
+                        runCatching { file.toStorageNode() }.getOrNull()?.let { node ->
+                            result.add(node)
+                        }
                     }
                 }
         }

@@ -38,24 +38,32 @@ object SafeFileWalker {
         maxDepth: Int = Int.MAX_VALUE,
         onRestrictedDir: ((File) -> Unit)? = null
     ): Sequence<File> {
-        if (!root.exists() || !root.canRead()) return emptySequence()
+        if (!root.exists() || !root.isDirectory) return emptySequence()
 
-        return root.walkTopDown()
-            .maxDepth(maxDepth)
-            .onEnter { dir ->
-                if (!includeHidden && dir.name.startsWith(".")) return@onEnter false
-                if (isRestrictedDirectory(dir)) {
-                    onRestrictedDir?.invoke(dir)
-                    return@onEnter false
-                }
-                if (!dir.canRead()) {
-                    onRestrictedDir?.invoke(dir)
-                    return@onEnter false
-                }
-                true
+        return sequence {
+            try {
+                root.walkTopDown()
+                    .maxDepth(maxDepth)
+                    .onEnter { dir ->
+                        if (!includeHidden && dir.name.startsWith(".")) return@onEnter false
+                        if (isRestrictedDirectory(dir)) {
+                            onRestrictedDir?.invoke(dir)
+                            return@onEnter false
+                        }
+                        true
+                    }
+                    .onFail { dir, _ ->
+                        onRestrictedDir?.invoke(dir)
+                    }
+                    .forEach { file ->
+                        try {
+                            yield(file)
+                        } catch (_: Exception) {
+                        }
+                    }
+            } catch (_: Exception) {
+                onRestrictedDir?.invoke(root)
             }
-            .onFail { file, _ ->
-                onRestrictedDir?.invoke(file)
-            }
+        }
     }
 }
