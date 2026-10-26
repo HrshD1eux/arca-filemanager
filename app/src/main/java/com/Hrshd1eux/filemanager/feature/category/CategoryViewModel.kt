@@ -123,6 +123,15 @@ class CategoryViewModel @JvmOverloads constructor(
         _selectedNodes.value = rawItems.toSet()
     }
 
+    fun toggleSelectAll() {
+        val items = (uiState.value as? CategoryUiState.Success)?.items ?: rawItems
+        if (_selectedNodes.value.size >= items.size && items.isNotEmpty()) {
+            _selectedNodes.value = emptySet()
+        } else {
+            _selectedNodes.value = items.toSet()
+        }
+    }
+
     fun clearSelection() {
         _selectedNodes.value = emptySet()
     }

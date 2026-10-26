@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
@@ -137,6 +138,7 @@ fun CategoryScreen(
     viewModel: CategoryViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val category by viewModel.category.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
@@ -194,11 +196,17 @@ fun CategoryScreen(
                         }
                     },
                     actions = {
-                        // Select All
-                        IconButton(onClick = { viewModel.selectAll() }) {
+                        val allSelected = (uiState as? CategoryUiState.Success)?.items?.let { items ->
+                            items.isNotEmpty() && selectedNodes.size >= items.size
+                        } ?: false
+                        // Select All / Deselect All Toggle
+                        IconButton(onClick = {
+                            SelectionHaptics.playSelectionFeedback(context, view)
+                            viewModel.toggleSelectAll()
+                        }) {
                             Icon(
-                                imageVector = Icons.Default.SelectAll,
-                                contentDescription = "Select all"
+                                imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                contentDescription = if (allSelected) "Deselect all" else "Select all"
                             )
                         }
                         // Copy Selected
@@ -907,7 +915,6 @@ private fun CategoryListItemRow(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) {
@@ -923,13 +930,17 @@ private fun CategoryListItemRow(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
             } else {
                 MaterialTheme.colorScheme.surface
             }
         ),
-        border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = if (isSelected) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+        } else {
+            BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+        },
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -1155,7 +1166,6 @@ private fun CategoryGridItemCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) {
@@ -1171,13 +1181,17 @@ private fun CategoryGridItemCard(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
             } else {
                 MaterialTheme.colorScheme.surface
             }
         ),
-        border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = if (isSelected) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+        } else {
+            BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+        },
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier

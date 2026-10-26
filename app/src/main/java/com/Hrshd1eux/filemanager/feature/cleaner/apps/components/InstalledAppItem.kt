@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.cleaner.apps.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -66,14 +67,18 @@ fun InstalledAppItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 0.5.dp)
+        border = if (isSelected) {
+            BorderStroke(1.dp, VaultEmerald.copy(alpha = 0.6f))
+        } else {
+            BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+        },
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
@@ -41,6 +42,8 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +53,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -72,6 +76,7 @@ import androidx.compose.ui.platform.LocalView
 import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -106,6 +111,7 @@ fun InstalledAppsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showSortSheet by remember { mutableStateOf(false) }
     var showUsageAccessDialog by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
 
     // Resume observer to detect when user returns from granting Usage Access
     DisposableEffect(lifecycleOwner) {
@@ -190,14 +196,18 @@ fun InstalledAppsScreen(
                             Text(
                                 text = "Installed Apps",
                                 style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             if (!uiState.isLoading && uiState.report.totalAppCount > 0) {
                                 val totalFormatted = FileFormatter.formatFileSize(uiState.report.totalMeasurableBytes)
                                 Text(
-                                    text = "${uiState.report.totalAppCount} apps • $totalFormatted measurable",
+                                    text = "${uiState.report.totalAppCount} apps • $totalFormatted",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -211,35 +221,6 @@ fun InstalledAppsScreen(
                         }
                     },
                     actions = {
-                        if (onNavigateToApkCategory != null) {
-                            IconButton(onClick = onNavigateToApkCategory) {
-                                Icon(
-                                    imageVector = Icons.Default.FolderZip,
-                                    contentDescription = "View APK Files",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                        // Inspect OS Storage button
-                        IconButton(onClick = { viewModel.toggleSystemStorageDetails(true) }) {
-                            Icon(
-                                imageVector = Icons.Default.Storage,
-                                contentDescription = "Inspect System Storage",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        // Package Name on demand toggle
-                        IconButton(
-                            onClick = { viewModel.toggleShowPackageNames() }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Code,
-                                contentDescription = "Toggle Package Names",
-                                tint = if (uiState.showPackageNames) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
                         // Sort button
                         IconButton(onClick = { showSortSheet = true }) {
                             Icon(
@@ -254,6 +235,65 @@ fun InstalledAppsScreen(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Refresh"
                             )
+                        }
+
+                        // Overflow Options Menu
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = !showOverflowMenu }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More Options"
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false }
+                            ) {
+                                if (onNavigateToApkCategory != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("View APK Files") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.FolderZip,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            onNavigateToApkCategory()
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Inspect System Storage") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Storage,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        viewModel.toggleSystemStorageDetails(true)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(if (uiState.showPackageNames) "Hide Package Names" else "Show Package Names") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Code,
+                                            contentDescription = null,
+                                            tint = if (uiState.showPackageNames) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        viewModel.toggleShowPackageNames()
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -320,8 +360,9 @@ fun InstalledAppsScreen(
             )
             val selectedTabIndex = tabOptions.indexOfFirst { it.first == uiState.typeFilter }.coerceAtLeast(0)
 
-            TabRow(
+            ScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
+                edgePadding = 16.dp,
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
@@ -333,7 +374,8 @@ fun InstalledAppsScreen(
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1
                             )
                         }
                     )

@@ -119,6 +119,16 @@ class CategoryViewModelTest {
         viewModel.selectAll()
         assertEquals(3, viewModel.selectedNodes.value.size)
 
+        // Toggle Select All (when all selected -> deselects all)
+        viewModel.toggleSelectAll()
+        assertEquals(0, viewModel.selectedNodes.value.size)
+        assertFalse(viewModel.isSelectionMode)
+
+        // Toggle Select All again (selects all)
+        viewModel.toggleSelectAll()
+        assertEquals(3, viewModel.selectedNodes.value.size)
+        assertTrue(viewModel.isSelectionMode)
+
         // Clear Selection
         viewModel.clearSelection()
         assertFalse(viewModel.isSelectionMode)

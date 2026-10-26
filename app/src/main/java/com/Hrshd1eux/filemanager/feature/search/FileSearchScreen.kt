@@ -1,7 +1,13 @@
 package com.Hrshd1eux.filemanager.feature.search
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,14 +27,29 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Deselect
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -49,27 +70,37 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
+import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.search.model.DateFilter
 import com.Hrshd1eux.filemanager.core.search.model.SizeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
-import androidx.compose.ui.platform.LocalContext
+import com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
+import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.RenameDialog
+import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 import com.Hrshd1eux.filemanager.feature.viewer.audio.model.AudioPlaybackState
 import com.Hrshd1eux.filemanager.feature.viewer.audio.player.AudioPlaybackController
-import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +114,7 @@ fun FileSearchScreen(
     viewModel: FileSearchViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val vaultLockManager = remember { VaultLockManager.getInstance(context) }
     val audioController = remember { AudioPlaybackController.getInstance(context) }
     val audioPlaybackState by audioController.playbackState.collectAsStateWithLifecycle()
@@ -94,7 +126,18 @@ fun FileSearchScreen(
     val dateFilter by viewModel.dateFilter.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    val selectedNodes by viewModel.selectedNodes.collectAsStateWithLifecycle()
+    val isOperating by viewModel.isOperating.collectAsStateWithLifecycle()
+    val operationProgress by viewModel.operationProgress.collectAsStateWithLifecycle()
+    val isSelectionMode = selectedNodes.isNotEmpty()
+
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
+    var showCopyDestinationPicker by remember { mutableStateOf(false) }
+    var showMoveDestinationPicker by remember { mutableStateOf(false) }
+    var showBulkDeleteDialog by remember { mutableStateOf(false) }
+    var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
+    var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
+
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(rootPath, initialCategory) {
@@ -110,58 +153,141 @@ fun FileSearchScreen(
         }
     }
 
+    BackHandler(enabled = isSelectionMode) {
+        viewModel.clearSelection()
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { newQuery ->
-                            if (vaultLockManager.matchesSecretCode(newQuery)) {
-                                viewModel.clearQuery()
-                                onNavigateToVault()
-                            } else {
-                                viewModel.onQueryChange(newQuery)
-                            }
-                        },
-                        placeholder = {
-                            Text(
-                                text = "Search files & folders...",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        },
-                        trailingIcon = {
-                            if (query.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.clearQuery() }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+            if (isSelectionMode) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "${selectedNodes.size} selected",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close selection"
+                            )
+                        }
+                    },
+                    actions = {
+                        val allSelected = (uiState as? SearchUiState.Success)?.items?.let { items ->
+                            items.isNotEmpty() && selectedNodes.size >= items.size
+                        } ?: false
+
+                        // Select All / Deselect All Toggle
+                        IconButton(onClick = {
+                            SelectionHaptics.playSelectionFeedback(context, view)
+                            (uiState as? SearchUiState.Success)?.let {
+                                viewModel.toggleSelectAll(it.items)
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                contentDescription = if (allSelected) "Deselect all" else "Select all"
+                            )
+                        }
+
+                        // Copy Selected
+                        IconButton(onClick = { showCopyDestinationPicker = true }) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy selected"
+                            )
+                        }
+
+                        // Move Selected
+                        IconButton(onClick = { showMoveDestinationPicker = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
+                                contentDescription = "Move selected"
+                            )
+                        }
+
+                        // Share Selected
+                        IconButton(onClick = {
+                            FileIntentDispatcher.shareMultiple(context, selectedNodes.toList())
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share selected"
+                            )
+                        }
+
+                        // Delete Selected
+                        IconButton(onClick = { showBulkDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete selected",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { newQuery ->
+                                if (vaultLockManager.matchesSecretCode(newQuery)) {
+                                    viewModel.clearQuery()
+                                    onNavigateToVault()
+                                } else {
+                                    viewModel.onQueryChange(newQuery)
+                                }
+                            },
+                            placeholder = {
+                                Text(
+                                    text = "Search files & folders...",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            },
+                            trailingIcon = {
+                                if (query.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.clearQuery() }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester)
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                )
+            }
         }
     ) { innerPadding ->
         Column(
@@ -169,15 +295,17 @@ fun FileSearchScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Filter Chips Bar
-            FilterChipsBar(
-                selectedCategory = category,
-                selectedSize = sizeFilter,
-                selectedDate = dateFilter,
-                onCategorySelect = { viewModel.onCategorySelect(it) },
-                onSizeSelect = { viewModel.onSizeFilterSelect(it) },
-                onDateSelect = { viewModel.onDateFilterSelect(it) }
-            )
+            // Filter Chips Bar (hidden in selection mode to give full screen focus to operations)
+            if (!isSelectionMode) {
+                FilterChipsBar(
+                    selectedCategory = category,
+                    selectedSize = sizeFilter,
+                    selectedDate = dateFilter,
+                    onCategorySelect = { viewModel.onCategorySelect(it) },
+                    onSizeSelect = { viewModel.onSizeFilterSelect(it) },
+                    onDateSelect = { viewModel.onDateFilterSelect(it) }
+                )
+            }
 
             // Search Content
             when (val state = uiState) {
@@ -203,6 +331,8 @@ fun FileSearchScreen(
                 is SearchUiState.Success -> {
                     SearchResultsList(
                         items = state.items,
+                        selectedNodes = selectedNodes,
+                        isSelectionMode = isSelectionMode,
                         onItemClick = { node ->
                             if (node.isDirectory) {
                                 onNavigateToDirectory(node.path)
@@ -212,7 +342,31 @@ fun FileSearchScreen(
                             } else {
                                 selectedNodeForProperties = node
                             }
-                        }
+                        },
+                        onItemLongClick = { node ->
+                            if (!isSelectionMode) {
+                                viewModel.startSelection(node)
+                            } else {
+                                viewModel.toggleSelection(node)
+                            }
+                        },
+                        onToggleSelection = { node ->
+                            viewModel.toggleSelection(node)
+                        },
+                        onOpenWith = { FileIntentDispatcher.openWith(context, it) },
+                        onCopy = {
+                            viewModel.startSelection(it)
+                            showCopyDestinationPicker = true
+                        },
+                        onMove = {
+                            viewModel.startSelection(it)
+                            showMoveDestinationPicker = true
+                        },
+                        onShare = { FileIntentDispatcher.share(context, it) },
+                        onShowInFolder = { onNavigateToDirectory(File(it.path).parent ?: "") },
+                        onRename = { nodeToRename = it },
+                        onDelete = { nodeToDelete = it },
+                        onProperties = { selectedNodeForProperties = it }
                     )
                 }
             }
@@ -223,10 +377,83 @@ fun FileSearchScreen(
         }
     }
 
-    val inspectedNode = selectedNodeForProperties
-    if (inspectedNode != null) {
+    // Rename Dialog
+    nodeToRename?.let { node ->
+        RenameDialog(
+            node = node,
+            onConfirmRename = { newName ->
+                viewModel.renameFile(node, newName)
+                nodeToRename = null
+            },
+            onDismiss = { nodeToRename = null }
+        )
+    }
+
+    // Single Delete Dialog
+    nodeToDelete?.let { node ->
+        DeleteConfirmationDialog(
+            node = node,
+            onConfirmDelete = { permanent ->
+                viewModel.deleteSingle(node, permanent = permanent)
+                nodeToDelete = null
+            },
+            onDismiss = { nodeToDelete = null }
+        )
+    }
+
+    // Bulk Delete Dialog
+    if (showBulkDeleteDialog && selectedNodes.isNotEmpty()) {
+        BulkDeleteConfirmationDialog(
+            selectedNodes = selectedNodes.toList(),
+            onConfirmDelete = { permanent ->
+                viewModel.deleteSelected(permanent = permanent)
+                showBulkDeleteDialog = false
+            },
+            onDismiss = { showBulkDeleteDialog = false }
+        )
+    }
+
+    // Copy Destination Picker
+    if (showCopyDestinationPicker && selectedNodes.isNotEmpty()) {
+        DestinationPickerDialog(
+            storageProvider = remember { LocalFileSystemProvider() },
+            title = "Copy ${selectedNodes.size} item(s) to",
+            confirmButtonText = "Copy Here",
+            onDestinationSelected = { destination, verifyIntegrity ->
+                showCopyDestinationPicker = false
+                viewModel.copySelected(destination, verifyIntegrity)
+            },
+            onDismiss = { showCopyDestinationPicker = false }
+        )
+    }
+
+    // Move Destination Picker
+    if (showMoveDestinationPicker && selectedNodes.isNotEmpty()) {
+        DestinationPickerDialog(
+            storageProvider = remember { LocalFileSystemProvider() },
+            title = "Move ${selectedNodes.size} item(s) to",
+            confirmButtonText = "Move Here",
+            onDestinationSelected = { destination, verifyIntegrity ->
+                showMoveDestinationPicker = false
+                viewModel.moveSelected(destination, verifyIntegrity)
+            },
+            onDismiss = { showMoveDestinationPicker = false }
+        )
+    }
+
+    // In-flight Operation Progress Dialog
+    if (isOperating && operationProgress != null) {
+        OperationProgressDialog(
+            progress = operationProgress!!,
+            title = "Processing Files…",
+            onCancel = { /* background execution completes */ }
+        )
+    }
+
+    // File Properties Bottom Sheet
+    selectedNodeForProperties?.let { node ->
         FilePropertiesSheet(
-            node = inspectedNode,
+            node = node,
             onDismiss = { selectedNodeForProperties = null }
         )
     }
@@ -289,7 +516,19 @@ private fun FilterChipsBar(
 @Composable
 private fun SearchResultsList(
     items: List<StorageNode>,
+    selectedNodes: Set<StorageNode>,
+    isSelectionMode: Boolean,
     onItemClick: (StorageNode) -> Unit,
+    onItemLongClick: (StorageNode) -> Unit,
+    onToggleSelection: (StorageNode) -> Unit,
+    onOpenWith: (StorageNode) -> Unit,
+    onCopy: (StorageNode) -> Unit,
+    onMove: (StorageNode) -> Unit,
+    onShare: (StorageNode) -> Unit,
+    onShowInFolder: (StorageNode) -> Unit,
+    onRename: (StorageNode) -> Unit,
+    onDelete: (StorageNode) -> Unit,
+    onProperties: (StorageNode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -305,66 +544,132 @@ private fun SearchResultsList(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(items, key = { it.id }) { node ->
-                SearchResultItem(node = node, onClick = { onItemClick(node) })
+            items(items, key = { it.path }) { node ->
+                val isSelected = selectedNodes.any { it.path == node.path }
+                SearchResultItem(
+                    node = node,
+                    isSelected = isSelected,
+                    isSelectionMode = isSelectionMode,
+                    onClick = {
+                        if (isSelectionMode) {
+                            onToggleSelection(node)
+                        } else {
+                            onItemClick(node)
+                        }
+                    },
+                    onLongClick = { onItemLongClick(node) },
+                    onOpenWith = { onOpenWith(node) },
+                    onCopy = { onCopy(node) },
+                    onMove = { onMove(node) },
+                    onShare = { onShare(node) },
+                    onShowInFolder = { onShowInFolder(node) },
+                    onRename = { onRename(node) },
+                    onDelete = { onDelete(node) },
+                    onProperties = { onProperties(node) }
+                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SearchResultItem(
     node: StorageNode,
+    isSelected: Boolean,
+    isSelectionMode: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onOpenWith: () -> Unit,
+    onCopy: () -> Unit,
+    onMove: () -> Unit,
+    onShare: () -> Unit,
+    onShowInFolder: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onProperties: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val view = LocalView.current
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(10.dp),
+            .combinedClickable(
+                onClick = {
+                    if (isSelectionMode) {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                    }
+                    onClick()
+                },
+                onLongClick = {
+                    SelectionHaptics.playLongPressFeedback(context, view)
+                    onLongClick()
+                }
+            ),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        border = if (isSelected) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+        } else {
+            BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+        },
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (node.isDirectory) FolderYellow.copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                    ),
-                contentAlignment = Alignment.Center
+            // Checkbox when in selection mode
+            AnimatedVisibility(
+                visible = isSelectionMode,
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                Icon(
-                    imageVector = if (node.isDirectory) Icons.Default.Folder else Icons.Default.Description,
-                    contentDescription = null,
-                    tint = if (node.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        onClick()
+                    },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.padding(end = 8.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(14.dp))
+            // Thumbnail / Icon
+            FileThumbnailView(
+                node = node,
+                categoryColor = if (node.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(44.dp)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = node.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
                 Text(
-                    text = node.path,
+                    text = File(node.path).parent ?: node.path,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     maxLines = 1,
@@ -380,8 +685,95 @@ private fun SearchResultItem(
                 Text(
                     text = meta,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
                 )
+            }
+
+            // Single Item Options Menu
+            if (!isSelectionMode) {
+                Box {
+                    IconButton(onClick = { showMenu = !showMenu }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        if (!node.isDirectory) {
+                            DropdownMenuItem(
+                                text = { Text("Open with") },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    onOpenWith()
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Copy") },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onCopy()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Move") },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onMove()
+                            }
+                        )
+                        if (!node.isDirectory) {
+                            DropdownMenuItem(
+                                text = { Text("Share") },
+                                leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    onShare()
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Show in folder") },
+                            leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onShowInFolder()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Rename") },
+                            leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onRename()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showMenu = false
+                                onDelete()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Properties") },
+                            leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onProperties()
+                            }
+                        )
+                    }
+                }
             }
         }
     }
