@@ -238,7 +238,7 @@ class InstalledAppsViewModel @JvmOverloads constructor(
             val result = apkShareManager.prepareBatchShareIntent(
                 context = context,
                 apps = selectedApps,
-                shareMode = ApkShareMode.ALL_SPLITS,
+                shareMode = ApkShareMode.BASE_ONLY,
                 onProgress = { copiedBytes, totalBytes, appName ->
                     val percent = if (totalBytes > 0) ((copiedBytes * 100) / totalBytes).toInt().coerceIn(0, 100) else 0
                     val formattedCopied = FileFormatter.formatFileSize(copiedBytes)

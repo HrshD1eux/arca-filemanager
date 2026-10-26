@@ -20,12 +20,17 @@ import kotlin.coroutines.coroutineContext
  */
 enum class ApkShareMode {
     /**
-     * Share only the base APK (standard for standalone APKs, or standalone export of App Bundles).
+     * Share only the base APK (standard standalone APK, directly installable on any Android device).
      */
     BASE_ONLY,
 
     /**
-     * Share all APK components: base APK plus all device-specific split APKs.
+     * Package base APK plus all device-specific split APKs into a single unified .apks bundle archive.
+     */
+    BUNDLE_APKS,
+
+    /**
+     * Share all APK components: base APK plus all device-specific split APKs as individual files.
      */
     ALL_SPLITS
 }
@@ -255,7 +260,7 @@ class ApkShareManager(
     suspend fun prepareAndCreateShareIntent(
         context: Context?,
         app: InstalledAppInfo,
-        shareMode: ApkShareMode = ApkShareMode.ALL_SPLITS,
+        shareMode: ApkShareMode = ApkShareMode.BASE_ONLY,
         customCacheDir: File? = null,
         onProgress: ((copiedBytes: Long, totalBytes: Long) -> Unit)? = null
     ): ApkShareResult = withContext(ioDispatcher) {
@@ -267,142 +272,211 @@ class ApkShareManager(
             )
         }
 
-        // 2. Determine files to extract based on requested shareMode
-        val filesToCopy = if (shareMode == ApkShareMode.BASE_ONLY || inspection.splitFiles.isEmpty()) {
-            listOf(inspection.baseFile)
-        } else {
-            listOf(inspection.baseFile) + inspection.splitFiles
-        }
-
-        val requiredBytes = filesToCopy.sumOf { it.length() }
-
-        // 3. Check available cache storage before copying
         val cacheDir = customCacheDir ?: context?.cacheDir
         if (cacheDir == null) {
             return@withContext ApkShareResult.ExtractionFailed("No cache directory available for temporary APK extraction.")
         }
 
-        if (!hasSufficientSpace(cacheDir, requiredBytes)) {
-            val available = getAvailableCacheBytes(cacheDir)
-            val neededTotal = requiredBytes + safetyBufferBytes
-            return@withContext ApkShareResult.InsufficientStorage(
-                requiredBytes = neededTotal,
-                availableBytes = available,
-                formattedRequired = FileFormatter.formatFileSize(neededTotal),
-                formattedAvailable = FileFormatter.formatFileSize(available)
-            )
-        }
-
-        // 4. Prune stale copies before creating new ones
-        cleanupOldCopies(cacheDir)
-
-        val sharedDir = File(cacheDir, SHARED_APKS_DIR_NAME)
-        if (!sharedDir.exists()) {
-            sharedDir.mkdirs()
-        }
-
-        // 5. Copy files with clean, descriptive naming, progress tracking, and reuse
         val sanitizedApp = sanitizeFileName(app.appName)
         val sanitizedVer = sanitizeFileName(app.versionName ?: "v${app.versionCode ?: 0}")
-        val copiedFiles = ArrayList<File>()
-        val uris = ArrayList<Uri>()
         val authority = "${context?.packageName ?: "com.Hrshd1eux.filemanager"}.fileprovider"
-
-        var overallCopied = 0L
         val buffer = ByteArray(STREAMING_BUFFER_BYTES)
 
-        try {
-            for (sourceFile in filesToCopy) {
-                if (!coroutineContext.isActive) {
-                    for (f in copiedFiles) f.delete()
-                    return@withContext ApkShareResult.Cancelled
-                }
+        cleanupOldCopies(cacheDir)
+        val sharedDir = File(cacheDir, SHARED_APKS_DIR_NAME).apply { if (!exists()) mkdirs() }
 
-                val isBase = sourceFile == inspection.baseFile
-                val destFileName = if (isBase) {
-                    if (inspection.isSplitApk && shareMode == ApkShareMode.ALL_SPLITS) {
-                        "${sanitizedApp}_${sanitizedVer}_base.apk"
-                    } else {
-                        "${sanitizedApp}_${sanitizedVer}.apk"
+        val copiedFiles = ArrayList<File>()
+        val uris = ArrayList<Uri>()
+
+        if (shareMode == ApkShareMode.BUNDLE_APKS && inspection.isSplitApk && inspection.splitFiles.isNotEmpty()) {
+            val allSourceFiles = listOf(inspection.baseFile) + inspection.splitFiles
+            val requiredBytes = allSourceFiles.sumOf { it.length() }
+
+            if (!hasSufficientSpace(cacheDir, requiredBytes)) {
+                val available = getAvailableCacheBytes(cacheDir)
+                val neededTotal = requiredBytes + safetyBufferBytes
+                return@withContext ApkShareResult.InsufficientStorage(
+                    requiredBytes = neededTotal,
+                    availableBytes = available,
+                    formattedRequired = FileFormatter.formatFileSize(neededTotal),
+                    formattedAvailable = FileFormatter.formatFileSize(available)
+                )
+            }
+
+            val bundleFile = File(sharedDir, "${sanitizedApp}_${sanitizedVer}.apks")
+            val isCached = bundleFile.exists() && bundleFile.length() > 0L &&
+                bundleFile.lastModified() >= inspection.baseFile.lastModified()
+
+            if (!isCached) {
+                if (bundleFile.exists()) bundleFile.delete()
+                var overallCopied = 0L
+                try {
+                    java.util.zip.ZipOutputStream(bundleFile.outputStream().buffered(STREAMING_BUFFER_BYTES)).use { zipOut ->
+                        // 1. base.apk
+                        zipOut.putNextEntry(java.util.zip.ZipEntry("base.apk"))
+                        inspection.baseFile.inputStream().buffered(STREAMING_BUFFER_BYTES).use { input ->
+                            var read: Int
+                            while (input.read(buffer).also { read = it } != -1) {
+                                if (!coroutineContext.isActive) {
+                                    zipOut.close()
+                                    bundleFile.delete()
+                                    return@withContext ApkShareResult.Cancelled
+                                }
+                                zipOut.write(buffer, 0, read)
+                                overallCopied += read
+                                onProgress?.invoke(overallCopied, requiredBytes)
+                            }
+                        }
+                        zipOut.closeEntry()
+
+                        // 2. Splits
+                        for (split in inspection.splitFiles) {
+                            zipOut.putNextEntry(java.util.zip.ZipEntry(split.name))
+                            split.inputStream().buffered(STREAMING_BUFFER_BYTES).use { input ->
+                                var read: Int
+                                while (input.read(buffer).also { read = it } != -1) {
+                                    if (!coroutineContext.isActive) {
+                                        zipOut.close()
+                                        bundleFile.delete()
+                                        return@withContext ApkShareResult.Cancelled
+                                    }
+                                    zipOut.write(buffer, 0, read)
+                                    overallCopied += read
+                                    onProgress?.invoke(overallCopied, requiredBytes)
+                                }
+                            }
+                            zipOut.closeEntry()
+                        }
                     }
-                } else {
-                    "${sanitizedApp}_${sanitizedVer}_${sourceFile.name}"
+                } catch (e: Exception) {
+                    bundleFile.delete()
+                    return@withContext ApkShareResult.ExtractionFailed(
+                        message = "Failed to bundle APK components: ${e.localizedMessage ?: "I/O error"}",
+                        cause = e
+                    )
                 }
+            } else {
+                onProgress?.invoke(requiredBytes, requiredBytes)
+            }
 
-                val destFile = File(sharedDir, destFileName)
+            copiedFiles.add(bundleFile)
+            val contentUri = uriProvider?.invoke(context, authority, bundleFile)
+                ?: if (context != null) FileProvider.getUriForFile(context, authority, bundleFile) else null
+            if (contentUri != null) uris.add(contentUri)
+        } else {
+            // BASE_ONLY or ALL_SPLITS mode
+            val filesToCopy = if (shareMode == ApkShareMode.BASE_ONLY || inspection.splitFiles.isEmpty()) {
+                listOf(inspection.baseFile)
+            } else {
+                listOf(inspection.baseFile) + inspection.splitFiles
+            }
 
-                // Temporary file reuse: if matching exact size and modification time, reuse without re-copying
-                if (destFile.exists() && destFile.length() == sourceFile.length() && destFile.lastModified() >= sourceFile.lastModified()) {
-                    overallCopied += destFile.length()
-                    onProgress?.invoke(overallCopied, requiredBytes)
+            val requiredBytes = filesToCopy.sumOf { it.length() }
+            if (!hasSufficientSpace(cacheDir, requiredBytes)) {
+                val available = getAvailableCacheBytes(cacheDir)
+                val neededTotal = requiredBytes + safetyBufferBytes
+                return@withContext ApkShareResult.InsufficientStorage(
+                    requiredBytes = neededTotal,
+                    availableBytes = available,
+                    formattedRequired = FileFormatter.formatFileSize(neededTotal),
+                    formattedAvailable = FileFormatter.formatFileSize(available)
+                )
+            }
+
+            var overallCopied = 0L
+            try {
+                for (sourceFile in filesToCopy) {
+                    if (!coroutineContext.isActive) {
+                        for (f in copiedFiles) f.delete()
+                        return@withContext ApkShareResult.Cancelled
+                    }
+
+                    val isBase = sourceFile == inspection.baseFile
+                    val destFileName = if (isBase) {
+                        if (inspection.isSplitApk && shareMode == ApkShareMode.ALL_SPLITS) {
+                            "${sanitizedApp}_${sanitizedVer}_base.apk"
+                        } else {
+                            "${sanitizedApp}_${sanitizedVer}.apk"
+                        }
+                    } else {
+                        "${sanitizedApp}_${sanitizedVer}_${sourceFile.name}"
+                    }
+
+                    val destFile = File(sharedDir, destFileName)
+
+                    // Temporary file reuse
+                    if (destFile.exists() && destFile.length() == sourceFile.length() && destFile.lastModified() >= sourceFile.lastModified()) {
+                        overallCopied += destFile.length()
+                        onProgress?.invoke(overallCopied, requiredBytes)
+                        copiedFiles.add(destFile)
+                        val contentUri = uriProvider?.invoke(context, authority, destFile)
+                            ?: if (context != null) FileProvider.getUriForFile(context, authority, destFile) else null
+                        if (contentUri != null) uris.add(contentUri)
+                        continue
+                    }
+
+                    if (destFile.exists()) {
+                        destFile.delete()
+                    }
+
+                    sourceFile.inputStream().buffered(STREAMING_BUFFER_BYTES).use { input ->
+                        destFile.outputStream().buffered(STREAMING_BUFFER_BYTES).use { output ->
+                            var bytesRead: Int
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                if (!coroutineContext.isActive) {
+                                    output.close()
+                                    destFile.delete()
+                                    for (f in copiedFiles) f.delete()
+                                    return@withContext ApkShareResult.Cancelled
+                                }
+                                output.write(buffer, 0, bytesRead)
+                                overallCopied += bytesRead
+                                onProgress?.invoke(overallCopied, requiredBytes)
+                            }
+                        }
+                    }
+
                     copiedFiles.add(destFile)
                     val contentUri = uriProvider?.invoke(context, authority, destFile)
                         ?: if (context != null) FileProvider.getUriForFile(context, authority, destFile) else null
-                    if (contentUri != null) uris.add(contentUri)
-                    continue
-                }
-
-                if (destFile.exists()) {
-                    destFile.delete()
-                }
-
-                sourceFile.inputStream().buffered(STREAMING_BUFFER_BYTES).use { input ->
-                    destFile.outputStream().buffered(STREAMING_BUFFER_BYTES).use { output ->
-                        var bytesRead: Int
-                        while (input.read(buffer).also { bytesRead = it } != -1) {
-                            if (!coroutineContext.isActive) {
-                                output.close()
-                                destFile.delete()
-                                for (f in copiedFiles) f.delete()
-                                return@withContext ApkShareResult.Cancelled
-                            }
-                            output.write(buffer, 0, bytesRead)
-                            overallCopied += bytesRead
-                            onProgress?.invoke(overallCopied, requiredBytes)
-                        }
+                    if (contentUri != null) {
+                        uris.add(contentUri)
                     }
                 }
-
-                copiedFiles.add(destFile)
-
-                // 6. Generate secure content URI using FileProvider
-                val contentUri = uriProvider?.invoke(context, authority, destFile)
-                    ?: if (context != null) FileProvider.getUriForFile(context, authority, destFile) else null
-                if (contentUri != null) {
-                    uris.add(contentUri)
+            } catch (e: Exception) {
+                for (f in copiedFiles) {
+                    f.delete()
                 }
+                return@withContext ApkShareResult.ExtractionFailed(
+                    message = "Failed to copy APK binaries for sharing: ${e.localizedMessage ?: "I/O error"}",
+                    cause = e
+                )
             }
-        } catch (e: Exception) {
-            // Clean up any partially copied files
-            for (f in copiedFiles) {
-                f.delete()
-            }
-            return@withContext ApkShareResult.ExtractionFailed(
-                message = "Failed to copy APK binaries for sharing: ${e.localizedMessage ?: "I/O error"}",
-                cause = e
-            )
         }
 
         if (uris.isEmpty()) {
             return@withContext ApkShareResult.ExtractionFailed("No APK files could be prepared for sharing.")
         }
 
-        // 7. Build standard Android sharing intent
-        val subject = if (uris.size > 1) {
-            "${app.appName} (${app.displayVersion}) - Split APKs"
-        } else {
-            "${app.appName} (${app.displayVersion}) APK"
+        // Build standard Android sharing intent
+        val isBundle = copiedFiles.firstOrNull()?.name?.endsWith(".apks", ignoreCase = true) == true
+        val mimeType = if (isBundle) "application/vnd.android.package-archive" else MIME_TYPE_APK
+
+        val subject = when {
+            isBundle -> "${app.appName} (${app.displayVersion}) - App Bundle (.apks)"
+            uris.size > 1 -> "${app.appName} (${app.displayVersion}) - Split APKs"
+            else -> "${app.appName} (${app.displayVersion}) APK"
         }
 
-        val shareText = if (uris.size > 1) {
-            "Sharing ${app.appName} (${app.displayVersion}) as ${uris.size} split APK files."
-        } else {
-            "Sharing ${app.appName} (${app.displayVersion}) APK."
+        val shareText = when {
+            isBundle -> "Sharing ${app.appName} (${app.displayVersion}) as a complete installable App Bundle (.apks)."
+            uris.size > 1 -> "Sharing ${app.appName} (${app.displayVersion}) as ${uris.size} split APK files."
+            else -> "Sharing ${app.appName} (${app.displayVersion}) APK."
         }
 
         val shareIntent = if (uris.size == 1) {
             Intent(Intent.ACTION_SEND).apply {
-                type = MIME_TYPE_APK
+                type = mimeType
                 putExtra(Intent.EXTRA_STREAM, uris.first())
                 putExtra(Intent.EXTRA_SUBJECT, subject)
                 putExtra(Intent.EXTRA_TEXT, shareText)
@@ -411,7 +485,7 @@ class ApkShareManager(
             }
         } else {
             Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                type = MIME_TYPE_APK
+                type = mimeType
                 putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
                 putExtra(Intent.EXTRA_SUBJECT, subject)
                 putExtra(Intent.EXTRA_TEXT, shareText)
@@ -451,7 +525,7 @@ class ApkShareManager(
     suspend fun prepareBatchShareIntent(
         context: Context?,
         apps: List<InstalledAppInfo>,
-        shareMode: ApkShareMode = ApkShareMode.ALL_SPLITS,
+        shareMode: ApkShareMode = ApkShareMode.BASE_ONLY,
         customCacheDir: File? = null,
         onProgress: ((copiedBytes: Long, totalBytes: Long, appName: String) -> Unit)? = null
     ): ApkShareResult = withContext(ioDispatcher) {

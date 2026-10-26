@@ -373,7 +373,7 @@ fun ShareApkBottomSheet(
                 }
             }
 
-            // Split APK Limitations & Universal Installability Explanation
+            // Split APK & Universal Installability Explanation
             if (inspection?.isSplitApk == true) {
                 Card(
                     shape = RoundedCornerShape(12.dp),
@@ -394,14 +394,14 @@ fun ShareApkBottomSheet(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "APK Sharing Limitations",
+                                text = "Sharing Format Options",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.tertiary
                             )
                         }
                         Text(
-                            text = "This application is installed as multiple split APKs (Android App Bundle). Splitting optimizes downloads for this device's specific CPU architecture and screen density.\n\nSharing only the base APK may fail to install or run on another device. Universal installability is not guaranteed.",
+                            text = "This app was installed as an App Bundle with ${inspection?.splitFiles?.size ?: 0} device-specific splits.\n\n• Ready-to-Install APK (.apk): Single complete file that installs with one tap on other devices.\n• Split Bundle (.apks): Unified single-file package containing the base APK plus all splits.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp
@@ -514,49 +514,8 @@ fun ShareApkBottomSheet(
                 val isShareable = inspection?.isShareable == true
 
                 if (inspection?.isSplitApk == true) {
-                    // Option 1: Share All Split APKs (Recommended)
+                    // Option 1: Share Ready-to-Install Standalone APK (Recommended for instant install on other devices)
                     Button(
-                        onClick = {
-                            dispatchShare(
-                                scope = scope,
-                                context = context,
-                                app = app,
-                                mode = ApkShareMode.ALL_SPLITS,
-                                apkShareManager = apkShareManager,
-                                onJobCreated = { activeJob = it },
-                                onProgress = { copied, total ->
-                                    copiedBytes = copied
-                                    totalBytes = total
-                                },
-                                onStart = {
-                                    isPreparing = true
-                                    errorMessage = null
-                                    copiedBytes = 0L
-                                    totalBytes = inspection?.totalSizeBytes ?: 0L
-                                },
-                                onComplete = {
-                                    isPreparing = false
-                                    activeJob = null
-                                },
-                                onError = { errorMessage = it },
-                                onSuccess = { onDismiss() }
-                            )
-                        },
-                        enabled = isShareable,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Share All APKs (Base + ${inspection?.splitFiles?.size ?: 0} Splits)")
-                    }
-
-                    // Option 2: Share Base APK Only
-                    OutlinedButton(
                         onClick = {
                             dispatchShare(
                                 scope = scope,
@@ -585,9 +544,57 @@ fun ShareApkBottomSheet(
                         },
                         enabled = isShareable,
                         shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Share Base APK Only (May Fail on Other Devices)")
+                        Icon(
+                            imageVector = Icons.Default.Android,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Share Ready-to-Install APK (.apk)")
+                    }
+
+                    // Option 2: Share Unified Split Bundle (Base + All Splits in a single .apks file)
+                    OutlinedButton(
+                        onClick = {
+                            dispatchShare(
+                                scope = scope,
+                                context = context,
+                                app = app,
+                                mode = ApkShareMode.BUNDLE_APKS,
+                                apkShareManager = apkShareManager,
+                                onJobCreated = { activeJob = it },
+                                onProgress = { copied, total ->
+                                    copiedBytes = copied
+                                    totalBytes = total
+                                },
+                                onStart = {
+                                    isPreparing = true
+                                    errorMessage = null
+                                    copiedBytes = 0L
+                                    totalBytes = inspection?.totalSizeBytes ?: 0L
+                                },
+                                onComplete = {
+                                    isPreparing = false
+                                    activeJob = null
+                                },
+                                onError = { errorMessage = it },
+                                onSuccess = { onDismiss() }
+                            )
+                        },
+                        enabled = isShareable,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Layers,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Share Split Bundle (.apks • Complete)")
                     }
                 } else {
                     // Single Standalone APK
@@ -629,7 +636,7 @@ fun ShareApkBottomSheet(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Share APK File")
+                        Text("Share Ready-to-Install APK (.apk)")
                     }
                 }
             }

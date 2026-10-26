@@ -288,6 +288,47 @@ class ApkShareManagerTest {
     }
 
     @Test
+    fun splitApks_bundleApks_prepareAndCreateShareIntent_producesSingleApksZipArchive() = runBlocking {
+        val manager = ApkShareManager(
+            ioDispatcher = testDispatcher,
+            storageChecker = { 100 * 1024 * 1024L },
+            uriProvider = createUriMock()
+        )
+        val app = createTestApp(isSplit = true, appName = "Heavy Game", versionName = "3.0")
+
+        val result = manager.prepareAndCreateShareIntent(
+            context = null,
+            app = app,
+            shareMode = ApkShareMode.BUNDLE_APKS,
+            customCacheDir = cacheDir
+        )
+        assertTrue("Must succeed with bundle", result is ApkShareResult.Success)
+
+        val success = result as ApkShareResult.Success
+        assertEquals("Must share exactly 1 unified .apks bundle file", 1, success.sharedFileCount)
+        assertEquals(1, success.targetFiles.size)
+        assertEquals(1, success.uris.size)
+
+        val bundleFile = success.targetFiles.first()
+        assertEquals("Heavy_Game_3.0.apks", bundleFile.name)
+        assertTrue("Bundle file must exist", bundleFile.exists())
+        assertTrue("Bundle file must have non-zero length", bundleFile.length() > 0)
+
+        // Verify it is a valid zip archive containing base.apk and splits
+        val zipEntries = ArrayList<String>()
+        java.util.zip.ZipInputStream(bundleFile.inputStream()).use { zipIn ->
+            var entry = zipIn.nextEntry
+            while (entry != null) {
+                zipEntries.add(entry.name)
+                entry = zipIn.nextEntry
+            }
+        }
+        assertTrue("Must contain base.apk", zipEntries.contains("base.apk"))
+        assertTrue("Must contain split 1", zipEntries.contains("split_config.arm64_v8a.apk"))
+        assertTrue("Must contain split 2", zipEntries.contains("split_config.xxhdpi.apk"))
+    }
+
+    @Test
     fun temporaryCopiesPruning_deletesOlderCopies_preservesRecent() {
         val manager = ApkShareManager(ioDispatcher = testDispatcher)
         val sharedDir = File(cacheDir, ApkShareManager.SHARED_APKS_DIR_NAME).apply { mkdirs() }
