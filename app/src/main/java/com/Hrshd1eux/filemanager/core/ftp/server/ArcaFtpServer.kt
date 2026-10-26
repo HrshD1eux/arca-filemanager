@@ -55,7 +55,7 @@ class ArcaFtpServer(
     val config: FtpServerConfig,
     private val appContext: Context? = null,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val onStateChanged: ((running: Boolean, clients: Int, sent: Long, received: Long) -> Unit)? = null,
+    private val onStateChanged: ((running: Boolean, port: Int, clients: Int, sent: Long, received: Long) -> Unit)? = null,
     private val onLog: ((FtpActivityLog) -> Unit)? = null
 ) {
     private var serverSocket: ServerSocket? = null
@@ -64,6 +64,9 @@ class ArcaFtpServer(
     private val clientCount = AtomicInteger(0)
     private val bytesSent = AtomicLong(0L)
     private val bytesReceived = AtomicLong(0L)
+
+    val effectivePort: Int
+        get() = serverSocket?.localPort ?: config.port
 
     val isRunning: Boolean
         get() = serverSocket?.isClosed == false && acceptJob?.isActive == true
@@ -80,17 +83,48 @@ class ArcaFtpServer(
                 root.mkdirs()
             }
 
-            val socket = ServerSocket(config.port)
+            var chosenPort = config.port
+            var socket = ServerSocket()
             socket.reuseAddress = true
-            serverSocket = socket
 
-            emitLog("FTP Server started on port ${config.port} (Root: ${config.rootDisplayName})")
+            try {
+                socket.bind(java.net.InetSocketAddress(chosenPort))
+            } catch (e: java.net.BindException) {
+                // Port config.port is already in use by another app or in TIME_WAIT.
+                // Automatically find the next available port (e.g. port + 1, port + 2, etc.)
+                socket.close()
+                var bound = false
+                for (offset in 1..10) {
+                    val candidate = config.port + offset
+                    if (candidate > 65535) break
+                    val testSocket = ServerSocket()
+                    testSocket.reuseAddress = true
+                    try {
+                        testSocket.bind(java.net.InetSocketAddress(candidate))
+                        socket = testSocket
+                        chosenPort = candidate
+                        bound = true
+                        emitLog("Port ${config.port} was busy. Automatically switched to port $chosenPort.")
+                        break
+                    } catch (_: java.net.BindException) {
+                        testSocket.close()
+                    }
+                }
+                if (!bound) {
+                    throw java.net.BindException("Port ${config.port} is already in use by another app. Please change the port in Settings.")
+                }
+            }
+
+            serverSocket = socket
+            val activeSocket = socket
+
+            emitLog("FTP Server started on port $chosenPort (Root: ${config.rootDisplayName})")
             notifyState()
 
             acceptJob = CoroutineScope(dispatcher).launch {
-                while (isActive && !socket.isClosed) {
+                while (isActive && !activeSocket.isClosed) {
                     try {
-                        val clientSocket = socket.accept()
+                        val clientSocket = activeSocket.accept()
                         val clientKey = "${clientSocket.inetAddress.hostAddress}:${clientSocket.port}"
                         activeClients[clientKey] = clientSocket
                         val count = clientCount.incrementAndGet()
@@ -804,6 +838,6 @@ class ArcaFtpServer(
     }
 
     private fun notifyState() {
-        onStateChanged?.invoke(isRunning, clientCount.get(), bytesSent.get(), bytesReceived.get())
+        onStateChanged?.invoke(isRunning, effectivePort, clientCount.get(), bytesSent.get(), bytesReceived.get())
     }
 }

@@ -63,6 +63,16 @@ class FtpServerService : Service() {
 
     private fun startFtpServer() {
         val manager = FtpServerManager.getInstance()
+        if (ftpServer?.isRunning == true) {
+            return
+        }
+
+        val old = ftpServer
+        if (old != null) {
+            serviceScope.launch { old.stop() }
+            ftpServer = null
+        }
+
         val config = FtpServerPreferences.loadConfig(this)
         val ip = FtpNetworkUtil.getLocalIpAddress() ?: "127.0.0.1"
 
@@ -83,8 +93,12 @@ class FtpServerService : Service() {
                 val server = ArcaFtpServer(
                     config = config,
                     appContext = applicationContext,
-                    onStateChanged = { running, clients, sent, received ->
-                        manager.onServerRunningStateChanged(running, clients, sent, received)
+                    onStateChanged = { running, port, clients, sent, received ->
+                        manager.onServerRunningStateChanged(running, port, clients, sent, received)
+                        if (running) {
+                            val nm = getSystemService(NotificationManager::class.java)
+                            nm?.notify(NOTIFICATION_ID, buildNotification(ip, port))
+                        }
                     },
                     onLog = { log ->
                         manager.addLog(log)

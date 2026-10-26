@@ -71,6 +71,9 @@ class FtpServerManager private constructor() {
      * Starts the FTP Server via Android Foreground Service.
      */
     fun startServer(context: Context, config: FtpServerConfig) {
+        if (_state.value.isRunning && activeServer?.isRunning == true) {
+            return
+        }
         FtpServerPreferences.saveConfig(context, config)
         val ip = FtpNetworkUtil.getLocalIpAddress()
         _state.update { it.copy(config = config, ipAddress = ip, port = config.port, errorMessage = null) }
@@ -93,6 +96,7 @@ class FtpServerManager private constructor() {
             action = FtpServerService.ACTION_STOP
         }
         context.startService(intent)
+        _state.update { it.copy(isRunning = false, connectedClientsCount = 0) }
     }
 
     // --- Internal methods called by FtpServerService ---
@@ -111,11 +115,12 @@ class FtpServerManager private constructor() {
         }
     }
 
-    internal fun onServerRunningStateChanged(running: Boolean, clients: Int, sent: Long, received: Long) {
+    internal fun onServerRunningStateChanged(running: Boolean, port: Int, clients: Int, sent: Long, received: Long) {
         val ip = FtpNetworkUtil.getLocalIpAddress()
         _state.update {
             it.copy(
                 isRunning = running,
+                port = port,
                 ipAddress = ip,
                 connectedClientsCount = clients,
                 bytesSent = sent,

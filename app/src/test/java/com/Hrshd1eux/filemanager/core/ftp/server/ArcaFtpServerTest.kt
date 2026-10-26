@@ -234,4 +234,25 @@ class ArcaFtpServerTest {
         writer.flush()
         socket.close()
     }
+
+    @Test
+    fun busyPort_automaticallySwitchesToNextAvailablePort() = runBlocking {
+        val busyPort = testPort + 10
+        // Occupy busyPort with an existing ServerSocket
+        val blocker = java.net.ServerSocket(busyPort)
+        try {
+            val config = FtpServerConfig(
+                port = busyPort,
+                isAnonymousAllowed = true,
+                rootDirectoryPath = rootDir.absolutePath
+            )
+            server = ArcaFtpServer(config)
+            val result = server.start()
+            assertTrue("Server must start despite primary port being busy", result.isSuccess)
+            assertTrue("Server must be running", server.isRunning)
+            assertEquals("Must have switched to busyPort + 1", busyPort + 1, server.effectivePort)
+        } finally {
+            blocker.close()
+        }
+    }
 }

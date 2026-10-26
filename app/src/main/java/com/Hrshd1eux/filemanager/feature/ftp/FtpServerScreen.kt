@@ -114,9 +114,14 @@ fun FtpServerScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showFolderPicker by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
+    var isStarting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.refreshNetwork(context)
+    }
+
+    LaunchedEffect(state.isRunning, state.errorMessage) {
+        isStarting = false
     }
 
     Scaffold(
@@ -162,6 +167,7 @@ fun FtpServerScreen(
                 Spacer(modifier = Modifier.height(2.dp))
                 FtpServerStatusCard(
                     isRunning = state.isRunning,
+                    isStarting = isStarting,
                     ftpUrl = state.ftpUrl,
                     ipAddress = state.ipAddress,
                     port = state.port,
@@ -169,7 +175,12 @@ fun FtpServerScreen(
                     clientsCount = state.connectedClientsCount,
                     bytesSent = state.bytesSent,
                     bytesReceived = state.bytesReceived,
-                    onStartClick = { viewModel.startServer(context) },
+                    onStartClick = {
+                        if (!isStarting && !state.isRunning) {
+                            isStarting = true
+                            viewModel.startServer(context)
+                        }
+                    },
                     onStopClick = { viewModel.stopServer(context) },
                     onCopyUrl = {
                         val clip = ClipData.newPlainText("FTP URL", state.ftpUrl)
@@ -195,22 +206,35 @@ fun FtpServerScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = state.errorMessage ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = state.errorMessage ?: "",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+
+                            if (state.errorMessage?.contains("in use", ignoreCase = true) == true) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Button(
+                                    onClick = {
+                                        viewModel.updatePort(state.port + 1)
+                                        viewModel.startServer(context)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Try Port ${state.port + 1}")
+                                }
+                            }
                         }
                     }
                 }
@@ -285,6 +309,7 @@ fun FtpServerScreen(
 @Composable
 private fun FtpServerStatusCard(
     isRunning: Boolean,
+    isStarting: Boolean = false,
     ftpUrl: String,
     ipAddress: String?,
     port: Int,
@@ -527,14 +552,24 @@ private fun FtpServerStatusCard(
                 // Start Server Button
                 Button(
                     onClick = onStartClick,
-                    enabled = isNetworkAvailable,
+                    enabled = isNetworkAvailable && !isStarting && !isRunning,
                     colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Start FTP Server", fontWeight = FontWeight.Bold)
+                    if (isStarting) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Starting Server…", fontWeight = FontWeight.Bold)
+                    } else {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Start FTP Server", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
