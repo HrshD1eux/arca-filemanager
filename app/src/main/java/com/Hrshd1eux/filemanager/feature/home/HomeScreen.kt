@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -89,6 +90,7 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit = {},
     onNavigateToTrash: () -> Unit = {},
+    onNavigateToFtpServer: () -> Unit = {},
     modifier: Modifier = Modifier,
     onNavigateToPrivacy: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
@@ -243,6 +245,16 @@ fun HomeScreen(
                                 }
                             )
                             DropdownMenuItem(
+                                text = { Text("Transfer to PC (FTP)") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Devices, contentDescription = null, tint = VaultEmerald)
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onNavigateToFtpServer()
+                                }
+                            )
+                            DropdownMenuItem(
                                 text = { Text(stringResource(id = R.string.settings_title)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.Settings, contentDescription = null)
@@ -364,6 +376,10 @@ fun HomeScreen(
             onConnectToRemote = { config ->
                 showNetworkSheet = false
                 onNavigateToNetworkBrowser(config.id, config.name)
+            },
+            onNavigateToFtpServer = {
+                showNetworkSheet = false
+                onNavigateToFtpServer()
             }
         )
     }

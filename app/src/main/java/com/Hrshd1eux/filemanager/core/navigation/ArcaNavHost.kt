@@ -146,7 +146,8 @@ fun ArcaNavHost(
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToAbout = { navController.navigate(Screen.About) },
                 onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
-                onNavigateToTrash = { navController.navigate(Screen.Trash) }
+                onNavigateToTrash = { navController.navigate(Screen.Trash) },
+                onNavigateToFtpServer = { navController.navigate(Screen.FtpServer) }
             )
         }
 
@@ -471,6 +472,17 @@ fun ArcaNavHost(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
         ) {
             TrashScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.FtpServer>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            com.Hrshd1eux.filemanager.feature.ftp.FtpServerScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

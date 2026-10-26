@@ -31,6 +31,7 @@ class BiometricAuthCoordinator(
                 if (biometricManager == null) {
                     BiometricCapabilityStatus.NO_HARDWARE
                 } else {
+                    @Suppress("DEPRECATION")
                     when (biometricManager.canAuthenticate()) {
                         android.hardware.biometrics.BiometricManager.BIOMETRIC_SUCCESS ->
                             BiometricCapabilityStatus.READY

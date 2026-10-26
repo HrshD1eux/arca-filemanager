@@ -95,6 +95,9 @@ sealed interface Screen {
     data object Trash : Screen
 
     @Serializable
+    data object FtpServer : Screen
+
+    @Serializable
     data class NetworkBrowser(
         val connectionId: String,
         val initialPath: String? = null,

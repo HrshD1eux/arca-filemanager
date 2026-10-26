@@ -81,7 +81,7 @@ object FileShredder {
         val parent = file.parentFile
         val scrambledFile = if (parent != null) File(parent, "${UUID.randomUUID()}.tmp") else null
         val renamed = scrambledFile != null && file.renameTo(scrambledFile)
-        val targetToDelete = if (renamed && scrambledFile != null) scrambledFile else file
+        val targetToDelete = if (renamed) scrambledFile!! else file
 
         // Final unlink
         if (!targetToDelete.delete()) {
@@ -108,7 +108,7 @@ object FileShredder {
         val parent = dir.parentFile
         val scrambledDir = if (parent != null) File(parent, "${UUID.randomUUID()}.tmp") else null
         val renamed = scrambledDir != null && dir.renameTo(scrambledDir)
-        val targetToDelete = if (renamed && scrambledDir != null) scrambledDir else dir
+        val targetToDelete = if (renamed) scrambledDir!! else dir
         if (!targetToDelete.delete()) {
             targetToDelete.deleteRecursively()
         }
