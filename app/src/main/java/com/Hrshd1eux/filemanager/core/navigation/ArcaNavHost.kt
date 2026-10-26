@@ -1,5 +1,7 @@
 package com.Hrshd1eux.filemanager.core.navigation
 
+import android.app.Activity
+import android.content.Intent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -25,6 +28,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.Hrshd1eux.filemanager.core.intent.ViewIntentResolver
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
 import com.Hrshd1eux.filemanager.feature.archive.ArchiveViewerScreen
 import com.Hrshd1eux.filemanager.feature.backup.BackupScreen
@@ -48,12 +52,16 @@ import com.Hrshd1eux.filemanager.feature.viewer.audio.ui.AudioPlayerModalSheet
 import com.Hrshd1eux.filemanager.feature.viewer.image.ImageViewerScreen
 import com.Hrshd1eux.filemanager.feature.viewer.unified.UnifiedPreviewScreen
 import com.Hrshd1eux.filemanager.feature.viewer.video.VideoViewerScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
 fun ArcaNavHost(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    incomingIntent: Intent? = null,
+    onIntentHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -63,6 +71,22 @@ fun ArcaNavHost(
     val appLockManager = remember { AppLockManager.getInstance(context) }
     val isAppLocked by appLockManager.isAppLocked.collectAsStateWithLifecycle()
     val appLockSettings by appLockManager.settings.collectAsStateWithLifecycle()
+
+    // Handle external ACTION_VIEW Intents
+    LaunchedEffect(incomingIntent) {
+        val intent = incomingIntent ?: return@LaunchedEffect
+        if (intent.action == Intent.ACTION_VIEW && intent.data != null) {
+            val uri = intent.data!!
+            val filePath = withContext(Dispatchers.IO) {
+                ViewIntentResolver.resolveFilePath(context, uri)
+            }
+            if (filePath != null) {
+                val destination = ViewIntentResolver.resolveDestination(filePath)
+                navController.navigate(destination)
+            }
+            onIntentHandled()
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -277,7 +301,11 @@ fun ArcaNavHost(
             ArchiveViewerScreen(
                 archivePath = route.archivePath,
                 title = route.title,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        (context as? Activity)?.finish()
+                    }
+                }
             )
         }
 
@@ -292,7 +320,11 @@ fun ArcaNavHost(
                 initialPath = route.initialPath,
                 categoryName = route.categoryName,
                 directoryPath = route.directoryPath,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        (context as? Activity)?.finish()
+                    }
+                }
             )
         }
 
@@ -307,7 +339,11 @@ fun ArcaNavHost(
                 initialPath = route.initialPath,
                 categoryName = route.categoryName,
                 directoryPath = route.directoryPath,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        (context as? Activity)?.finish()
+                    }
+                }
             )
         }
 
@@ -322,7 +358,11 @@ fun ArcaNavHost(
                 initialPath = route.initialPath,
                 categoryName = route.categoryName,
                 directoryPath = route.directoryPath,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        (context as? Activity)?.finish()
+                    }
+                }
             )
         }
 
@@ -360,9 +400,7 @@ fun ArcaNavHost(
         ) {
             SecurityCenterScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToVault = { navController.navigate(Screen.Vault) },
-                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
-                onNavigateToNetworkDiagnostics = { navController.navigate(Screen.NetworkDiagnostics) }
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
             )
         }
 

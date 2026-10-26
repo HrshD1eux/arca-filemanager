@@ -18,8 +18,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -41,7 +43,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Unsupported format screen with clear file diagnostic metadata and a prominent "Open With" action.
+ * Unsupported format screen with clear file diagnostic metadata, an APK installer shortcut, and a prominent "Open With" action.
  */
 @Composable
 fun UnsupportedPreviewContent(
@@ -50,10 +52,12 @@ fun UnsupportedPreviewContent(
     reason: String,
     onOpenWith: () -> Unit,
     onShowProperties: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onInstallApk: (() -> Unit)? = null
 ) {
     val ext = file.extension.uppercase().ifBlank { "FILE" }
     val formattedDate = rememberFormattedDate(file.lastModified())
+    val isApk = file.name.endsWith(".apk", ignoreCase = true) || mimeType == "application/vnd.android.package-archive"
 
     Box(
         modifier = modifier
@@ -82,13 +86,16 @@ fun UnsupportedPreviewContent(
                     modifier = Modifier
                         .size(88.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(
+                            if (isApk) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceContainerHighest
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+                        imageVector = if (isApk) Icons.Default.Android else Icons.AutoMirrored.Filled.InsertDriveFile,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        tint = if (isApk) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(48.dp)
                     )
                 }
@@ -105,9 +112,9 @@ fun UnsupportedPreviewContent(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                // Meta Badges Row
+                // Format & Reason Badges
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -116,17 +123,16 @@ fun UnsupportedPreviewContent(
                     MetaBadge(text = FileFormatter.formatFileSize(file.length()))
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Explanation Note
-                Text(
-                    text = reason,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-
-                if (formattedDate.isNotBlank()) {
+                // Diagnostic / Reason message
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = if (isApk) "Android Application Package" else reason,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Modified $formattedDate",
@@ -138,10 +144,35 @@ fun UnsupportedPreviewContent(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // APK Install Button (if applicable)
+                if (isApk && onInstallApk != null) {
+                    Button(
+                        onClick = onInstallApk,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Android,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Install Package",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 // Prominent Open With Action Button
                 Button(
                     onClick = onOpenWith,
                     shape = RoundedCornerShape(12.dp),
+                    colors = if (isApk && onInstallApk != null) ButtonDefaults.filledTonalButtonColors() else ButtonDefaults.buttonColors(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)

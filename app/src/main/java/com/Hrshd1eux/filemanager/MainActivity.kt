@@ -20,8 +20,11 @@ import com.Hrshd1eux.filemanager.core.navigation.ArcaNavHost
 import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 import com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
+
+    private val pendingIntentFlow = MutableStateFlow<Intent?>(null)
 
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -38,10 +41,15 @@ class MainActivity : ComponentActivity() {
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
         registerReceiver(screenOffReceiver, filter)
 
+        if (intent?.action == Intent.ACTION_VIEW) {
+            pendingIntentFlow.value = intent
+        }
+
         setContent {
             val appSettings = remember { AppSettingsRepository.getInstance(applicationContext) }
             val themeMode by appSettings.themeMode.collectAsStateWithLifecycle()
             val dynamicColor by appSettings.dynamicColor.collectAsStateWithLifecycle()
+            val pendingIntent by pendingIntentFlow.collectAsStateWithLifecycle()
 
             val isDark = when (themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -56,9 +64,20 @@ class MainActivity : ComponentActivity() {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    ArcaNavHost()
+                    ArcaNavHost(
+                        incomingIntent = pendingIntent,
+                        onIntentHandled = { pendingIntentFlow.value = null }
+                    )
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == Intent.ACTION_VIEW) {
+            pendingIntentFlow.value = intent
         }
     }
 

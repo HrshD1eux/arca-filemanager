@@ -101,6 +101,7 @@ fun UnifiedPreviewScreen(
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var showCopyPicker by remember { mutableStateOf(false) }
     var showMovePicker by remember { mutableStateOf(false) }
+    var apkToInstall by remember { mutableStateOf<File?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(initialPath, categoryName, directoryPath) {
@@ -207,6 +208,9 @@ fun UnifiedPreviewScreen(
                         },
                         onShowProperties = {
                             currentFile?.let { inspectedNode = it }
+                        },
+                        onInstallApk = {
+                            apkToInstall = state.file
                         },
                         modifier = Modifier.padding(top = 64.dp, bottom = 64.dp)
                     )
@@ -352,6 +356,14 @@ fun UnifiedPreviewScreen(
             progress = currentProgress,
             title = "Processing...",
             onCancel = {}
+        )
+    }
+
+    // APK Installation Bottom Sheet
+    apkToInstall?.let { file ->
+        com.Hrshd1eux.filemanager.feature.apk.components.ApkInstallBottomSheet(
+            apkFile = file,
+            onDismiss = { apkToInstall = null }
         )
     }
 
