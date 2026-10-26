@@ -63,15 +63,21 @@ class FtpServerService : Service() {
 
     private fun startFtpServer() {
         val manager = FtpServerManager.getInstance()
-        if (ftpServer?.isRunning == true) {
+        val currentServer = ftpServer
+        if (currentServer != null && currentServer.isRunning) {
+            manager.onServerRunningStateChanged(
+                running = true,
+                port = currentServer.effectivePort,
+                clients = 0,
+                sent = 0L,
+                received = 0L
+            )
             return
         }
 
-        val old = ftpServer
-        if (old != null) {
-            serviceScope.launch { old.stop() }
-            ftpServer = null
-        }
+        // Clean up any stale or stopped server synchronously
+        ftpServer?.stop()
+        ftpServer = null
 
         val config = FtpServerPreferences.loadConfig(this)
         val ip = FtpNetworkUtil.getLocalIpAddress() ?: "127.0.0.1"
@@ -114,6 +120,14 @@ class FtpServerService : Service() {
                     stopFtpServer()
                     stopForegroundCompat()
                     stopSelf()
+                } else {
+                    manager.onServerRunningStateChanged(
+                        running = true,
+                        port = server.effectivePort,
+                        clients = 0,
+                        sent = 0L,
+                        received = 0L
+                    )
                 }
             } catch (e: Exception) {
                 manager.setErrorMessage(e.localizedMessage ?: "FTP Server initialization error")
@@ -127,10 +141,8 @@ class FtpServerService : Service() {
     private fun stopFtpServer() {
         val manager = FtpServerManager.getInstance()
         manager.detachServer()
-        serviceScope.launch {
-            ftpServer?.stop()
-            ftpServer = null
-        }
+        ftpServer?.stop()
+        ftpServer = null
     }
 
     private fun buildNotification(ip: String, port: Int): Notification {
@@ -191,7 +203,13 @@ class FtpServerService : Service() {
             }
 
             val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-            wifiLock = wm?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "ARCA:FtpServerWifiLock")?.apply {
+            val lockMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+            } else {
+                @Suppress("DEPRECATION")
+                WifiManager.WIFI_MODE_FULL_HIGH_PERF
+            }
+            wifiLock = wm?.createWifiLock(lockMode, "ARCA:FtpServerWifiLock")?.apply {
                 acquire()
             }
         }

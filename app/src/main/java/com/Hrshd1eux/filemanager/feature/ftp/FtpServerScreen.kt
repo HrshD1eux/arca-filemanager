@@ -124,6 +124,13 @@ fun FtpServerScreen(
         isStarting = false
     }
 
+    LaunchedEffect(isStarting) {
+        if (isStarting) {
+            kotlinx.coroutines.delay(4000)
+            isStarting = false
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {

@@ -74,6 +74,10 @@ class FtpServerManager private constructor() {
         if (_state.value.isRunning && activeServer?.isRunning == true) {
             return
         }
+        if (activeServer?.isRunning == true) {
+            _state.update { it.copy(isRunning = true, port = activeServer?.effectivePort ?: it.port) }
+            return
+        }
         FtpServerPreferences.saveConfig(context, config)
         val ip = FtpNetworkUtil.getLocalIpAddress()
         _state.update { it.copy(config = config, ipAddress = ip, port = config.port, errorMessage = null) }
@@ -124,7 +128,8 @@ class FtpServerManager private constructor() {
                 ipAddress = ip,
                 connectedClientsCount = clients,
                 bytesSent = sent,
-                bytesReceived = received
+                bytesReceived = received,
+                errorMessage = if (running) null else it.errorMessage
             )
         }
     }

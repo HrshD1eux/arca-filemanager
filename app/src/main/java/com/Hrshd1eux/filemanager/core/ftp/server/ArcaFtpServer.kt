@@ -69,7 +69,7 @@ class ArcaFtpServer(
         get() = serverSocket?.localPort ?: config.port
 
     val isRunning: Boolean
-        get() = serverSocket?.isClosed == false && acceptJob?.isActive == true
+        get() = serverSocket != null && serverSocket?.isClosed == false && (acceptJob == null || acceptJob?.isActive == true)
 
     /**
      * Starts the FTP Server listening on the configured port.
@@ -118,10 +118,7 @@ class ArcaFtpServer(
             serverSocket = socket
             val activeSocket = socket
 
-            emitLog("FTP Server started on port $chosenPort (Root: ${config.rootDisplayName})")
-            notifyState()
-
-            acceptJob = CoroutineScope(dispatcher).launch {
+            val job = CoroutineScope(dispatcher).launch {
                 while (isActive && !activeSocket.isClosed) {
                     try {
                         val clientSocket = activeSocket.accept()
@@ -142,13 +139,17 @@ class ArcaFtpServer(
                     }
                 }
             }
+            acceptJob = job
+
+            emitLog("FTP Server started on port $chosenPort (Root: ${config.rootDisplayName})")
+            notifyState()
         }
     }
 
     /**
      * Stops the FTP Server and disconnects all active clients.
      */
-    suspend fun stop(): Unit = withContext(dispatcher) {
+    fun stop() {
         try {
             acceptJob?.cancel()
             acceptJob = null
@@ -159,7 +160,7 @@ class ArcaFtpServer(
             activeClients.clear()
             clientCount.set(0)
 
-            serverSocket?.close()
+            runCatching { serverSocket?.close() }
             serverSocket = null
 
             emitLog("FTP Server stopped.")
@@ -349,18 +350,20 @@ class ArcaFtpServer(
                     }
                     "PASV" -> {
                         closeDataServer()
-                        val pServer = ServerSocket(0, 1, clientSocket.localAddress)
+                        val pServer = ServerSocket(0)
                         passiveServerSocket = pServer
                         val localPort = pServer.localPort
-                        val ipBytes = clientSocket.localAddress.address
-                        val ipStr = "${ipBytes[0].toUByte()},${ipBytes[1].toUByte()},${ipBytes[2].toUByte()},${ipBytes[3].toUByte()}"
+                        val localIp = FtpNetworkUtil.getLocalIpAddress()
+                            ?: clientSocket.localAddress.hostAddress?.takeIf { !it.contains(":") }
+                            ?: "127.0.0.1"
+                        val ipStr = localIp.split(".").take(4).joinToString(",")
                         val p1 = localPort / 256
                         val p2 = localPort % 256
                         sendReply(227, "Entering Passive Mode ($ipStr,$p1,$p2)")
                     }
                     "EPSV" -> {
                         closeDataServer()
-                        val pServer = ServerSocket(0, 1, clientSocket.localAddress)
+                        val pServer = ServerSocket(0)
                         passiveServerSocket = pServer
                         val localPort = pServer.localPort
                         sendReply(229, "Entering Extended Passive Mode (|||$localPort|)")
