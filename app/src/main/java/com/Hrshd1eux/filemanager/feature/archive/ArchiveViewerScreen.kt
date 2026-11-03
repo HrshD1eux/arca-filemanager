@@ -32,10 +32,12 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.outlined.Info
 import com.Hrshd1eux.filemanager.feature.archive.components.PasswordPromptDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -212,54 +214,83 @@ fun ArchiveViewerScreen(
                         }
                     }
                 } else {
-                    // Persistent 4 Actions: Extract, Add, Test, Properties
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 8.dp
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp
                     ) {
-                        NavigationBarItem(
-                            selected = false,
-                            onClick = { showExtractOptionsSheet = true },
-                            icon = { Icon(Icons.Default.Unarchive, contentDescription = "Extract") },
-                            label = { Text("Extract") },
-                            colors = NavigationBarItemDefaults.colors(
-                                unselectedIconColor = ZipOrange,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                        NavigationBarItem(
-                            selected = false,
-                            enabled = !successState.isReadOnly,
-                            onClick = { showAddPicker = true },
-                            icon = { Icon(Icons.Default.Add, contentDescription = "Add") },
-                            label = { Text(if (successState.isReadOnly) "Add (N/A)" else "Add") },
-                            colors = NavigationBarItemDefaults.colors(
-                                unselectedIconColor = MaterialTheme.colorScheme.primary,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                disabledIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                        )
-                        NavigationBarItem(
-                            selected = false,
-                            onClick = { viewModel.testArchive() },
-                            icon = { Icon(Icons.AutoMirrored.Filled.FactCheck, contentDescription = "Test") },
-                            label = { Text("Test") },
-                            colors = NavigationBarItemDefaults.colors(
-                                unselectedIconColor = MaterialTheme.colorScheme.tertiary,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                        NavigationBarItem(
-                            selected = false,
-                            onClick = { viewModel.loadArchiveProperties() },
-                            icon = { Icon(Icons.Outlined.Info, contentDescription = "Properties") },
-                            label = { Text("Properties") },
-                            colors = NavigationBarItemDefaults.colors(
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            val folderName = File(archivePath).nameWithoutExtension
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Button(
+                                    onClick = {
+                                        val parentDir = File(archivePath).parentFile ?: File("/storage/emulated/0")
+                                        val targetDir = File(parentDir, folderName)
+                                        viewModel.extractAll(
+                                            destinationDir = targetDir,
+                                            conflictResolution = ConflictResolution.RENAME_AUTO,
+                                            verifyIntegrity = false
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.Unarchive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Extract to '$folderName/'",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { showExtractOptionsSheet = true },
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                ) {
+                                    Icon(
+                                        Icons.Default.Tune,
+                                        contentDescription = "Extraction Options",
+                                        tint = ZipOrange
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceAround,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (!successState.isReadOnly) {
+                                    TextButton(onClick = { showAddPicker = true }) {
+                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Add", style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                                TextButton(onClick = { viewModel.testArchive() }) {
+                                    Icon(Icons.AutoMirrored.Filled.FactCheck, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.tertiary)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Test", style = MaterialTheme.typography.labelMedium)
+                                }
+                                TextButton(onClick = { viewModel.loadArchiveProperties() }) {
+                                    Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Properties", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                        }
                     }
                 }
             }

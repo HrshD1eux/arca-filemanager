@@ -951,6 +951,26 @@ class FileBrowserViewModel @JvmOverloads constructor(
         compressFiles(sources, profile, archiveName, password, hasPermission)
     }
 
+    fun isArchiveEncrypted(archiveNode: StorageNode): Boolean {
+        val file = File(archiveNode.path)
+        if (!file.exists() || !file.isFile) return false
+        val lower = file.name.lowercase()
+        return runCatching {
+            when {
+                lower.endsWith(".zip") -> zipEngine.isEncrypted(file)
+                lower.endsWith(".rar") -> {
+                    com.github.junrar.Archive(file).use { arc ->
+                        arc.isEncrypted || arc.fileHeaders.any { it.isEncrypted }
+                    }
+                }
+                lower.endsWith(".7z") || FileTypeResolver.is7z(lower) -> {
+                    sevenZEngine.isEncrypted(file)
+                }
+                else -> false
+            }
+        }.getOrDefault(false)
+    }
+
     fun extractArchive(
         archiveNode: StorageNode,
         destinationDir: File,
@@ -1029,6 +1049,7 @@ class FileBrowserViewModel @JvmOverloads constructor(
                             zipFile = archiveFile,
                             destinationDir = destinationDir,
                             conflictResolution = conflictResolution,
+                            password = password,
                             verifyIntegrity = verifyIntegrity,
                             onProgress = onProgress
                         ).getOrThrow()

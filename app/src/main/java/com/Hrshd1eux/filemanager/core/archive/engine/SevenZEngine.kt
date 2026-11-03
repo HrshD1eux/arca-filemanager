@@ -71,6 +71,26 @@ class SevenZEngine(
     }
 
     /**
+     * Checks if a .7z archive is encrypted/password-protected.
+     */
+    fun isEncrypted(sevenZFile: File): Boolean {
+        if (!sevenZFile.exists() || !sevenZFile.isFile) return false
+        return runCatching {
+            openSevenZFile(sevenZFile).use { szf ->
+                var entry: SevenZArchiveEntry? = szf.nextEntry
+                while (entry != null) {
+                    entry = szf.nextEntry
+                }
+            }
+            false
+        }.recover {
+            it is ArchivePasswordRequiredException ||
+            it is org.apache.commons.compress.PasswordRequiredException ||
+            it.message?.contains("password", ignoreCase = true) == true
+        }.getOrDefault(false)
+    }
+
+    /**
      * Lists all entries inside a .7z archive with path sanitization and safety checks.
      */
     suspend fun listEntries(sevenZFile: File, password: CharArray? = null): List<ArchiveEntry> = withContext(ioDispatcher) {

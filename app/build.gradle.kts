@@ -137,6 +137,7 @@ dependencies {
     implementation(libs.apache.commons.compress)
     implementation(libs.tukaani.xz)
     implementation(libs.junrar)
+    implementation(libs.zip4j)
     implementation(libs.isofilereader)
 
     // Background WorkManager

@@ -117,6 +117,7 @@ import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveTestDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.CompressDialog
 import com.Hrshd1eux.filemanager.feature.checksum.components.ChecksumDialog
 import com.Hrshd1eux.filemanager.feature.archive.components.ExtractOptionsBottomSheet
+import com.Hrshd1eux.filemanager.feature.archive.components.PasswordPromptDialog
 import com.Hrshd1eux.filemanager.feature.operations.components.OperationsQueueSheet
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.ContextualActionBar
@@ -228,6 +229,9 @@ fun FileBrowserScreen(
     var customExtractResolution by remember { mutableStateOf(ConflictResolution.RENAME_AUTO) }
     var customExtractVerify by remember { mutableStateOf(false) }
     var showCustomExtractPicker by remember { mutableStateOf(false) }
+    var pendingPasswordExtraction by remember {
+        mutableStateOf<Triple<StorageNode, File, Pair<ConflictResolution, Boolean>>?>(null)
+    }
     var nodeForChecksums by remember { mutableStateOf<StorageNode?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showSortBottomSheet by remember { mutableStateOf(false) }
@@ -1144,26 +1148,34 @@ fun FileBrowserScreen(
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val parentDir = File(targetToExtract.path).parentFile ?: File("/storage/emulated/0")
                 val targetDir = File(parentDir, File(targetToExtract.path).nameWithoutExtension)
-                viewModel.extractArchive(
-                    archiveNode = targetToExtract,
-                    destinationDir = targetDir,
-                    conflictResolution = resolution,
-                    verifyIntegrity = verifyIntegrity,
-                    hasPermission = hasPermission
-                )
+                if (viewModel.isArchiveEncrypted(targetToExtract)) {
+                    pendingPasswordExtraction = Triple(targetToExtract, targetDir, resolution to verifyIntegrity)
+                } else {
+                    viewModel.extractArchive(
+                        archiveNode = targetToExtract,
+                        destinationDir = targetDir,
+                        conflictResolution = resolution,
+                        verifyIntegrity = verifyIntegrity,
+                        hasPermission = hasPermission
+                    )
+                }
             },
             onExtractHere = { resolution, verifyIntegrity ->
                 nodeToExtract = null
                 activeOperationTitle = "Extracting Archive"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val parentDir = File(targetToExtract.path).parentFile ?: File("/storage/emulated/0")
-                viewModel.extractArchive(
-                    archiveNode = targetToExtract,
-                    destinationDir = parentDir,
-                    conflictResolution = resolution,
-                    verifyIntegrity = verifyIntegrity,
-                    hasPermission = hasPermission
-                )
+                if (viewModel.isArchiveEncrypted(targetToExtract)) {
+                    pendingPasswordExtraction = Triple(targetToExtract, parentDir, resolution to verifyIntegrity)
+                } else {
+                    viewModel.extractArchive(
+                        archiveNode = targetToExtract,
+                        destinationDir = parentDir,
+                        conflictResolution = resolution,
+                        verifyIntegrity = verifyIntegrity,
+                        hasPermission = hasPermission
+                    )
+                }
             },
             onExtractToCustom = { resolution, verifyIntegrity ->
                 val node = targetToExtract
@@ -1192,18 +1204,44 @@ fun FileBrowserScreen(
                 activeOperationTitle = "Extracting Archive"
                 val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
                 val targetDir = File(dest.path, File(currentExtractTarget.path).nameWithoutExtension)
-                viewModel.extractArchive(
-                    archiveNode = currentExtractTarget,
-                    destinationDir = targetDir,
-                    conflictResolution = customExtractResolution,
-                    verifyIntegrity = customExtractVerify,
-                    hasPermission = hasPermission
-                )
+                if (viewModel.isArchiveEncrypted(currentExtractTarget)) {
+                    pendingPasswordExtraction = Triple(currentExtractTarget, targetDir, customExtractResolution to customExtractVerify)
+                } else {
+                    viewModel.extractArchive(
+                        archiveNode = currentExtractTarget,
+                        destinationDir = targetDir,
+                        conflictResolution = customExtractResolution,
+                        verifyIntegrity = customExtractVerify,
+                        hasPermission = hasPermission
+                    )
+                }
                 nodeForCustomExtract = null
             },
             onDismiss = {
                 showCustomExtractPicker = false
                 nodeForCustomExtract = null
+            }
+        )
+    }
+
+    // Password Prompt Dialog for Encrypted Archive Extraction
+    pendingPasswordExtraction?.let { pending ->
+        PasswordPromptDialog(
+            archiveName = pending.first.name,
+            onUnlock = { password ->
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.extractArchive(
+                    archiveNode = pending.first,
+                    destinationDir = pending.second,
+                    conflictResolution = pending.third.first,
+                    password = password,
+                    verifyIntegrity = pending.third.second,
+                    hasPermission = hasPermission
+                )
+                pendingPasswordExtraction = null
+            },
+            onDismiss = {
+                pendingPasswordExtraction = null
             }
         )
     }

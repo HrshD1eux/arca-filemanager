@@ -10,7 +10,8 @@ kotlinxSerialization = "1.7.3"
 kotlinxCoroutines = "1.9.0"
 commonsCompress = "1.26.1"
 xz = "1.9"
-junrar = "7.5.5"
+junrar = "8.1.2"
+zip4j = "2.11.5"
 isofilereader = "1.3.0"
 workManager = "2.9.1"
 junit = "4.13.2"
@@ -47,6 +48,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 apache-commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
 tukaani-xz = { group = "org.tukaani", name = "xz", version.ref = "xz" }
 junrar = { group = "com.github.junrar", name = "junrar", version.ref = "junrar" }
+zip4j = { group = "net.lingala.zip4j", name = "zip4j", version.ref = "zip4j" }
 isofilereader = { group = "com.palantir.isofilereader", name = "isofilereader", version.ref = "isofilereader" }
 
 # Background Work

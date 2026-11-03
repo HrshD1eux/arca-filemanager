@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.core.archive.engine
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
+import com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredException
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyException
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
 import com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver
@@ -15,6 +16,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import net.lingala.zip4j.ZipFile
+import net.lingala.zip4j.exception.ZipException
+import net.lingala.zip4j.model.FileHeader
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
@@ -22,7 +26,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import kotlin.coroutines.coroutineContext
 
@@ -31,57 +34,90 @@ class ZipEngine(
 ) {
 
     /**
-     * Lists all entries inside a .zip file with safety validation.
+     * Checks if a ZIP archive is password-protected/encrypted.
      */
-    suspend fun listEntries(zipFile: File): List<ArchiveEntry> = withContext(ioDispatcher) {
+    fun isEncrypted(zipFile: File): Boolean {
+        if (!zipFile.exists() || !zipFile.isFile) return false
+        return runCatching {
+            val zf = ZipFile(zipFile)
+            zf.isEncrypted
+        }.getOrDefault(false)
+    }
+
+    /**
+     * Lists all entries inside a .zip file with safety validation and password checking.
+     */
+    suspend fun listEntries(zipFile: File, password: CharArray? = null): List<ArchiveEntry> = withContext(ioDispatcher) {
         if (!zipFile.exists() || !zipFile.isFile) return@withContext emptyList()
 
         val entries = mutableListOf<ArchiveEntry>()
         try {
-            ZipFile(zipFile).use { zf ->
-                ArchiveSafetyGuard.validateArchiveHeader(zf.size())
-                val zipEntries = zf.entries()
-                while (zipEntries.hasMoreElements()) {
-                    val entry = zipEntries.nextElement()
-                    val cleanPath = runCatching {
-                        ArchiveSafetyGuard.sanitizeAndValidateEntryName(entry.name)
-                    }.getOrDefault(entry.name.replace('\\', '/'))
-
-                    val rawName = cleanPath.removeSuffix("/")
-                    val isDir = entry.isDirectory || entry.name.endsWith("/")
-                    val pathParts = rawName.split("/")
-                    val name = pathParts.lastOrNull() ?: rawName
-                    val parentPath = if (pathParts.size > 1) {
-                        pathParts.dropLast(1).joinToString("/")
-                    } else ""
-
-                    entries.add(
-                        ArchiveEntry(
-                            path = rawName,
-                            name = name,
-                            parentPath = parentPath,
-                            isDirectory = isDir,
-                            uncompressedSize = if (isDir) 0L else entry.size.coerceAtLeast(0L),
-                            compressedSize = if (isDir) 0L else entry.compressedSize.coerceAtLeast(0L),
-                            lastModified = entry.time.takeIf { it > 0 } ?: zipFile.lastModified(),
-                            crc = entry.crc
-                        )
-                    )
-                }
+            val zf = ZipFile(zipFile)
+            if (password != null && password.isNotEmpty()) {
+                zf.setPassword(password)
             }
+            if (zf.isEncrypted && (password == null || password.isEmpty())) {
+                throw ArchivePasswordRequiredException("ZIP archive is password protected. Password required.")
+            }
+
+            val headers = zf.fileHeaders
+            ArchiveSafetyGuard.validateArchiveHeader(headers.size)
+
+            for (header in headers) {
+                val cleanPath = runCatching {
+                    ArchiveSafetyGuard.sanitizeAndValidateEntryName(header.fileName)
+                }.getOrDefault(header.fileName.replace('\\', '/'))
+
+                val rawName = cleanPath.removeSuffix("/")
+                val isDir = header.isDirectory || header.fileName.endsWith("/") || header.fileName.endsWith("\\")
+                val pathParts = rawName.split("/")
+                val name = pathParts.lastOrNull()?.ifEmpty { rawName } ?: rawName
+                val parentPath = if (pathParts.size > 1) {
+                    pathParts.dropLast(1).joinToString("/")
+                } else ""
+
+                val uncompressedSize = if (isDir) 0L else header.uncompressedSize.coerceAtLeast(0L)
+                val compressedSize = if (isDir) 0L else header.compressedSize.coerceAtLeast(0L)
+                val crcValue = header.crc and 0xFFFFFFFFL
+                val lastModifiedEpoch = if (header.lastModifiedTimeEpoch > 0) {
+                    header.lastModifiedTimeEpoch
+                } else {
+                    zipFile.lastModified()
+                }
+
+                entries.add(
+                    ArchiveEntry(
+                        path = rawName,
+                        name = name,
+                        parentPath = parentPath,
+                        isDirectory = isDir,
+                        uncompressedSize = uncompressedSize,
+                        compressedSize = compressedSize,
+                        lastModified = lastModifiedEpoch,
+                        crc = crcValue
+                    )
+                )
+            }
+        } catch (e: ArchivePasswordRequiredException) {
+            throw e
         } catch (e: Throwable) {
+            val msg = e.message?.lowercase() ?: ""
+            if (msg.contains("password") || msg.contains("encrypted") || msg.contains("wrong password")) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password for ZIP archive.", e)
+            }
             throw IOException("Corrupted or invalid ZIP archive (${e.localizedMessage ?: "Invalid structure"}).", e)
         }
         entries.sortedWith(compareBy<ArchiveEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
     }
 
     /**
-     * Extracts all files from the ZIP into destination directory with full ArchiveSafetyGuard protections.
+     * Extracts all files from the ZIP into destination directory with password decryption and ArchiveSafetyGuard protections.
      */
     suspend fun extractAll(
         zipFile: File,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        password: CharArray? = null,
         verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
@@ -90,90 +126,105 @@ class ZipEngine(
                 destinationDir.mkdirs()
             }
 
+            val zf = ZipFile(zipFile)
+            if (password != null && password.isNotEmpty()) {
+                zf.setPassword(password)
+            }
+            if (zf.isEncrypted && (password == null || password.isEmpty())) {
+                throw ArchivePasswordRequiredException("ZIP archive is password protected. Password required.")
+            }
+
+            val headers = zf.fileHeaders
+            ArchiveSafetyGuard.validateArchiveHeader(headers.size)
+            val totalEntries = headers.size
             var extractedFilesCount = 0
             var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
-            ZipFile(zipFile).use { zf ->
-                ArchiveSafetyGuard.validateArchiveHeader(zf.size())
-                val totalEntries = zf.size()
-                val entries = zf.entries()
+            for (header in headers) {
+                coroutineContext.ensureActive()
 
-                while (entries.hasMoreElements()) {
-                    coroutineContext.ensureActive()
-                    val entry = entries.nextElement()
+                val cleanName = header.fileName.replace('\\', '/')
+                val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(cleanName, destinationDir)
 
-                    // Security: Path traversal & device name validation
-                    val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(entry.name, destinationDir)
+                if (header.isDirectory || cleanName.endsWith("/")) {
+                    validatedTarget.mkdirs()
+                } else {
+                    val targetFile = resolveConflictFile(validatedTarget, conflictResolution)
+                    if (targetFile != null) {
+                        targetFile.parentFile?.mkdirs()
+                        var entryBytesRead = 0L
 
-                    if (entry.isDirectory) {
-                        validatedTarget.mkdirs()
-                    } else {
-                        val targetFile = resolveConflictFile(validatedTarget, conflictResolution)
-                        if (targetFile != null) {
-                            targetFile.parentFile?.mkdirs()
-                            var entryBytesRead = 0L
+                        try {
+                            zf.getInputStream(header).use { input ->
+                                FileOutputStream(targetFile).use { output ->
+                                    var len: Int
+                                    while (input.read(buffer).also { len = it } != -1) {
+                                        coroutineContext.ensureActive()
+                                        entryBytesRead += len
+                                        cumulativeBytes += len
 
-                            try {
-                                zf.getInputStream(entry).use { input ->
-                                    FileOutputStream(targetFile).use { output ->
-                                        var len: Int
-                                        while (input.read(buffer).also { len = it } != -1) {
-                                            coroutineContext.ensureActive()
-                                            entryBytesRead += len
-                                            cumulativeBytes += len
+                                        ArchiveSafetyGuard.validateExpansionStream(
+                                            entryName = header.fileName,
+                                            uncompressedBytesRead = entryBytesRead,
+                                            compressedEntrySize = header.compressedSize.coerceAtLeast(1L),
+                                            cumulativeUncompressedBytes = cumulativeBytes
+                                        )
 
-                                            // Security: Real-time Zip Bomb and expansion limits monitoring
-                                            ArchiveSafetyGuard.validateExpansionStream(
-                                                entryName = entry.name,
-                                                uncompressedBytesRead = entryBytesRead,
-                                                compressedEntrySize = entry.compressedSize,
-                                                cumulativeUncompressedBytes = cumulativeBytes
-                                            )
-
-                                            output.write(buffer, 0, len)
-                                        }
+                                        output.write(buffer, 0, len)
                                     }
                                 }
-                                if (entry.time > 0) {
-                                    targetFile.setLastModified(entry.time)
-                                }
-                                if (verifyIntegrity && entry.crc >= 0) {
-                                    FileVerifier.verifyCrc(targetFile, entry.crc, ioDispatcher)
-                                }
-                                extractedFilesCount++
-                            } catch (e: Throwable) {
-                                if (targetFile.exists()) {
-                                    targetFile.delete()
-                                }
-                                throw e
                             }
+                            if (header.lastModifiedTimeEpoch > 0) {
+                                targetFile.setLastModified(header.lastModifiedTimeEpoch)
+                            }
+                            if (verifyIntegrity && header.crc > 0) {
+                                FileVerifier.verifyCrc(targetFile, header.crc and 0xFFFFFFFFL, ioDispatcher)
+                            }
+                            extractedFilesCount++
+                        } catch (e: Throwable) {
+                            if (targetFile.exists()) {
+                                targetFile.delete()
+                            }
+                            val msg = e.message?.lowercase() ?: ""
+                            if (msg.contains("password") || msg.contains("wrong password") || msg.contains("encrypted")) {
+                                throw ArchivePasswordRequiredException("Password required or incorrect password for ZIP archive.", e)
+                            }
+                            throw e
                         }
                     }
-
-                    onProgress?.invoke(
-                        OperationProgress(
-                            bytesProcessed = cumulativeBytes,
-                            totalBytes = cumulativeBytes,
-                            filesProcessed = extractedFilesCount,
-                            totalFiles = totalEntries,
-                            currentFileName = entry.name.substringAfterLast('/')
-                        )
-                    )
                 }
+
+                onProgress?.invoke(
+                    OperationProgress(
+                        bytesProcessed = cumulativeBytes,
+                        totalBytes = cumulativeBytes,
+                        filesProcessed = extractedFilesCount,
+                        totalFiles = totalEntries,
+                        currentFileName = header.fileName.substringAfterLast('/').substringAfterLast('\\')
+                    )
+                )
             }
             extractedFilesCount
+        }.recoverCatching { e ->
+            if (e is ArchivePasswordRequiredException) throw e
+            val msg = e.message?.lowercase() ?: ""
+            if (msg.contains("password") || msg.contains("wrong password") || msg.contains("encrypted")) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password for ZIP archive.", e)
+            }
+            throw e
         }
     }
 
     /**
-     * Extracts specific entries from the ZIP with safety protections.
+     * Extracts specific entries from the ZIP with password support and safety protections.
      */
     suspend fun extractEntries(
         zipFile: File,
         entryPaths: Set<String>,
         destinationDir: File,
         conflictResolution: ConflictResolution = ConflictResolution.RENAME_AUTO,
+        password: CharArray? = null,
         verifyIntegrity: Boolean = false,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<Int> = withContext(ioDispatcher) {
@@ -182,79 +233,98 @@ class ZipEngine(
                 destinationDir.mkdirs()
             }
 
+            val zf = ZipFile(zipFile)
+            if (password != null && password.isNotEmpty()) {
+                zf.setPassword(password)
+            }
+            if (zf.isEncrypted && (password == null || password.isEmpty())) {
+                throw ArchivePasswordRequiredException("ZIP archive is password protected. Password required.")
+            }
+
             var extractedFilesCount = 0
             var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
+            val allHeaders = zf.fileHeaders
 
-            ZipFile(zipFile).use { zf ->
-                ArchiveSafetyGuard.validateArchiveHeader(zf.size())
+            for (entryPath in entryPaths) {
+                coroutineContext.ensureActive()
+                val cleanPath = entryPath.replace('\\', '/')
+                val header = allHeaders.firstOrNull { h ->
+                    val hClean = h.fileName.replace('\\', '/').removeSuffix("/")
+                    hClean == cleanPath.removeSuffix("/") || h.fileName == entryPath
+                } ?: continue
 
-                for (entryPath in entryPaths) {
-                    coroutineContext.ensureActive()
-                    val entry = zf.getEntry(entryPath) ?: zf.getEntry("$entryPath/") ?: continue
+                val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(
+                    header.fileName.substringAfterLast('/').substringAfterLast('\\'),
+                    destinationDir
+                )
 
-                    // Security: Path traversal & device name validation
-                    val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(
-                        entry.name.substringAfterLast('/'),
-                        destinationDir
-                    )
+                if (header.isDirectory || header.fileName.endsWith("/")) {
+                    validatedTarget.mkdirs()
+                } else {
+                    val targetFile = resolveConflictFile(validatedTarget, conflictResolution)
+                    if (targetFile != null) {
+                        targetFile.parentFile?.mkdirs()
+                        var entryBytesRead = 0L
 
-                    if (entry.isDirectory) {
-                        validatedTarget.mkdirs()
-                    } else {
-                        val targetFile = resolveConflictFile(validatedTarget, conflictResolution)
-                        if (targetFile != null) {
-                            targetFile.parentFile?.mkdirs()
-                            var entryBytesRead = 0L
+                        try {
+                            zf.getInputStream(header).use { input ->
+                                FileOutputStream(targetFile).use { output ->
+                                    var len: Int
+                                    while (input.read(buffer).also { len = it } != -1) {
+                                        coroutineContext.ensureActive()
+                                        entryBytesRead += len
+                                        cumulativeBytes += len
 
-                            try {
-                                zf.getInputStream(entry).use { input ->
-                                    FileOutputStream(targetFile).use { output ->
-                                        var len: Int
-                                        while (input.read(buffer).also { len = it } != -1) {
-                                            coroutineContext.ensureActive()
-                                            entryBytesRead += len
-                                            cumulativeBytes += len
+                                        ArchiveSafetyGuard.validateExpansionStream(
+                                            entryName = header.fileName,
+                                            uncompressedBytesRead = entryBytesRead,
+                                            compressedEntrySize = header.compressedSize.coerceAtLeast(1L),
+                                            cumulativeUncompressedBytes = cumulativeBytes
+                                        )
 
-                                            ArchiveSafetyGuard.validateExpansionStream(
-                                                entryName = entry.name,
-                                                uncompressedBytesRead = entryBytesRead,
-                                                compressedEntrySize = entry.compressedSize,
-                                                cumulativeUncompressedBytes = cumulativeBytes
-                                            )
-
-                                            output.write(buffer, 0, len)
-                                        }
+                                        output.write(buffer, 0, len)
                                     }
                                 }
-                                if (entry.time > 0) {
-                                    targetFile.setLastModified(entry.time)
-                                }
-                                if (verifyIntegrity && entry.crc >= 0) {
-                                    FileVerifier.verifyCrc(targetFile, entry.crc, ioDispatcher)
-                                }
-                                extractedFilesCount++
-                            } catch (e: Throwable) {
-                                if (targetFile.exists()) {
-                                    targetFile.delete()
-                                }
-                                throw e
                             }
+                            if (header.lastModifiedTimeEpoch > 0) {
+                                targetFile.setLastModified(header.lastModifiedTimeEpoch)
+                            }
+                            if (verifyIntegrity && header.crc > 0) {
+                                FileVerifier.verifyCrc(targetFile, header.crc and 0xFFFFFFFFL, ioDispatcher)
+                            }
+                            extractedFilesCount++
+                        } catch (e: Throwable) {
+                            if (targetFile.exists()) {
+                                targetFile.delete()
+                            }
+                            val msg = e.message?.lowercase() ?: ""
+                            if (msg.contains("password") || msg.contains("wrong password") || msg.contains("encrypted")) {
+                                throw ArchivePasswordRequiredException("Password required or incorrect password for ZIP archive.", e)
+                            }
+                            throw e
                         }
                     }
-
-                    onProgress?.invoke(
-                        OperationProgress(
-                            bytesProcessed = cumulativeBytes,
-                            totalBytes = cumulativeBytes,
-                            filesProcessed = extractedFilesCount,
-                            totalFiles = entryPaths.size,
-                            currentFileName = entry.name.substringAfterLast('/')
-                        )
-                    )
                 }
+
+                onProgress?.invoke(
+                    OperationProgress(
+                        bytesProcessed = cumulativeBytes,
+                        totalBytes = cumulativeBytes,
+                        filesProcessed = extractedFilesCount,
+                        totalFiles = entryPaths.size,
+                        currentFileName = header.fileName.substringAfterLast('/').substringAfterLast('\\')
+                    )
+                )
             }
             extractedFilesCount
+        }.recoverCatching { e ->
+            if (e is ArchivePasswordRequiredException) throw e
+            val msg = e.message?.lowercase() ?: ""
+            if (msg.contains("password") || msg.contains("wrong password") || msg.contains("encrypted")) {
+                throw ArchivePasswordRequiredException("Password required or incorrect password for ZIP archive.", e)
+            }
+            throw e
         }
     }
 
@@ -298,6 +368,7 @@ class ZipEngine(
                         if (!source.exists()) {
                             throw FileNotFoundException("Source file does not exist: ${source.absolutePath}")
                         }
+
                         if (source.isDirectory) {
                             val baseDir = source.parentFile ?: source
                             source.walkTopDown().onFail { _, _ -> }.forEach { file ->
@@ -368,11 +439,11 @@ class ZipEngine(
     }
 
     /**
-     * Verifies the CRC-32 integrity of all entries in the ZIP archive without writing to disk,
-     * protected by expansion limits against decompression bombs.
+     * Verifies the CRC-32 integrity of all entries in the ZIP archive without writing to disk.
      */
     suspend fun testArchive(
         zipFile: File,
+        password: CharArray? = null,
         onProgress: ((OperationProgress) -> Unit)? = null
     ): Result<ArchiveIntegrityReport> = withContext(ioDispatcher) {
         runCatching {
@@ -382,66 +453,72 @@ class ZipEngine(
             var cumulativeBytes = 0L
             val buffer = ByteArray(BUFFER_SIZE)
 
-            ZipFile(zipFile).use { zf ->
-                ArchiveSafetyGuard.validateArchiveHeader(zf.size())
-                val totalEntries = zf.size()
-                val entries = zf.entries()
+            val zf = ZipFile(zipFile)
+            if (password != null && password.isNotEmpty()) {
+                zf.setPassword(password)
+            }
+            if (zf.isEncrypted && (password == null || password.isEmpty())) {
+                throw ArchivePasswordRequiredException("ZIP archive is password protected. Password required.")
+            }
 
-                while (entries.hasMoreElements()) {
-                    coroutineContext.ensureActive()
-                    val entry = entries.nextElement()
-                    val crcCalculator = CRC32()
-                    var entryBytesRead = 0L
+            val headers = zf.fileHeaders
+            ArchiveSafetyGuard.validateArchiveHeader(headers.size)
+            val totalEntries = headers.size
 
-                    try {
-                        if (!entry.isDirectory) {
-                            zf.getInputStream(entry).use { input ->
-                                var len: Int
-                                while (input.read(buffer).also { len = it } != -1) {
-                                    entryBytesRead += len
-                                    cumulativeBytes += len
+            for (header in headers) {
+                coroutineContext.ensureActive()
+                val crcCalculator = CRC32()
+                var entryBytesRead = 0L
 
-                                    ArchiveSafetyGuard.validateExpansionStream(
-                                        entryName = entry.name,
-                                        uncompressedBytesRead = entryBytesRead,
-                                        compressedEntrySize = entry.compressedSize,
-                                        cumulativeUncompressedBytes = cumulativeBytes
-                                    )
+                try {
+                    if (!header.isDirectory && !header.fileName.endsWith("/")) {
+                        zf.getInputStream(header).use { input ->
+                            var len: Int
+                            while (input.read(buffer).also { len = it } != -1) {
+                                entryBytesRead += len
+                                cumulativeBytes += len
 
-                                    crcCalculator.update(buffer, 0, len)
-                                }
+                                ArchiveSafetyGuard.validateExpansionStream(
+                                    entryName = header.fileName,
+                                    uncompressedBytesRead = entryBytesRead,
+                                    compressedEntrySize = header.compressedSize.coerceAtLeast(1L),
+                                    cumulativeUncompressedBytes = cumulativeBytes
+                                )
+
+                                crcCalculator.update(buffer, 0, len)
                             }
-                            if (entry.crc > 0 && crcCalculator.value != entry.crc) {
-                                corruptedEntries.add(entry.name)
-                            } else {
-                                verifiedCount++
-                            }
+                        }
+                        val expectedCrc = header.crc and 0xFFFFFFFFL
+                        if (expectedCrc > 0 && crcCalculator.value != expectedCrc) {
+                            corruptedEntries.add(header.fileName)
                         } else {
                             verifiedCount++
                         }
-                    } catch (e: Exception) {
-                        if (e is ArchiveSafetyException) throw e
-                        corruptedEntries.add(entry.name)
+                    } else {
+                        verifiedCount++
                     }
-
-                    onProgress?.invoke(
-                        OperationProgress(
-                            filesProcessed = verifiedCount + corruptedEntries.size,
-                            totalFiles = totalEntries,
-                            currentFileName = entry.name.substringAfterLast('/')
-                        )
-                    )
+                } catch (e: Exception) {
+                    if (e is ArchiveSafetyException) throw e
+                    corruptedEntries.add(header.fileName)
                 }
 
-                val elapsed = System.currentTimeMillis() - startTime
-                ArchiveIntegrityReport(
-                    archiveName = zipFile.name,
-                    totalEntries = totalEntries,
-                    verifiedEntries = verifiedCount,
-                    corruptedEntries = corruptedEntries,
-                    elapsedMs = elapsed
+                onProgress?.invoke(
+                    OperationProgress(
+                        filesProcessed = verifiedCount + corruptedEntries.size,
+                        totalFiles = totalEntries,
+                        currentFileName = header.fileName.substringAfterLast('/').substringAfterLast('\\')
+                    )
                 )
             }
+
+            val elapsed = System.currentTimeMillis() - startTime
+            ArchiveIntegrityReport(
+                archiveName = zipFile.name,
+                totalEntries = totalEntries,
+                verifiedEntries = verifiedCount,
+                corruptedEntries = corruptedEntries,
+                elapsedMs = elapsed
+            )
         }
     }
 
@@ -476,28 +553,24 @@ class ZipEngine(
 
             ZipOutputStream(FileOutputStream(tempZip).buffered()).use { zos ->
                 if (zipFile.exists() && zipFile.length() > 0) {
-                    ZipFile(zipFile).use { zf ->
-                        val entries = zf.entries()
-                        while (entries.hasMoreElements()) {
-                            coroutineContext.ensureActive()
-                            val entry = entries.nextElement()
-                            val cleanName = entry.name.removeSuffix("/")
-                            if (!newPathSet.contains(cleanName) && !newPathSet.contains(entry.name)) {
-                                zos.putNextEntry(ZipEntry(entry.name).apply {
-                                    time = entry.time
-                                    comment = entry.comment
-                                    extra = entry.extra
-                                })
-                                if (!entry.isDirectory) {
-                                    zf.getInputStream(entry).use { input ->
-                                        var len: Int
-                                        while (input.read(buffer).also { len = it } != -1) {
-                                            zos.write(buffer, 0, len)
-                                        }
+                    val zf = ZipFile(zipFile)
+                    val headers = zf.fileHeaders
+                    for (header in headers) {
+                        coroutineContext.ensureActive()
+                        val cleanName = header.fileName.replace('\\', '/').removeSuffix("/")
+                        if (!newPathSet.contains(cleanName) && !newPathSet.contains(header.fileName)) {
+                            zos.putNextEntry(ZipEntry(header.fileName).apply {
+                                time = header.lastModifiedTimeEpoch
+                            })
+                            if (!header.isDirectory && !header.fileName.endsWith("/")) {
+                                zf.getInputStream(header).use { input ->
+                                    var len: Int
+                                    while (input.read(buffer).also { len = it } != -1) {
+                                        zos.write(buffer, 0, len)
                                     }
                                 }
-                                zos.closeEntry()
                             }
+                            zos.closeEntry()
                         }
                     }
                 }
@@ -549,25 +622,19 @@ class ZipEngine(
         var totalFolders = 0
         var uncompressedSize = 0L
         var compressedSize = 0L
-        var archiveComment: String? = null
-        var hasDeflated = false
-        var hasStored = false
+        var isEncrypted = false
 
         runCatching {
-            ZipFile(zipFile).use { zf ->
-                archiveComment = zf.comment
-                val entries = zf.entries()
-                while (entries.hasMoreElements()) {
-                    val entry = entries.nextElement()
-                    if (entry.method == ZipEntry.DEFLATED) hasDeflated = true
-                    if (entry.method == ZipEntry.STORED) hasStored = true
-                    if (entry.isDirectory || entry.name.endsWith("/")) {
-                        totalFolders++
-                    } else {
-                        totalFiles++
-                        uncompressedSize += entry.size.coerceAtLeast(0L)
-                        compressedSize += entry.compressedSize.coerceAtLeast(0L)
-                    }
+            val zf = ZipFile(zipFile)
+            isEncrypted = zf.isEncrypted
+            val headers = zf.fileHeaders
+            for (header in headers) {
+                if (header.isDirectory || header.fileName.endsWith("/") || header.fileName.endsWith("\\")) {
+                    totalFolders++
+                } else {
+                    totalFiles++
+                    uncompressedSize += header.uncompressedSize.coerceAtLeast(0L)
+                    compressedSize += header.compressedSize.coerceAtLeast(0L)
                 }
             }
         }
@@ -578,13 +645,6 @@ class ZipEngine(
         val finalName = if (isSplit) "${(resolution as SplitResolution.Success).baseName} ($volumeCount volumes)" else zipFile.name
         val finalCompressedSize = if (isSplit) (resolution as SplitResolution.Success).totalSize else (if (compressedSize > 0) compressedSize else zipFile.length())
 
-        val methodStr = when {
-            hasDeflated && hasStored -> "Deflate / Store"
-            hasDeflated -> "Deflate"
-            hasStored -> "Store (Uncompressed)"
-            else -> "Standard Deflate"
-        }
-
         ArchiveProperties(
             archiveName = finalName,
             archivePath = zipFile.absolutePath,
@@ -594,13 +654,13 @@ class ZipEngine(
             compressedSize = finalCompressedSize,
             lastModified = zipFile.lastModified(),
             formatDisplayName = "ZIP Archive",
-            compressionMethod = methodStr,
-            isEncrypted = false,
-            encryptionDetails = "None",
+            compressionMethod = "Standard Deflate",
+            isEncrypted = isEncrypted,
+            encryptionDetails = if (isEncrypted) "Password Protected (AES / ZipCrypto)" else "None",
             isSolid = false,
             isSplit = isSplit,
             splitVolumeCount = volumeCount,
-            comment = archiveComment
+            comment = null
         )
     }
 

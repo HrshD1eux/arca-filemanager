@@ -138,7 +138,7 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
                     is7z(file) -> sevenZEngine.listEntries(file, password)
                     isTar(file) -> tarEngine.listEntries(file)
                     isStandaloneCompressed(file) -> standaloneCompressorEngine.listEntries(file)
-                    else -> zipEngine.listEntries(file)
+                    else -> zipEngine.listEntries(file, password)
                 }
                 currentPassword = password
                 currentVirtualPath = ""
@@ -288,6 +288,7 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
                     zipFile = file,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    password = effectivePassword,
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -300,7 +301,14 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
                 onComplete()
             }.onFailure { error ->
                 if (error !is kotlinx.coroutines.CancellationException) {
-                    _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                    if (error is ArchivePasswordRequiredException) {
+                        _uiState.value = ArchiveViewerUiState.PasswordRequired(
+                            archiveName = file.name,
+                            message = error.localizedMessage
+                        )
+                    } else {
+                        _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                    }
                 }
             }
         }
@@ -375,6 +383,7 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
                     entryPaths = selected,
                     destinationDir = destinationDir,
                     conflictResolution = conflictResolution,
+                    password = effectivePassword,
                     verifyIntegrity = verifyIntegrity,
                     onProgress = { _activeProgress.value = it }
                 )
@@ -388,7 +397,14 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
                 onComplete()
             }.onFailure { error ->
                 if (error !is kotlinx.coroutines.CancellationException) {
-                    _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                    if (error is ArchivePasswordRequiredException) {
+                        _uiState.value = ArchiveViewerUiState.PasswordRequired(
+                            archiveName = file.name,
+                            message = error.localizedMessage
+                        )
+                    } else {
+                        _userMessage.emit("Extraction failed: ${error.localizedMessage}")
+                    }
                 }
             }
         }
@@ -430,6 +446,7 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
                 )
                 else -> zipEngine.testArchive(
                     zipFile = file,
+                    password = effectivePassword,
                     onProgress = { _activeProgress.value = it }
                 )
             }

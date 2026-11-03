@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
+import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import androidx.compose.ui.platform.LocalContext
@@ -164,12 +166,8 @@ fun StorageNodeGridItem(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(56.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            if (node.isDirectory) FolderYellow.copy(alpha = 0.15f)
-                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                        )
                         .dragAndDropSource {
                             detectTapGestures(
                                 onLongPress = {
@@ -188,12 +186,29 @@ fun StorageNodeGridItem(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = if (node.isDirectory) Icons.Default.Folder else Icons.Default.Description,
-                        contentDescription = null,
-                        tint = if (node.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    if (node.isDirectory) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(FolderYellow.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = FolderYellow,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+                    } else {
+                        FileThumbnailView(
+                            node = node,
+                            categoryColor = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.fillMaxSize(),
+                            iconSize = 28.dp,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
