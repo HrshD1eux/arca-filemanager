@@ -186,6 +186,13 @@ fun AboutScreen(
             onDismiss = { selectedLibrary = null }
         )
     }
+
+    if (showUpdateDialog) {
+        AppUpdateDialog(
+            currentVersion = versionInfo.versionName,
+            onDismiss = { showUpdateDialog = false }
+        )
+    }
 }
 
 @Composable

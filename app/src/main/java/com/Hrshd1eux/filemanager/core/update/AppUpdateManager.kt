@@ -27,79 +27,103 @@ object AppUpdateManager {
 
     private const val GITHUB_REPO = "HrshD1eux/arca-filemanager"
     private const val LATEST_RELEASE_URL = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
+    private const val ALL_RELEASES_URL = "https://api.github.com/repos/$GITHUB_REPO/releases"
 
     /**
      * Queries GitHub Releases API for the latest published release.
-     * Returns null if no release exists (e.g. 404) or release contains no APK.
+     * Checks /releases/latest first, and falls back to /releases if needed.
+     * Returns null if no release exists or repository is empty.
      */
     suspend fun checkForUpdates(currentVersion: String): Result<ReleaseInfo?> = withContext(Dispatchers.IO) {
         runCatching {
-            val url = URL(LATEST_RELEASE_URL)
-            val connection = url.openConnection() as HttpURLConnection
-            try {
-                connection.requestMethod = "GET"
-                connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-                connection.setRequestProperty("User-Agent", "ARCA-FileManager/$currentVersion")
-                connection.connectTimeout = 15000
-                connection.readTimeout = 15000
+            val json = fetchLatestReleaseJson(currentVersion) ?: return@runCatching null
 
-                val responseCode = connection.responseCode
-                if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-                    // No releases published yet on the repository
-                    return@runCatching null
-                }
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    val errorText = connection.errorStream?.reader()?.readText() ?: ""
-                    throw java.io.IOException("GitHub API returned HTTP $responseCode: $errorText")
-                }
+            val tagName = json.optString("tag_name", "")
+            val releaseName = json.optString("name", tagName)
+            val releaseNotes = json.optString("body", "")
+            val publishedAt = json.optString("published_at", "")
 
-                val responseJson = InputStreamReader(connection.inputStream).readText()
-                val json = JSONObject(responseJson)
+            val cleanRemoteVersion = tagName.removePrefix("v").removePrefix("V").trim()
+            val cleanCurrentVersion = currentVersion.removePrefix("v").removePrefix("V").trim()
 
-                val tagName = json.optString("tag_name", "")
-                val releaseName = json.optString("name", tagName)
-                val releaseNotes = json.optString("body", "")
-                val publishedAt = json.optString("published_at", "")
+            // Find APK asset
+            var apkUrl = ""
+            var apkFileName = "ARCA-$cleanRemoteVersion.apk"
+            var apkSize = 0L
 
-                val cleanRemoteVersion = tagName.removePrefix("v").removePrefix("V").trim()
-                val cleanCurrentVersion = currentVersion.removePrefix("v").removePrefix("V").trim()
-
-                // Find APK asset
-                var apkUrl = ""
-                var apkFileName = "ARCA-$cleanRemoteVersion.apk"
-                var apkSize = 0L
-
-                val assets = json.optJSONArray("assets")
-                if (assets != null) {
-                    for (i in 0 until assets.length()) {
-                        val asset = assets.getJSONObject(i)
-                        val name = asset.optString("name", "")
-                        if (name.endsWith(".apk", ignoreCase = true)) {
-                            apkFileName = name
-                            apkUrl = asset.optString("browser_download_url", "")
-                            apkSize = asset.optLong("size", 0L)
-                            break
-                        }
+            val assets = json.optJSONArray("assets")
+            if (assets != null) {
+                for (i in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(i)
+                    val name = asset.optString("name", "")
+                    if (name.endsWith(".apk", ignoreCase = true)) {
+                        apkFileName = name
+                        apkUrl = asset.optString("browser_download_url", "")
+                        apkSize = asset.optLong("size", 0L)
+                        break
                     }
                 }
-
-                val isNewer = isNewerVersion(cleanCurrentVersion, cleanRemoteVersion)
-
-                ReleaseInfo(
-                    tagName = tagName,
-                    versionName = cleanRemoteVersion,
-                    releaseName = releaseName,
-                    releaseNotes = releaseNotes,
-                    publishedAt = publishedAt,
-                    apkUrl = apkUrl,
-                    apkFileName = apkFileName,
-                    apkSize = apkSize,
-                    isUpdateAvailable = isNewer
-                )
-            } finally {
-                connection.disconnect()
             }
+
+            val isNewer = isNewerVersion(cleanCurrentVersion, cleanRemoteVersion)
+
+            ReleaseInfo(
+                tagName = tagName,
+                versionName = cleanRemoteVersion,
+                releaseName = releaseName,
+                releaseNotes = releaseNotes,
+                publishedAt = publishedAt,
+                apkUrl = apkUrl,
+                apkFileName = apkFileName,
+                apkSize = apkSize,
+                isUpdateAvailable = isNewer
+            )
         }
+    }
+
+    private fun fetchLatestReleaseJson(currentVersion: String): JSONObject? {
+        // Try /releases/latest first
+        try {
+            val conn = (URL(LATEST_RELEASE_URL).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/vnd.github.v3+json")
+                setRequestProperty("User-Agent", "ARCA-FileManager/$currentVersion")
+                connectTimeout = 12000
+                readTimeout = 12000
+            }
+            try {
+                if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                    val text = InputStreamReader(conn.inputStream).readText()
+                    return JSONObject(text)
+                }
+            } finally {
+                conn.disconnect()
+            }
+        } catch (e: java.io.IOException) {
+            if (e !is java.io.FileNotFoundException) throw e
+        }
+
+        // Fallback to /releases (which includes pre-releases)
+        val connList = (URL(ALL_RELEASES_URL).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            setRequestProperty("Accept", "application/vnd.github.v3+json")
+            setRequestProperty("User-Agent", "ARCA-FileManager/$currentVersion")
+            connectTimeout = 12000
+            readTimeout = 12000
+        }
+        try {
+            if (connList.responseCode == HttpURLConnection.HTTP_OK) {
+                val text = InputStreamReader(connList.inputStream).readText()
+                val array = org.json.JSONArray(text)
+                if (array.length() > 0) {
+                    return array.getJSONObject(0)
+                }
+            }
+        } finally {
+            connList.disconnect()
+        }
+
+        return null
     }
 
     /**

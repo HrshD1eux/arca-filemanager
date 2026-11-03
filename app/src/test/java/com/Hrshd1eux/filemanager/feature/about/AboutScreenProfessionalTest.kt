@@ -154,9 +154,9 @@ class AboutScreenProfessionalTest {
             content.contains("title = \"About ARCA\""))
         assertTrue("SettingsScreen About row must trigger onNavigateToAbout",
             content.contains("onClick = onNavigateToAbout"))
-        assertTrue("SettingsScreen must include App Updates & Internet Disclosure navigation row",
-            content.contains("title = \"App Updates & Internet Disclosure\""))
-        assertTrue("SettingsScreen App Updates row must trigger onNavigateToAbout",
-            content.contains("onClick = onNavigateToAbout"))
+        assertTrue("SettingsScreen must include Check for Updates row",
+            content.contains("title = \"Check for Updates\""))
+        assertTrue("SettingsScreen Check for Updates row must trigger showUpdateDialog",
+            content.contains("showUpdateDialog = true"))
     }
 }

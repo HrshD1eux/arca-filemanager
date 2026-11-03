@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.SystemUpdate
 import com.Hrshd1eux.filemanager.BuildConfig
 import com.Hrshd1eux.filemanager.core.update.ui.AppUpdateDialog
+import com.Hrshd1eux.filemanager.core.version.rememberAppVersionInfo
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Visibility
@@ -119,6 +120,8 @@ fun SettingsScreen(
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showArchiveDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    val versionInfo = rememberAppVersionInfo()
 
     var showAppLockDialog by remember { mutableStateOf(false) }
     var showUsageAccessDialog by remember { mutableStateOf(false) }
@@ -314,10 +317,10 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
-                        title = "App Updates & Internet Disclosure",
-                        subtitle = "Internet is strictly used for user-initiated remote storage (SFTP, FTP, SMB, WebDAV) and official GitHub release checks. Zero telemetry or user data is ever transmitted.",
-                        icon = Icons.Default.Download,
-                        onClick = onNavigateToAbout
+                        title = "Check for Updates",
+                        subtitle = "Current: ${versionInfo.displayVersion} (${versionInfo.displayBuild}) • Check GitHub releases",
+                        icon = Icons.Default.SystemUpdate,
+                        onClick = { showUpdateDialog = true }
                     )
                 }
             }
@@ -363,6 +366,13 @@ fun SettingsScreen(
     if (showUsageAccessDialog) {
         com.Hrshd1eux.filemanager.feature.cleaner.apps.components.UsageAccessExplanationDialog(
             onDismissRequest = { showUsageAccessDialog = false }
+        )
+    }
+
+    if (showUpdateDialog) {
+        AppUpdateDialog(
+            currentVersion = versionInfo.versionName,
+            onDismiss = { showUpdateDialog = false }
         )
     }
 }
