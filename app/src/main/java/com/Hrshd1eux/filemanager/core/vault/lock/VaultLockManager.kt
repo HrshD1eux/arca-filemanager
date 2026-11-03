@@ -114,6 +114,15 @@ class VaultLockManager(
         }
     }
 
+    /**
+     * Resets all vault lock settings to default (unhidden, standard timeout)
+     * and clears any saved biometric credentials.
+     */
+    fun resetToDefaults() {
+        updateSettings(VaultLockSettings())
+        clearBiometricVaultPassword()
+    }
+
     fun saveBiometricVaultPassword(password: CharArray) {
         if (context == null || password.isEmpty()) return
         runCatching {

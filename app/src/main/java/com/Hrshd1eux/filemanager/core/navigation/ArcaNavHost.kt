@@ -147,7 +147,13 @@ fun ArcaNavHost(
                 onNavigateToAbout = { navController.navigate(Screen.About) },
                 onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
                 onNavigateToTrash = { navController.navigate(Screen.Trash) },
-                onNavigateToFtpServer = { navController.navigate(Screen.FtpServer) }
+                onNavigateToFtpServer = { navController.navigate(Screen.FtpServer) },
+                onNavigateToPreview = { filePath, categoryName, directoryPath ->
+                    navController.navigate(Screen.Preview(initialPath = filePath, categoryName = categoryName, directoryPath = directoryPath))
+                },
+                onNavigateToArchiveViewer = { archivePath, title ->
+                    navController.navigate(Screen.ArchiveViewer(archivePath = archivePath, title = title))
+                }
             )
         }
 

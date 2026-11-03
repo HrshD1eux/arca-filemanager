@@ -64,6 +64,7 @@ import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
+import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import com.Hrshd1eux.filemanager.feature.home.components.FavoritesSheet
 import com.Hrshd1eux.filemanager.feature.home.components.FirstRunStorageExplanationDialog
 import com.Hrshd1eux.filemanager.feature.home.components.HomeCategoriesGrid
@@ -91,6 +92,8 @@ fun HomeScreen(
     onNavigateToAbout: () -> Unit = {},
     onNavigateToTrash: () -> Unit = {},
     onNavigateToFtpServer: () -> Unit = {},
+    onNavigateToPreview: (filePath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
+    onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     onNavigateToPrivacy: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
@@ -298,7 +301,7 @@ fun HomeScreen(
                 HomeQuickNavGroup(
                     favoriteCount = favorites.size,
                     recentCount = recents.size,
-                    showVault = !lockSettings.isVaultHidden,
+                    showVault = !lockSettings.isVaultHidden || !viewModel.isVaultConfigured,
                     onFavoritesClick = { showFavoritesSheet = true },
                     onRecentsClick = { showRecentsSheet = true },
                     onVaultClick = onNavigateToVault,
@@ -342,7 +345,18 @@ fun HomeScreen(
             favorites = favorites,
             onItemClick = { item ->
                 showFavoritesSheet = false
-                onNavigateToBrowser(item.path, item.displayName)
+                val file = java.io.File(item.path)
+                if (item.isDirectory || file.isDirectory) {
+                    onNavigateToBrowser(item.path, item.displayName)
+                } else if (item.path.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(item.path)) {
+                    com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller.install(context, file).onFailure { e ->
+                        android.widget.Toast.makeText(context, "Cannot launch installer: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } else if (FileTypeResolver.canPreviewArchive(item.path)) {
+                    onNavigateToArchiveViewer(item.path, item.displayName)
+                } else {
+                    onNavigateToPreview(item.path, null, file.parent)
+                }
             },
             onRemoveFavorite = { path ->
                 viewModel.removeFavorite(path)
@@ -357,7 +371,18 @@ fun HomeScreen(
             recents = recents,
             onItemClick = { item ->
                 showRecentsSheet = false
-                onNavigateToBrowser(item.path, item.displayName)
+                val file = java.io.File(item.path)
+                if (item.isDirectory || file.isDirectory) {
+                    onNavigateToBrowser(item.path, item.displayName)
+                } else if (item.path.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(item.path)) {
+                    com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller.install(context, file).onFailure { e ->
+                        android.widget.Toast.makeText(context, "Cannot launch installer: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } else if (FileTypeResolver.canPreviewArchive(item.path)) {
+                    onNavigateToArchiveViewer(item.path, item.displayName)
+                } else {
+                    onNavigateToPreview(item.path, null, file.parent)
+                }
             },
             onRemoveRecent = { path ->
                 viewModel.removeRecent(path)

@@ -27,11 +27,40 @@ enum class DateFilter(val displayName: String) {
     THIS_YEAR("This Year")
 }
 
+enum class MatchType(val displayName: String) {
+    CONTAINS("Contains"),
+    STARTS_WITH("Starts With"),
+    EXACT("Exact Match"),
+    WILDCARD("Wildcard / Pattern")
+}
+
+enum class FileTypeScope(val displayName: String) {
+    ALL("All Types"),
+    FILES_ONLY("Files Only"),
+    FOLDERS_ONLY("Folders Only")
+}
+
+enum class SearchSortBy(val displayName: String) {
+    RELEVANCE("Relevance"),
+    NAME_ASC("Name (A - Z)"),
+    NAME_DESC("Name (Z - A)"),
+    DATE_DESC("Newest First"),
+    DATE_ASC("Oldest First"),
+    SIZE_DESC("Largest First"),
+    SIZE_ASC("Smallest First")
+}
+
 data class SearchCriteria(
     val query: String = "",
     val rootPath: String = "",
     val category: CategoryFilter = CategoryFilter.ALL,
     val sizeFilter: SizeFilter = SizeFilter.ANY,
     val dateFilter: DateFilter = DateFilter.ANY,
+    val matchType: MatchType = MatchType.CONTAINS,
+    val matchCase: Boolean = false,
+    val fileTypeScope: FileTypeScope = FileTypeScope.ALL,
+    val extensionFilter: String? = null,
+    val sortBy: SearchSortBy = SearchSortBy.RELEVANCE,
+    val searchEverywhere: Boolean = false,
     val includeHidden: Boolean = false
 )

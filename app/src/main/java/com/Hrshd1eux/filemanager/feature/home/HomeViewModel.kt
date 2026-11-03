@@ -29,6 +29,8 @@ class HomeViewModel @JvmOverloads constructor(
     val recents: StateFlow<List<RecentItem>> = recentsRepository.recents
     val lockSettings: StateFlow<VaultLockSettings> = vaultLockManager.lockSettings
     val firstRunExplanationCompleted: StateFlow<Boolean> = appSettingsRepository.firstRunExplanationCompleted
+    val isVaultConfigured: Boolean
+        get() = com.Hrshd1eux.filemanager.core.vault.VaultManager(java.io.File(getApplication<Application>().filesDir, "vault")).isConfigured()
 
     private val _storageBreakdown = MutableStateFlow(StorageBreakdown(isCalculating = true))
     val storageBreakdown: StateFlow<StorageBreakdown> = _storageBreakdown.asStateFlow()

@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,7 +45,9 @@ import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.favorites.model.FavoriteItem
 import com.Hrshd1eux.filemanager.core.recents.model.RecentItem
+import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
 
 /**
  * BottomSheet displaying all saved Favorites/Bookmarks.
@@ -137,11 +140,22 @@ fun FavoritesSheet(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(
-                                        imageVector = if (item.isDirectory) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
-                                        contentDescription = null,
-                                        tint = if (item.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(28.dp)
+                                    val node = remember(item.path) {
+                                        StorageNode(
+                                            id = item.path,
+                                            name = item.displayName,
+                                            path = item.path,
+                                            size = 0L,
+                                            lastModified = item.addedAt,
+                                            isDirectory = item.isDirectory
+                                        )
+                                    }
+                                    FileThumbnailView(
+                                        node = node,
+                                        categoryColor = if (item.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(40.dp),
+                                        iconSize = 22.dp,
+                                        shape = RoundedCornerShape(8.dp)
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
@@ -278,11 +292,23 @@ fun RecentsSheet(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(
-                                        imageVector = if (item.isDirectory) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
-                                        contentDescription = null,
-                                        tint = if (item.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(28.dp)
+                                    val node = remember(item.path) {
+                                        StorageNode(
+                                            id = item.path,
+                                            name = item.displayName,
+                                            path = item.path,
+                                            size = item.size,
+                                            lastModified = item.accessedAt,
+                                            isDirectory = item.isDirectory,
+                                            mimeType = item.mimeType
+                                        )
+                                    }
+                                    FileThumbnailView(
+                                        node = node,
+                                        categoryColor = if (item.isDirectory) FolderYellow else MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(40.dp),
+                                        iconSize = 22.dp,
+                                        shape = RoundedCornerShape(8.dp)
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {

@@ -2,7 +2,10 @@ package com.Hrshd1eux.filemanager.core.search.engine
 
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.search.model.DateFilter
+import com.Hrshd1eux.filemanager.core.search.model.FileTypeScope
+import com.Hrshd1eux.filemanager.core.search.model.MatchType
 import com.Hrshd1eux.filemanager.core.search.model.SearchCriteria
+import com.Hrshd1eux.filemanager.core.search.model.SearchSortBy
 import com.Hrshd1eux.filemanager.core.search.model.SizeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
@@ -16,6 +19,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
 import java.util.Calendar
+import java.util.regex.Pattern
 
 class FileSearchEngine(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -29,13 +33,19 @@ class FileSearchEngine(
     private val apkExtensions = setOf("apk", "xapk", "apks", "apkm", "aab")
 
     fun search(criteria: SearchCriteria): Flow<List<StorageNode>> = flow {
-        val rootFile = File(criteria.rootPath)
+        val envPath = runCatching { android.os.Environment.getExternalStorageDirectory()?.absolutePath }.getOrNull()
+        val rootPath = if (criteria.searchEverywhere) {
+            if (!envPath.isNullOrEmpty() && File(envPath).exists()) envPath else criteria.rootPath.ifEmpty { "/" }
+        } else {
+            criteria.rootPath.ifEmpty { envPath ?: "/" }
+        }
+        val rootFile = File(rootPath)
         if (!rootFile.exists() || !rootFile.isDirectory) {
             emit(emptyList())
             return@flow
         }
 
-        val cleanQuery = criteria.query.trim().lowercase()
+        val rawQuery = criteria.query.trim()
         val now = System.currentTimeMillis()
         val dateThreshold = calculateDateThreshold(criteria.dateFilter, now)
 
@@ -51,12 +61,12 @@ class FileSearchEngine(
                 .forEach { file ->
                     currentCoroutineContext().ensureActive()
 
-                    if (file != rootFile && matchesCriteria(file, cleanQuery, criteria, dateThreshold)) {
+                    if (file != rootFile && matchesCriteria(file, rawQuery, criteria, dateThreshold)) {
                         batch.add(file.toStorageNode())
 
                         val currentTime = System.currentTimeMillis()
                         if (batch.size >= 25 || (currentTime - lastEmitTime >= 100 && batch.isNotEmpty())) {
-                            emit(batch.toList())
+                            emit(sortNodes(batch, criteria.sortBy, rawQuery))
                             lastEmitTime = currentTime
                         }
                     }
@@ -65,13 +75,30 @@ class FileSearchEngine(
             // Directory permission restrictions during traversal
         }
 
-        // Final emit of all collected items
-        emit(batch.toList())
+        // Final emit of all collected items sorted
+        emit(sortNodes(batch, criteria.sortBy, rawQuery))
     }.flowOn(ioDispatcher)
+
+    private fun sortNodes(items: List<StorageNode>, sortBy: SearchSortBy, query: String): List<StorageNode> {
+        return when (sortBy) {
+            SearchSortBy.RELEVANCE -> items.sortedWith(
+                compareByDescending<StorageNode> { it.name.equals(query, ignoreCase = true) }
+                    .thenByDescending { it.name.startsWith(query, ignoreCase = true) }
+                    .thenByDescending { it.isDirectory }
+                    .thenBy { it.name.lowercase() }
+            )
+            SearchSortBy.NAME_ASC -> items.sortedBy { it.name.lowercase() }
+            SearchSortBy.NAME_DESC -> items.sortedByDescending { it.name.lowercase() }
+            SearchSortBy.DATE_DESC -> items.sortedByDescending { it.lastModified }
+            SearchSortBy.DATE_ASC -> items.sortedBy { it.lastModified }
+            SearchSortBy.SIZE_DESC -> items.sortedByDescending { it.size }
+            SearchSortBy.SIZE_ASC -> items.sortedBy { it.size }
+        }
+    }
 
     private fun matchesCriteria(
         file: File,
-        cleanQuery: String,
+        rawQuery: String,
         criteria: SearchCriteria,
         dateThreshold: Long
     ): Boolean {
@@ -88,16 +115,48 @@ class FileSearchEngine(
             return false
         }
 
-        val fileName = file.name.lowercase()
+        // FileTypeScope Filter
+        when (criteria.fileTypeScope) {
+            FileTypeScope.ALL -> {}
+            FileTypeScope.FILES_ONLY -> if (file.isDirectory) return false
+            FileTypeScope.FOLDERS_ONLY -> if (!file.isDirectory) return false
+        }
 
-        // Name / Substring / Extension matching
-        if (cleanQuery.isNotEmpty()) {
-            val matchesName = fileName.contains(cleanQuery)
-            val extension = file.extension.lowercase()
-            val matchesExt = extension.isNotEmpty() && (extension == cleanQuery.removePrefix(".") || extension.contains(cleanQuery))
-            if (!matchesName && !matchesExt) {
-                return false
+        // Advanced Name / Query Matching
+        if (rawQuery.isNotEmpty()) {
+            val fileName = if (criteria.matchCase) file.name else file.name.lowercase()
+            val queryText = if (criteria.matchCase) rawQuery else rawQuery.lowercase()
+
+            val matches = when (criteria.matchType) {
+                MatchType.CONTAINS -> {
+                    val ext = if (criteria.matchCase) file.extension else file.extension.lowercase()
+                    fileName.contains(queryText) || (!file.isDirectory && ext.isNotEmpty() && ext.contains(queryText.removePrefix(".")))
+                }
+                MatchType.STARTS_WITH -> {
+                    fileName.startsWith(queryText)
+                }
+                MatchType.EXACT -> {
+                    fileName == queryText || (!file.isDirectory && file.nameWithoutExtension.let { if (criteria.matchCase) it else it.lowercase() } == queryText)
+                }
+                MatchType.WILDCARD -> {
+                    val regexString = "^" + Pattern.quote(queryText)
+                        .replace("*", "\\E.*\\Q")
+                        .replace("?", "\\E.\\Q") + "$"
+                    runCatching {
+                        val flags = if (criteria.matchCase) 0 else Pattern.CASE_INSENSITIVE
+                        Pattern.compile(regexString, flags).matcher(fileName).find()
+                    }.getOrDefault(fileName.contains(queryText))
+                }
             }
+            if (!matches) return false
+        }
+
+        // Specific Extension Filter
+        if (!criteria.extensionFilter.isNullOrBlank()) {
+            if (file.isDirectory) return false
+            val ext = file.extension.lowercase()
+            val expected = criteria.extensionFilter.lowercase().removePrefix(".")
+            if (ext != expected) return false
         }
 
         // Category Filter

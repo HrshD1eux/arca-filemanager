@@ -8,7 +8,10 @@ import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.core.search.engine.FileSearchEngine
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.search.model.DateFilter
+import com.Hrshd1eux.filemanager.core.search.model.FileTypeScope
+import com.Hrshd1eux.filemanager.core.search.model.MatchType
 import com.Hrshd1eux.filemanager.core.search.model.SearchCriteria
+import com.Hrshd1eux.filemanager.core.search.model.SearchSortBy
 import com.Hrshd1eux.filemanager.core.search.model.SizeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
@@ -35,6 +38,11 @@ sealed interface SearchUiState {
     data object Empty : SearchUiState
 }
 
+enum class SearchViewMode {
+    LIST,
+    GRID
+}
+
 @OptIn(FlowPreview::class)
 class FileSearchViewModel @JvmOverloads constructor(
     val storageProvider: StorageProvider = LocalFileSystemProvider(),
@@ -56,6 +64,31 @@ class FileSearchViewModel @JvmOverloads constructor(
     private val _dateFilter = MutableStateFlow(DateFilter.ANY)
     val dateFilter: StateFlow<DateFilter> = _dateFilter.asStateFlow()
 
+    // Advanced search options
+    private val _matchType = MutableStateFlow(MatchType.CONTAINS)
+    val matchType: StateFlow<MatchType> = _matchType.asStateFlow()
+
+    private val _matchCase = MutableStateFlow(false)
+    val matchCase: StateFlow<Boolean> = _matchCase.asStateFlow()
+
+    private val _fileTypeScope = MutableStateFlow(FileTypeScope.ALL)
+    val fileTypeScope: StateFlow<FileTypeScope> = _fileTypeScope.asStateFlow()
+
+    private val _extensionFilter = MutableStateFlow<String?>(null)
+    val extensionFilter: StateFlow<String?> = _extensionFilter.asStateFlow()
+
+    private val _sortBy = MutableStateFlow(SearchSortBy.RELEVANCE)
+    val sortBy: StateFlow<SearchSortBy> = _sortBy.asStateFlow()
+
+    private val _searchEverywhere = MutableStateFlow(true)
+    val searchEverywhere: StateFlow<Boolean> = _searchEverywhere.asStateFlow()
+
+    private val _viewMode = MutableStateFlow(SearchViewMode.LIST)
+    val viewMode: StateFlow<SearchViewMode> = _viewMode.asStateFlow()
+
+    private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
+    val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
+
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
@@ -76,16 +109,32 @@ class FileSearchViewModel @JvmOverloads constructor(
 
     init {
         viewModelScope.launch {
-            combine(_query, _category, _sizeFilter, _dateFilter) { q, cat, size, date ->
+            combine(
+                combine(_query, _category, _sizeFilter, _dateFilter) { q, cat, size, date ->
+                    Tuple4(q, cat, size, date)
+                },
+                combine(_matchType, _matchCase, _fileTypeScope, _extensionFilter) { mt, mc, fts, ext ->
+                    Tuple4(mt, mc, fts, ext)
+                },
+                combine(_sortBy, _searchEverywhere) { sb, se ->
+                    Pair(sb, se)
+                }
+            ) { t1, t2, t3 ->
                 SearchCriteria(
-                    query = q,
+                    query = t1.a,
                     rootPath = activeRootPath,
-                    category = cat,
-                    sizeFilter = size,
-                    dateFilter = date
+                    category = t1.b,
+                    sizeFilter = t1.c,
+                    dateFilter = t1.d,
+                    matchType = t2.a,
+                    matchCase = t2.b,
+                    fileTypeScope = t2.c,
+                    extensionFilter = t2.d,
+                    sortBy = t3.first,
+                    searchEverywhere = t3.second
                 )
             }
-                .debounce(300L)
+                .debounce(250L)
                 .distinctUntilChanged()
                 .collectLatest { criteria ->
                     executeSearch(criteria)
@@ -93,19 +142,14 @@ class FileSearchViewModel @JvmOverloads constructor(
         }
     }
 
+    private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+
     fun setRootPath(path: String?) {
         activeRootPath = path ?: storageProvider.getRootNode().path
-        if (_query.value.isNotEmpty() || _category.value != CategoryFilter.ALL || _sizeFilter.value != SizeFilter.ANY || _dateFilter.value != DateFilter.ANY) {
-            executeSearch(
-                SearchCriteria(
-                    query = _query.value,
-                    rootPath = activeRootPath,
-                    category = _category.value,
-                    sizeFilter = _sizeFilter.value,
-                    dateFilter = _dateFilter.value
-                )
-            )
+        if (path != null && path != storageProvider.getRootNode().path) {
+            _searchEverywhere.value = false
         }
+        triggerCurrentSearch()
     }
 
     fun onQueryChange(newQuery: String) {
@@ -124,8 +168,71 @@ class FileSearchViewModel @JvmOverloads constructor(
         _dateFilter.value = if (_dateFilter.value == newDateFilter) DateFilter.ANY else newDateFilter
     }
 
+    fun setMatchType(type: MatchType) {
+        _matchType.value = type
+    }
+
+    fun toggleMatchCase() {
+        _matchCase.value = !_matchCase.value
+    }
+
+    fun setFileTypeScope(scope: FileTypeScope) {
+        _fileTypeScope.value = scope
+    }
+
+    fun setExtensionFilter(ext: String?) {
+        _extensionFilter.value = if (_extensionFilter.value == ext) null else ext
+    }
+
+    fun setSortBy(sortBy: SearchSortBy) {
+        _sortBy.value = sortBy
+    }
+
+    fun toggleSearchEverywhere() {
+        _searchEverywhere.value = !_searchEverywhere.value
+    }
+
+    fun toggleViewMode() {
+        _viewMode.value = if (_viewMode.value == SearchViewMode.LIST) SearchViewMode.GRID else SearchViewMode.LIST
+    }
+
+    fun addRecentSearch(text: String) {
+        val trimmed = text.trim()
+        if (trimmed.length >= 2) {
+            val list = (_recentSearches.value.filter { it != trimmed }).toMutableList()
+            list.add(0, trimmed)
+            _recentSearches.value = list.take(8)
+        }
+    }
+
+    fun removeRecentSearch(text: String) {
+        _recentSearches.value = _recentSearches.value.filter { it != text }
+    }
+
+    fun clearRecentSearches() {
+        _recentSearches.value = emptyList()
+    }
+
     fun clearQuery() {
         _query.value = ""
+    }
+
+    private fun triggerCurrentSearch() {
+        executeSearch(
+            SearchCriteria(
+                query = _query.value,
+                rootPath = activeRootPath,
+                category = _category.value,
+                sizeFilter = _sizeFilter.value,
+                dateFilter = _dateFilter.value,
+                matchType = _matchType.value,
+                matchCase = _matchCase.value,
+                fileTypeScope = _fileTypeScope.value,
+                extensionFilter = _extensionFilter.value,
+                sortBy = _sortBy.value,
+                searchEverywhere = _searchEverywhere.value
+            )
+        )
     }
 
     // --- Multi-Selection Controls ---
@@ -278,10 +385,15 @@ class FileSearchViewModel @JvmOverloads constructor(
         if (criteria.query.isBlank() &&
             criteria.category == CategoryFilter.ALL &&
             criteria.sizeFilter == SizeFilter.ANY &&
-            criteria.dateFilter == DateFilter.ANY
+            criteria.dateFilter == DateFilter.ANY &&
+            criteria.extensionFilter == null
         ) {
             _uiState.value = SearchUiState.Idle
             return
+        }
+
+        if (criteria.query.isNotBlank()) {
+            addRecentSearch(criteria.query)
         }
 
         searchJob = viewModelScope.launch(ioDispatcher) {

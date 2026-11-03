@@ -235,7 +235,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteVault() {
         viewModelScope.launch {
             _uiState.value = VaultUiState.Loading
-            vaultLockManager.clearBiometricVaultPassword()
+            vaultLockManager.resetToDefaults()
             vaultManager.deleteVault().onSuccess {
                 stopIdleChecker()
                 currentPath = ""

@@ -353,10 +353,14 @@ class ArcaFtpServer(
                         val pServer = ServerSocket(0)
                         passiveServerSocket = pServer
                         val localPort = pServer.localPort
-                        val localIp = FtpNetworkUtil.getLocalIpAddress()
-                            ?: clientSocket.localAddress.hostAddress?.takeIf { !it.contains(":") }
-                            ?: "127.0.0.1"
-                        val ipStr = localIp.split(".").take(4).joinToString(",")
+                        val clientLocal = clientSocket.localAddress
+                        val localIp = when {
+                            clientLocal is java.net.Inet4Address -> clientLocal.hostAddress
+                            clientLocal != null && clientLocal.hostAddress?.startsWith("::ffff:") == true -> clientLocal.hostAddress?.removePrefix("::ffff:")
+                            else -> FtpNetworkUtil.getLocalIpAddress() ?: "127.0.0.1"
+                        } ?: "127.0.0.1"
+                        val ipParts = localIp.split(".").take(4)
+                        val ipStr = if (ipParts.size == 4) ipParts.joinToString(",") else "127,0,0,1"
                         val p1 = localPort / 256
                         val p2 = localPort % 256
                         sendReply(227, "Entering Passive Mode ($ipStr,$p1,$p2)")
@@ -399,6 +403,7 @@ class ArcaFtpServer(
                             currentWorkingDir
                         }
 
+                        sendReply(150, "Opening ASCII mode data connection for file list.")
                         val dataSocket = openDataConnection(passiveServerSocket, activeDataAddress, activeDataPort)
                         closeDataServer()
 
@@ -407,7 +412,6 @@ class ArcaFtpServer(
                             continue
                         }
 
-                        sendReply(150, "Opening ASCII mode data connection for file list.")
                         try {
                             val dWriter = BufferedWriter(OutputStreamWriter(dataSocket.getOutputStream(), Charsets.UTF_8))
                             val entries = listDirectoryVirtualAndPhysical(targetDir)
@@ -444,6 +448,9 @@ class ArcaFtpServer(
                             continue
                         }
 
+                        val totalSize = targetFile.length()
+                        sendReply(150, "Opening binary mode data connection for ${targetFile.name} ($totalSize bytes).")
+
                         val dataSocket = openDataConnection(passiveServerSocket, activeDataAddress, activeDataPort)
                         closeDataServer()
 
@@ -451,9 +458,6 @@ class ArcaFtpServer(
                             sendReply(425, "Can't open data connection.")
                             continue
                         }
-
-                        val totalSize = targetFile.length()
-                        sendReply(150, "Opening binary mode data connection for ${targetFile.name} ($totalSize bytes).")
 
                         try {
                             val inStream = FileInputStream(targetFile)
@@ -507,6 +511,8 @@ class ArcaFtpServer(
                             continue
                         }
 
+                        sendReply(150, "Ready to receive data for ${targetFile.name}.")
+
                         val dataSocket = openDataConnection(passiveServerSocket, activeDataAddress, activeDataPort)
                         closeDataServer()
 
@@ -514,8 +520,6 @@ class ArcaFtpServer(
                             sendReply(425, "Can't open data connection.")
                             continue
                         }
-
-                        sendReply(150, "Ready to receive data for ${targetFile.name}.")
 
                         try {
                             val append = command == "APPE" || restOffset > 0L
@@ -702,7 +706,7 @@ class ArcaFtpServer(
      */
     fun resolvePhysicalFile(virtualPath: String): File? {
         val root = config.rootFile
-        val cleanVirtual = virtualPath.trim().removePrefix("/").ifEmpty { "" }
+        val cleanVirtual = virtualPath.trim().removeSurrounding("\"").removeSurrounding("'").trim().removePrefix("/").ifEmpty { "" }
         val target = if (cleanVirtual.isEmpty()) root else File(root, cleanVirtual)
         return try {
             val rootCanonical = root.canonicalPath
@@ -718,7 +722,7 @@ class ArcaFtpServer(
     }
 
     private fun resolveRelativePath(currentWorkingDir: String, target: String): String {
-        val trimmed = target.trim()
+        val trimmed = target.trim().removeSurrounding("\"").removeSurrounding("'").trim()
         if (trimmed.startsWith("/")) {
             return normalizeVirtualPath(trimmed)
         }
