@@ -102,6 +102,7 @@ fun ArchiveViewerScreen(
     title: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onNavigateToDirectory: (String) -> Unit = {},
     viewModel: ArchiveViewerViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -543,7 +544,10 @@ fun ArchiveViewerScreen(
                 viewModel.extractAll(
                     destinationDir = targetDir,
                     conflictResolution = resolution,
-                    verifyIntegrity = verifyIntegrity
+                    verifyIntegrity = verifyIntegrity,
+                    onComplete = {
+                        onNavigateToDirectory(targetDir.absolutePath)
+                    }
                 )
             },
             onExtractHere = { resolution, verifyIntegrity ->
@@ -553,13 +557,19 @@ fun ArchiveViewerScreen(
                     viewModel.extractSelected(
                         destinationDir = parentDir,
                         conflictResolution = resolution,
-                        verifyIntegrity = verifyIntegrity
+                        verifyIntegrity = verifyIntegrity,
+                        onComplete = {
+                            onNavigateToDirectory(parentDir.absolutePath)
+                        }
                     )
                 } else {
                     viewModel.extractAll(
                         destinationDir = parentDir,
                         conflictResolution = resolution,
-                        verifyIntegrity = verifyIntegrity
+                        verifyIntegrity = verifyIntegrity,
+                        onComplete = {
+                            onNavigateToDirectory(parentDir.absolutePath)
+                        }
                     )
                 }
             },
@@ -587,14 +597,20 @@ fun ArchiveViewerScreen(
                     viewModel.extractSelected(
                         destinationDir = extractTargetDir,
                         conflictResolution = activeConflictResolution,
-                        verifyIntegrity = activeExtractVerify
+                        verifyIntegrity = activeExtractVerify,
+                        onComplete = {
+                            onNavigateToDirectory(extractTargetDir.absolutePath)
+                        }
                     )
                 } else {
                     val extractTargetDir = File(destNode.path, File(archivePath).nameWithoutExtension)
                     viewModel.extractAll(
                         destinationDir = extractTargetDir,
                         conflictResolution = activeConflictResolution,
-                        verifyIntegrity = activeExtractVerify
+                        verifyIntegrity = activeExtractVerify,
+                        onComplete = {
+                            onNavigateToDirectory(extractTargetDir.absolutePath)
+                        }
                     )
                 }
             },

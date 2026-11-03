@@ -4,6 +4,7 @@ import com.Hrshd1eux.filemanager.core.archive.model.ArchiveEntry
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveIntegrityReport
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveProperties
 import com.Hrshd1eux.filemanager.core.archive.security.ArchivePasswordRequiredException
+import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyException
 import com.Hrshd1eux.filemanager.core.archive.security.ArchiveSafetyGuard
 import com.Hrshd1eux.filemanager.core.archive.split.SplitArchiveResolver
 import com.Hrshd1eux.filemanager.core.archive.split.SplitResolution
@@ -367,19 +368,45 @@ class RarEngine(
             val totalEntries: Int
 
             archive.use { arc ->
+                if (arc.isEncrypted && (password == null || password.isEmpty())) {
+                    throw ArchivePasswordRequiredException("RAR archive is encrypted. Password required.")
+                }
+
                 val fileHeaders = arc.fileHeaders
                 totalEntries = fileHeaders.size
                 ArchiveSafetyGuard.validateArchiveHeader(totalEntries)
 
+                if (fileHeaders.any { it.isEncrypted } && (password == null || password.isEmpty())) {
+                    throw ArchivePasswordRequiredException("RAR archive entries are password-protected. Password required.")
+                }
+
                 for (header in fileHeaders) {
                     coroutineContext.ensureActive()
 
-                    try {
-                        if (!header.isDirectory) {
-                            arc.extractFile(header, nullOutputStream)
-                        }
+                    if (header.isDirectory || header.isSubBlock) {
                         verifiedCount++
+                        continue
+                    }
+
+                    try {
+                        if (header.isBrokenHeader) {
+                            corruptedEntries.add(header.fileName)
+                        } else if (header.fullUnpackSize == 0L) {
+                            verifiedCount++
+                        } else {
+                            arc.extractFile(header, nullOutputStream)
+                            verifiedCount++
+                        }
                     } catch (e: Exception) {
+                        if (e is ArchiveSafetyException) throw e
+                        if (e is ArchivePasswordRequiredException) throw e
+                        val msg = e.message ?: ""
+                        if (msg.contains("password", ignoreCase = true) ||
+                            msg.contains("encrypted", ignoreCase = true) ||
+                            msg.contains("bad psw", ignoreCase = true) ||
+                            msg.contains("bad password", ignoreCase = true)) {
+                            throw ArchivePasswordRequiredException("Password required or incorrect password to test RAR archive.", e)
+                        }
                         corruptedEntries.add(header.fileName)
                     }
 
@@ -403,8 +430,11 @@ class RarEngine(
             )
         }.recoverCatching { e ->
             if (e is ArchivePasswordRequiredException) throw e
-            if (e.message?.contains("password", ignoreCase = true) == true ||
-                e.message?.contains("encrypted", ignoreCase = true) == true) {
+            val msg = e.message ?: ""
+            if (msg.contains("password", ignoreCase = true) ||
+                msg.contains("encrypted", ignoreCase = true) ||
+                msg.contains("bad psw", ignoreCase = true) ||
+                msg.contains("bad password", ignoreCase = true)) {
                 throw ArchivePasswordRequiredException("Password required or incorrect password to test RAR archive.", e)
             }
             throw e
@@ -414,7 +444,7 @@ class RarEngine(
     /**
      * Computes metadata and metrics for the .rar file.
      */
-    suspend fun getArchiveProperties(rarFile: File, password: CharArray? = null): ArchiveProperties = withContext(ioDispatcher) {
+        suspend fun getArchiveProperties(rarFile: File, password: CharArray? = null): ArchiveProperties = withContext(ioDispatcher) {
         if (!rarFile.exists() || !rarFile.isFile) {
             return@withContext ArchiveProperties(
                 archiveName = rarFile.name,

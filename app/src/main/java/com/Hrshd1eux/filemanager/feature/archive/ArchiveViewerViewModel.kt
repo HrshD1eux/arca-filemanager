@@ -454,7 +454,14 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
             result.onSuccess { report ->
                 _testReport.value = report
             }.onFailure { error ->
-                _userMessage.emit("Integrity test failed to execute: ${error.localizedMessage}")
+                if (error is ArchivePasswordRequiredException) {
+                    _uiState.value = ArchiveViewerUiState.PasswordRequired(
+                        archiveName = file.name,
+                        message = error.localizedMessage
+                    )
+                } else {
+                    _userMessage.emit("Integrity test failed to execute: ${error.localizedMessage}")
+                }
             }
         }
     }

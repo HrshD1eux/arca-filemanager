@@ -30,6 +30,9 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.SystemUpdate
+import com.Hrshd1eux.filemanager.BuildConfig
+import com.Hrshd1eux.filemanager.core.update.ui.AppUpdateDialog
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Visibility

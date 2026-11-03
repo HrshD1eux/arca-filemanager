@@ -80,6 +80,8 @@ import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.version.AppVersionInfo
 import com.Hrshd1eux.filemanager.core.version.rememberAppVersionInfo
 import com.Hrshd1eux.filemanager.feature.about.model.OpenSourceLibrary
+import androidx.compose.material.icons.filled.SystemUpdate
+import com.Hrshd1eux.filemanager.core.update.ui.AppUpdateDialog
 import com.Hrshd1eux.filemanager.feature.about.model.OpenSourceRegistry
 
 /**
@@ -104,6 +106,7 @@ fun AboutScreen(
     versionInfo: AppVersionInfo = rememberAppVersionInfo()
 ) {
     var selectedLibrary by remember { mutableStateOf<OpenSourceLibrary?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -148,7 +151,7 @@ fun AboutScreen(
             }
 
             item {
-                AppUpdatesDisclosureCard(versionName = versionInfo.versionName)
+                AppUpdatesDisclosureCard(versionName = versionInfo.versionName, onCheckForUpdates = { showUpdateDialog = true })
             }
 
             item {
@@ -318,6 +321,7 @@ private fun ProductDescriptionCard(
 @Composable
 private fun AppUpdatesDisclosureCard(
     versionName: String,
+    onCheckForUpdates: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -362,36 +366,45 @@ private fun AppUpdatesDisclosureCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = {
-                    runCatching {
-                        uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/releases")
-                    }.onFailure {
-                        Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/releases", Toast.LENGTH_LONG).show()
-                    }
-                },
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.CloudDownload,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Check Releases on GitHub")
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
+                Button(
+                    onClick = onCheckForUpdates,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdate,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Check for Updates")
+                }
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/releases")
+                        }.onFailure {
+                            Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/releases", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = "Open GitHub Releases",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
 }
-
 @Composable
 private fun PrivacyStatementCard(
     onViewPrivacyStatement: () -> Unit,

@@ -1057,6 +1057,7 @@ class FileBrowserViewModel @JvmOverloads constructor(
                 }
                 val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
                 _userMessage.emit("Extracted $count items to ${destinationDir.name}$verifiedSuffix")
+                loadDirectory(destinationDir.absolutePath, hasPermission = true)
             } finally {
                 if (password != null) {
                     java.util.Arrays.fill(password, '\u0000')

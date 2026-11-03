@@ -122,11 +122,17 @@ class PrivacyAuditTest {
         assertTrue("Source files must be discovered", kotlinFiles.isNotEmpty())
 
         for (file in kotlinFiles) {
-            val isLocalFtpServer = file.invariantSeparatorsPath.contains("core/ftp/server")
+            val normalizedPath = file.invariantSeparatorsPath
+            val isLocalFtpServer = normalizedPath.contains("core/ftp/server")
+            val isAppUpdate = normalizedPath.contains("core/update")
             val content = file.readText()
             for (forbidden in forbiddenImports) {
                 // Sockets are permitted exclusively within the user-configured local embedded FTP server engine
                 if (isLocalFtpServer && (forbidden == "java.net.Socket" || forbidden == "java.net.ServerSocket")) {
+                    continue
+                }
+                // HttpURLConnection & URL are permitted exclusively within the user-initiated GitHub update manager
+                if (isAppUpdate && (forbidden == "java.net.HttpURLConnection" || forbidden == "java.net.URL")) {
                     continue
                 }
                 val hasForbiddenImport = content.lines().any { line ->

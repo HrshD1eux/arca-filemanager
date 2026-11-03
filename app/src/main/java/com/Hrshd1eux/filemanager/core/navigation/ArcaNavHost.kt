@@ -312,6 +312,9 @@ fun ArcaNavHost(
                     if (!navController.popBackStack()) {
                         (context as? Activity)?.finish()
                     }
+                },
+                onNavigateToDirectory = { path ->
+                    navController.navigate(Screen.Browser(initialPath = path, title = File(path).name.ifEmpty { "Internal Storage" }))
                 }
             )
         }
