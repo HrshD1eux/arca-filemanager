@@ -170,9 +170,30 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
         }
     }
 
+    private var pendingExtraction: ((CharArray) -> Unit)? = null
+
     fun unlockArchive(password: CharArray) {
-        val path = archiveFile?.absolutePath ?: return
-        loadArchive(path, password)
+        currentPassword?.let { java.util.Arrays.fill(it, '\u0000') }
+        currentPassword = password.clone()
+        val pending = pendingExtraction
+        if (pending != null) {
+            if (allEntries.isNotEmpty()) {
+                updateVisibleState()
+            }
+            pending.invoke(password)
+        } else {
+            val path = archiveFile?.absolutePath ?: return
+            loadArchive(path, password)
+        }
+    }
+
+    fun dismissPasswordPrompt(): Boolean {
+        pendingExtraction = null
+        if (allEntries.isNotEmpty()) {
+            updateVisibleState()
+            return true
+        }
+        return false
     }
 
     override fun onCleared() {
@@ -298,14 +319,25 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
             result.onSuccess { count ->
                 val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
                 _userMessage.emit("Extracted $count items to ${destinationDir.name}$verifiedSuffix")
+                pendingExtraction = null
                 onComplete()
             }.onFailure { error ->
                 if (error !is kotlinx.coroutines.CancellationException) {
                     if (error is ArchivePasswordRequiredException) {
+                        pendingExtraction = { enteredPassword ->
+                            extractAll(
+                                destinationDir = destinationDir,
+                                conflictResolution = conflictResolution,
+                                password = enteredPassword,
+                                verifyIntegrity = verifyIntegrity,
+                                onComplete = onComplete
+                            )
+                        }
                         _uiState.value = ArchiveViewerUiState.PasswordRequired(
                             archiveName = file.name,
-                            message = error.localizedMessage
+                            message = error.localizedMessage ?: "Incorrect password. Please try again."
                         )
+                        _userMessage.emit(error.localizedMessage ?: "Password required or incorrect.")
                     } else {
                         _userMessage.emit("Extraction failed: ${error.localizedMessage}")
                     }
@@ -394,14 +426,25 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
                 clearSelection()
                 val verifiedSuffix = if (verifyIntegrity) " (Verified ✓)" else ""
                 _userMessage.emit("Extracted $count items to ${destinationDir.name}$verifiedSuffix")
+                pendingExtraction = null
                 onComplete()
             }.onFailure { error ->
                 if (error !is kotlinx.coroutines.CancellationException) {
                     if (error is ArchivePasswordRequiredException) {
+                        pendingExtraction = { enteredPassword ->
+                            extractSelected(
+                                destinationDir = destinationDir,
+                                conflictResolution = conflictResolution,
+                                password = enteredPassword,
+                                verifyIntegrity = verifyIntegrity,
+                                onComplete = onComplete
+                            )
+                        }
                         _uiState.value = ArchiveViewerUiState.PasswordRequired(
                             archiveName = file.name,
-                            message = error.localizedMessage
+                            message = error.localizedMessage ?: "Incorrect password. Please try again."
                         )
+                        _userMessage.emit(error.localizedMessage ?: "Password required or incorrect.")
                     } else {
                         _userMessage.emit("Extraction failed: ${error.localizedMessage}")
                     }
@@ -453,12 +496,17 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
             _activeProgress.value = null
             result.onSuccess { report ->
                 _testReport.value = report
+                pendingExtraction = null
             }.onFailure { error ->
                 if (error is ArchivePasswordRequiredException) {
+                    pendingExtraction = { enteredPassword ->
+                        testArchive(enteredPassword)
+                    }
                     _uiState.value = ArchiveViewerUiState.PasswordRequired(
                         archiveName = file.name,
-                        message = error.localizedMessage
+                        message = error.localizedMessage ?: "Incorrect password. Please try again."
                     )
+                    _userMessage.emit(error.localizedMessage ?: "Password required or incorrect.")
                 } else {
                     _userMessage.emit("Integrity test failed to execute: ${error.localizedMessage}")
                 }

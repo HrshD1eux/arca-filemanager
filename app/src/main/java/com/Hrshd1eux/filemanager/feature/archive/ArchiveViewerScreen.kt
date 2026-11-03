@@ -316,13 +316,16 @@ fun ArchiveViewerScreen(
                     if (showPrompt) {
                         PasswordPromptDialog(
                             archiveName = state.archiveName,
+                            errorMessage = state.message,
                             onUnlock = { password ->
-                                showPrompt = false
                                 viewModel.unlockArchive(password)
                             },
                             onDismiss = {
-                                showPrompt = false
-                                onNavigateBack()
+                                if (viewModel.dismissPasswordPrompt()) {
+                                    // Restored loaded archive view
+                                } else {
+                                    showPrompt = false
+                                }
                             }
                         )
                     }

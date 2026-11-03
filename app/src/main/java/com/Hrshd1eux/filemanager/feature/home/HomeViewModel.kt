@@ -22,13 +22,15 @@ class HomeViewModel @JvmOverloads constructor(
     private val recentsRepository: RecentsRepository = RecentsRepository.getInstance(application),
     private val storageAnalyzer: LocalStorageAnalyzer = LocalStorageAnalyzer(),
     private val vaultLockManager: VaultLockManager = VaultLockManager.getInstance(application),
-    private val appSettingsRepository: com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository = com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance(application)
+    private val appSettingsRepository: com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository = com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository.getInstance(application),
+    private val storageShortcutsRepository: com.Hrshd1eux.filemanager.core.storage.preferences.StorageShortcutsRepository = com.Hrshd1eux.filemanager.core.storage.preferences.StorageShortcutsRepository.getInstance(application)
 ) : AndroidViewModel(application) {
 
     val favorites: StateFlow<List<FavoriteItem>> = favoritesRepository.favorites
     val recents: StateFlow<List<RecentItem>> = recentsRepository.recents
     val lockSettings: StateFlow<VaultLockSettings> = vaultLockManager.lockSettings
     val firstRunExplanationCompleted: StateFlow<Boolean> = appSettingsRepository.firstRunExplanationCompleted
+    val storageShortcuts: StateFlow<List<com.Hrshd1eux.filemanager.core.storage.model.StorageFolderShortcut>> = storageShortcutsRepository.shortcuts
     val isVaultConfigured: Boolean
         get() = com.Hrshd1eux.filemanager.core.vault.VaultManager(java.io.File(getApplication<Application>().filesDir, "vault")).isConfigured()
 
@@ -61,5 +63,21 @@ class HomeViewModel @JvmOverloads constructor(
 
     fun setFirstRunExplanationCompleted(completed: Boolean = true) {
         appSettingsRepository.setFirstRunExplanationCompleted(completed)
+    }
+
+    fun addStorageShortcut(name: String, path: String) {
+        storageShortcutsRepository.addShortcut(name, path)
+    }
+
+    fun updateStorageShortcut(id: String, name: String, path: String) {
+        storageShortcutsRepository.updateShortcut(id, name, path)
+    }
+
+    fun removeStorageShortcut(id: String) {
+        storageShortcutsRepository.removeShortcut(id)
+    }
+
+    fun resetStorageShortcuts() {
+        storageShortcutsRepository.resetToDefaults()
     }
 }

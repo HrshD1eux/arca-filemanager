@@ -44,17 +44,18 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun PasswordPromptDialog(
     archiveName: String,
+    errorMessage: String? = null,
     onUnlock: (CharArray) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var localError by remember(errorMessage) { mutableStateOf(errorMessage) }
 
     fun submit() {
         if (password.isEmpty()) {
-            errorMessage = "Password cannot be empty"
+            localError = "Password cannot be empty"
             return
         }
         val chars = password.toCharArray()
@@ -96,13 +97,21 @@ fun PasswordPromptDialog(
                     value = password,
                     onValueChange = {
                         password = it
-                        errorMessage = null
+                        localError = null
                     },
                     label = { Text("Password") },
                     placeholder = { Text("••••••••••") },
                     singleLine = true,
-                    isError = errorMessage != null,
-                    supportingText = errorMessage?.let { { Text(it) } },
+                    isError = localError != null,
+                    supportingText = localError?.let {
+                        {
+                            Text(
+                                text = it,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    },
                     visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,

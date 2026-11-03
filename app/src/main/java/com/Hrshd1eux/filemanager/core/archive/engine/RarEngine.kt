@@ -88,9 +88,14 @@ class RarEngine(
         } catch (e: ArchivePasswordRequiredException) {
             throw e
         } catch (e: Throwable) {
-            if (e.message?.contains("password", ignoreCase = true) == true ||
-                e.message?.contains("encrypted", ignoreCase = true) == true) {
-                throw ArchivePasswordRequiredException("Password required or incorrect password for RAR archive.", e)
+            val msg = e.message ?: ""
+            if (password != null) {
+                throw ArchivePasswordRequiredException("Incorrect password for RAR archive.", e)
+            }
+            if (msg.contains("password", ignoreCase = true) ||
+                msg.contains("encrypted", ignoreCase = true) ||
+                msg.contains("bad psw", ignoreCase = true)) {
+                throw ArchivePasswordRequiredException("RAR archive is encrypted. Password required.", e)
             }
             throw IOException("Corrupted or invalid RAR archive (${e.localizedMessage ?: "Unreadable headers"}).", e)
         }
@@ -120,11 +125,19 @@ class RarEngine(
             var cumulativeBytes = 0L
 
             archive.use { arc ->
+                if (arc.isEncrypted && (password == null || password.isEmpty())) {
+                    throw ArchivePasswordRequiredException("RAR archive is encrypted. Password required.")
+                }
+
                 val fileHeaders = arc.fileHeaders
                 ArchiveSafetyGuard.validateArchiveHeader(fileHeaders.size)
 
                 for (header in fileHeaders) {
                     coroutineContext.ensureActive()
+
+                    if (!header.isDirectory && header.isEncrypted && (password == null || password.isEmpty())) {
+                        throw ArchivePasswordRequiredException("Archive entry '${header.fileName}' is password-protected. Password required.")
+                    }
 
                     val cleanPath = header.fileName.removeSuffix("/").removeSuffix("\\").replace('\\', '/')
                     val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(cleanPath, destinationDir)
@@ -188,6 +201,14 @@ class RarEngine(
                                 if (targetFile.exists()) {
                                     targetFile.delete()
                                 }
+                                if (header.isEncrypted || password != null) {
+                                    val msg = e.message ?: ""
+                                    if (password == null || password.isEmpty()) {
+                                        throw ArchivePasswordRequiredException("Archive entry '${header.fileName}' is password-protected. Password required.", e)
+                                    } else {
+                                        throw ArchivePasswordRequiredException("Incorrect password for RAR archive.", e)
+                                    }
+                                }
                                 throw e
                             }
                         }
@@ -208,8 +229,13 @@ class RarEngine(
             extractedFilesCount
         }.recoverCatching { e ->
             if (e is ArchivePasswordRequiredException) throw e
-            if (e.message?.contains("password", ignoreCase = true) == true ||
-                e.message?.contains("encrypted", ignoreCase = true) == true) {
+            val msg = e.message ?: ""
+            if (password != null) {
+                throw ArchivePasswordRequiredException("Incorrect password for RAR archive.", e)
+            }
+            if (msg.contains("password", ignoreCase = true) ||
+                msg.contains("encrypted", ignoreCase = true) ||
+                msg.contains("bad psw", ignoreCase = true)) {
                 throw ArchivePasswordRequiredException("Password required or incorrect password to extract RAR archive.", e)
             }
             throw e
@@ -240,6 +266,10 @@ class RarEngine(
             var cumulativeBytes = 0L
 
             archive.use { arc ->
+                if (arc.isEncrypted && (password == null || password.isEmpty())) {
+                    throw ArchivePasswordRequiredException("RAR archive is encrypted. Password required.")
+                }
+
                 val fileHeaders = arc.fileHeaders
                 ArchiveSafetyGuard.validateArchiveHeader(fileHeaders.size)
 
@@ -250,6 +280,10 @@ class RarEngine(
                     val rawName = header.fileName
 
                     if (entryPaths.contains(cleanPath) || entryPaths.contains(rawName)) {
+                        if (!header.isDirectory && header.isEncrypted && (password == null || password.isEmpty())) {
+                            throw ArchivePasswordRequiredException("Archive entry '${header.fileName}' is password-protected. Password required.")
+                        }
+
                         val validatedTarget = ArchiveSafetyGuard.resolveAndValidateTarget(
                             cleanPath.substringAfterLast('/'),
                             destinationDir
@@ -314,6 +348,14 @@ class RarEngine(
                                     if (targetFile.exists()) {
                                         targetFile.delete()
                                     }
+                                    if (header.isEncrypted || password != null) {
+                                        val msg = e.message ?: ""
+                                        if (password == null || password.isEmpty()) {
+                                            throw ArchivePasswordRequiredException("Archive entry '${header.fileName}' is password-protected. Password required.", e)
+                                        } else {
+                                            throw ArchivePasswordRequiredException("Incorrect password for RAR archive.", e)
+                                        }
+                                    }
                                     throw e
                                 }
                             }
@@ -335,8 +377,13 @@ class RarEngine(
             extractedFilesCount
         }.recoverCatching { e ->
             if (e is ArchivePasswordRequiredException) throw e
-            if (e.message?.contains("password", ignoreCase = true) == true ||
-                e.message?.contains("encrypted", ignoreCase = true) == true) {
+            val msg = e.message ?: ""
+            if (password != null) {
+                throw ArchivePasswordRequiredException("Incorrect password for RAR archive.", e)
+            }
+            if (msg.contains("password", ignoreCase = true) ||
+                msg.contains("encrypted", ignoreCase = true) ||
+                msg.contains("bad psw", ignoreCase = true)) {
                 throw ArchivePasswordRequiredException("Password required or incorrect password to extract RAR archive.", e)
             }
             throw e
@@ -400,6 +447,12 @@ class RarEngine(
                     } catch (e: Exception) {
                         if (e is ArchiveSafetyException) throw e
                         if (e is ArchivePasswordRequiredException) throw e
+                        if (header.isEncrypted || password != null) {
+                            throw ArchivePasswordRequiredException(
+                                if (password != null) "Incorrect password for RAR archive." else "RAR archive entries are password-protected. Password required.",
+                                e
+                            )
+                        }
                         val msg = e.message ?: ""
                         if (msg.contains("password", ignoreCase = true) ||
                             msg.contains("encrypted", ignoreCase = true) ||
@@ -431,6 +484,9 @@ class RarEngine(
         }.recoverCatching { e ->
             if (e is ArchivePasswordRequiredException) throw e
             val msg = e.message ?: ""
+            if (password != null) {
+                throw ArchivePasswordRequiredException("Incorrect password for RAR archive.", e)
+            }
             if (msg.contains("password", ignoreCase = true) ||
                 msg.contains("encrypted", ignoreCase = true) ||
                 msg.contains("bad psw", ignoreCase = true) ||

@@ -273,6 +273,15 @@ fun StorageAnalyzerScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
+            // File preview handler
+            val handlePreviewFile: (StorageNode) -> Unit = { node ->
+                if (onNavigateToPreview != null) {
+                    onNavigateToPreview(node.path)
+                } else {
+                    FileIntentDispatcher.view(context, node)
+                }
+            }
+
             // View Content Switcher
             when (analyzerUiState.activeTab) {
                 StorageAnalyzerTab.OVERVIEW -> {
@@ -303,7 +312,8 @@ fun StorageAnalyzerScreen(
                         onToggleSelection = { analyzer2ViewModel.toggleSelection(it) },
                         onSelectAll = { analyzer2ViewModel.selectAll() },
                         onClearSelection = { analyzer2ViewModel.clearSelection() },
-                        onReviewCleanup = { showCleanupReviewSheet = true }
+                        onReviewCleanup = { showCleanupReviewSheet = true },
+                        onPreviewFile = handlePreviewFile
                     )
                 }
                 StorageAnalyzerTab.DUPLICATES -> {
@@ -313,13 +323,7 @@ fun StorageAnalyzerScreen(
                         onSelectAll = { analyzer2ViewModel.selectAll() },
                         onClearSelection = { analyzer2ViewModel.clearSelection() },
                         onReviewCleanup = { showCleanupReviewSheet = true },
-                        onPreviewFile = { node ->
-                            if (onNavigateToPreview != null) {
-                                onNavigateToPreview(node.path)
-                            } else {
-                                FileIntentDispatcher.view(context, node)
-                            }
-                        }
+                        onPreviewFile = handlePreviewFile
                     )
                 }
                 StorageAnalyzerTab.OLD_FILES -> {
@@ -330,7 +334,8 @@ fun StorageAnalyzerScreen(
                         onToggleSelection = { analyzer2ViewModel.toggleSelection(it) },
                         onSelectAll = { analyzer2ViewModel.selectAll() },
                         onClearSelection = { analyzer2ViewModel.clearSelection() },
-                        onReviewCleanup = { showCleanupReviewSheet = true }
+                        onReviewCleanup = { showCleanupReviewSheet = true },
+                        onPreviewFile = handlePreviewFile
                     )
                 }
                 StorageAnalyzerTab.ARCHIVES -> {
@@ -340,7 +345,8 @@ fun StorageAnalyzerScreen(
                         onToggleSelection = { analyzer2ViewModel.toggleSelection(it) },
                         onSelectAll = { analyzer2ViewModel.selectAll() },
                         onClearSelection = { analyzer2ViewModel.clearSelection() },
-                        onReviewCleanup = { showCleanupReviewSheet = true }
+                        onReviewCleanup = { showCleanupReviewSheet = true },
+                        onPreviewFile = handlePreviewFile
                     )
                 }
                 StorageAnalyzerTab.EMPTY_FOLDERS -> {
@@ -801,7 +807,8 @@ private fun LargeFilesTabContent(
     onToggleSelection: (String) -> Unit,
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
-    onReviewCleanup: () -> Unit
+    onReviewCleanup: () -> Unit,
+    onPreviewFile: ((StorageNode) -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Threshold Filters Row
@@ -864,7 +871,8 @@ private fun LargeFilesTabContent(
                     CleanupItemCard(
                         candidate = item,
                         isSelected = uiState.selectedIds.contains(item.id),
-                        onToggle = { onToggleSelection(item.id) }
+                        onToggle = { onToggleSelection(item.id) },
+                        onPreviewFile = onPreviewFile
                     )
                 }
             }
@@ -977,7 +985,8 @@ private fun OldFilesTabContent(
     onToggleSelection: (String) -> Unit,
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
-    onReviewCleanup: () -> Unit
+    onReviewCleanup: () -> Unit,
+    onPreviewFile: ((StorageNode) -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Threshold Filters Row
@@ -1067,7 +1076,8 @@ private fun OldFilesTabContent(
                     CleanupItemCard(
                         candidate = item,
                         isSelected = uiState.selectedIds.contains(item.id),
-                        onToggle = { onToggleSelection(item.id) }
+                        onToggle = { onToggleSelection(item.id) },
+                        onPreviewFile = onPreviewFile
                     )
                 }
             }
@@ -1086,7 +1096,8 @@ private fun ArchivesTabContent(
     onToggleSelection: (String) -> Unit,
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
-    onReviewCleanup: () -> Unit
+    onReviewCleanup: () -> Unit,
+    onPreviewFile: ((StorageNode) -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -1131,7 +1142,8 @@ private fun ArchivesTabContent(
                     CleanupItemCard(
                         candidate = item,
                         isSelected = uiState.selectedIds.contains(item.id),
-                        onToggle = { onToggleSelection(item.id) }
+                        onToggle = { onToggleSelection(item.id) },
+                        onPreviewFile = onPreviewFile
                     )
                 }
             }
@@ -1274,12 +1286,20 @@ private fun EmptyFoldersTabContent(
 private fun CleanupItemCard(
     candidate: CleanupCandidate,
     isSelected: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onPreviewFile: ((StorageNode) -> Unit)? = null
 ) {
+    val node = remember(candidate) { candidate.toStorageNode() }
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle),
+            .clickable(onClick = {
+                if (onPreviewFile != null) {
+                    onPreviewFile(node)
+                } else {
+                    onToggle()
+                }
+            }),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -1292,20 +1312,13 @@ private fun CleanupItemCard(
                 onCheckedChange = { onToggle() }
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Box(
+            FileThumbnailView(
+                node = node,
+                categoryColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(44.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = resolveFileIcon(candidate.name),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

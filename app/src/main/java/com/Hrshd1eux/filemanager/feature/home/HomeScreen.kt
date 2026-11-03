@@ -112,6 +112,7 @@ fun HomeScreen(
     val storageBreakdown by viewModel.storageBreakdown.collectAsStateWithLifecycle()
     val lockSettings by viewModel.lockSettings.collectAsStateWithLifecycle()
     val firstRunExplanationCompleted by viewModel.firstRunExplanationCompleted.collectAsStateWithLifecycle()
+    val storageShortcuts by viewModel.storageShortcuts.collectAsStateWithLifecycle()
 
     var hasAllFilesAccess by remember {
         mutableStateOf(StoragePermissionManager.hasAllFilesAccess(context))
@@ -321,11 +322,24 @@ fun HomeScreen(
                 )
             }
 
-            // 4. Storage Standard Folders: Download, Documents, Pictures, Movies
+            // 4. Storage Folders: Download, Documents, Pictures, Movies + Custom Folders
             item {
                 HomeStorageFoldersList(
+                    shortcuts = storageShortcuts,
                     onFolderClick = { path, title ->
                         onNavigateToBrowser(path, title)
+                    },
+                    onAddShortcut = { name, path ->
+                        viewModel.addStorageShortcut(name, path)
+                    },
+                    onEditShortcut = { id, name, path ->
+                        viewModel.updateStorageShortcut(id, name, path)
+                    },
+                    onDeleteShortcut = { id ->
+                        viewModel.removeStorageShortcut(id)
+                    },
+                    onResetDefaults = {
+                        viewModel.resetStorageShortcuts()
                     }
                 )
             }
