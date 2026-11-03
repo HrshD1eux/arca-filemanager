@@ -31,27 +31,9 @@ class NetworkConnectionRepositoryTest {
     }
 
     @Test
-    fun initialState_preSeedsNamedBookmarkProfiles() = runTest {
+    fun initialState_startsEmptyWithoutDummyProfiles() = runTest {
         val list = repository.getConnections()
-        assertEquals("Must pre-seed 3 named bookmark profiles", 3, list.size)
-
-        val nas = list.find { it.name == "Home NAS" }
-        assertNotNull("Sample Home NAS connection must exist", nas)
-        assertEquals("192.168.1.50", nas?.host)
-        assertEquals(NetworkProtocol.SFTP, nas?.protocol)
-        assertEquals(22, nas?.effectivePort)
-
-        val office = list.find { it.name == "Office Server" }
-        assertNotNull("Sample Office Server connection must exist", office)
-        assertEquals("office.corp.internal", office?.host)
-        assertEquals(NetworkProtocol.SFTP, office?.protocol)
-        assertEquals(22, office?.effectivePort)
-
-        val backup = list.find { it.name == "Backup Server" }
-        assertNotNull("Sample Backup Server connection must exist", backup)
-        assertEquals("backup.cloud.lan", backup?.host)
-        assertEquals(NetworkProtocol.WEBDAV, backup?.protocol)
-        assertEquals(443, backup?.effectivePort)
+        assertTrue("Must start with empty connections list without dummy profiles", list.isEmpty())
     }
 
     @Test

@@ -117,42 +117,10 @@ class NetworkConnectionRepositoryImpl(
             }
         }
 
-        // Pre-seed standard named bookmark profiles if storage is completely empty
-        if (loadedList.isEmpty()) {
-            val homeNas = NetworkServerConfig(
-                id = "profile-home-nas",
-                name = "Home NAS",
-                protocol = NetworkProtocol.SFTP,
-                host = "192.168.1.50",
-                port = 22,
-                authType = NetworkAuthType.PASSWORD,
-                username = "nasadmin",
-                basePath = "/shares"
-            )
-            val officeServer = NetworkServerConfig(
-                id = "profile-office-server",
-                name = "Office Server",
-                protocol = NetworkProtocol.SFTP,
-                host = "office.corp.internal",
-                port = 22,
-                authType = NetworkAuthType.PASSWORD,
-                username = "engineer",
-                basePath = "/workspace"
-            )
-            val backupServer = NetworkServerConfig(
-                id = "profile-backup-server",
-                name = "Backup Server",
-                protocol = NetworkProtocol.WEBDAV,
-                host = "backup.cloud.lan",
-                port = 443,
-                isImplicitTls = true,
-                authType = NetworkAuthType.PASSWORD,
-                username = "backup_agent",
-                basePath = "/dav/backup"
-            )
-            loadedList.add(homeNas)
-            loadedList.add(officeServer)
-            loadedList.add(backupServer)
+        // Clean up legacy sample/dummy profiles if present from prior versions
+        val dummyIds = setOf("profile-home-nas", "profile-office-server", "profile-backup-server")
+        val hadDummies = loadedList.removeAll { it.id in dummyIds }
+        if (hadDummies) {
             saveMetadataList(loadedList)
         }
 
