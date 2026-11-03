@@ -102,7 +102,7 @@ class AboutScreenProfessionalTest {
         // 7. Legal Information
         assertTrue("Must include LegalInformationCard", content.contains("LegalInformationCard"))
         assertTrue("Must include Copyright notice", content.contains("Copyright © 2026 ARCA Contributors"))
-        assertTrue("Must include Apache License 2.0 reference", content.contains("Licensed under the Apache License, Version 2.0"))
+        assertTrue("Must include GPLv3 reference", content.contains("Licensed under the GNU General Public License v3.0 (GPLv3)"))
         assertTrue("Must include Disclaimer", content.contains("Disclaimer:"))
 
         // 8. Diagnostics

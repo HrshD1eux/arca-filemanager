@@ -783,14 +783,14 @@ private fun LegalInformationCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Copyright © 2026 ARCA Contributors & hrshd1eux Studio. All rights reserved under the Apache License, Version 2.0.",
+                text = "Copyright © 2026 ARCA Contributors & hrshd1eux Studio. All rights reserved under the GNU General Public License v3.0 (GPLv3).",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Licensed under the Apache License, Version 2.0. You may obtain a copy of the License at www.apache.org/licenses/LICENSE-2.0.",
+                text = "Licensed under the GNU General Public License v3.0 (GPLv3). You may obtain a copy of the License at https://www.gnu.org/licenses/gpl-3.0.html.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
