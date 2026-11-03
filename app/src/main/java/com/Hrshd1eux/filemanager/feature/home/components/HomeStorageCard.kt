@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.home.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.core.designsystem.TwoToneIconBadge
+import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
 import com.Hrshd1eux.filemanager.core.storage.model.StorageBreakdown
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 
@@ -44,7 +48,7 @@ fun HomeStorageCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = {
+            .bounceClick(scaleDown = 0.98f, onClick = {
                 if (!hasAllFilesAccess && onGrantPermissionClick != null) {
                     onGrantPermissionClick()
                 } else {
@@ -53,12 +57,10 @@ fun HomeStorageCard(
             }),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (hasAllFilesAccess) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            } else {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-            }
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier
@@ -72,13 +74,14 @@ fun HomeStorageCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Storage,
-                        contentDescription = null,
+                    TwoToneIconBadge(
+                        icon = Icons.Default.Storage,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        size = 38.dp,
+                        iconSize = 20.dp,
+                        shape = RoundedCornerShape(10.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
@@ -89,12 +92,19 @@ fun HomeStorageCard(
 
                 if (breakdown.totalBytes > 0) {
                     val percent = (breakdown.usedPercentage * 100).toInt()
-                    Text(
-                        text = "$percent%",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                    ) {
+                        Text(
+                            text = "$percent%",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                        )
+                    }
                 }
             }
 

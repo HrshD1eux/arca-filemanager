@@ -26,6 +26,11 @@ private val LightColorScheme = lightColorScheme(
     onSurface = OnSurfaceLight,
     surfaceVariant = SurfaceVariantLight,
     onSurfaceVariant = OnSurfaceVariantLight,
+    surfaceContainer = SurfaceLight,
+    surfaceContainerHigh = SurfaceVariantLight,
+    surfaceContainerLow = BackgroundLight,
+    surfaceContainerLowest = androidx.compose.ui.graphics.Color.White,
+    surfaceContainerHighest = SurfaceVariantLight,
     outline = OutlineLight,
     outlineVariant = OutlineVariantLight
 )
@@ -41,6 +46,11 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = OnSurfaceDark,
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = OnSurfaceVariantDark,
+    surfaceContainer = SurfaceDark,
+    surfaceContainerHigh = SurfaceVariantDark,
+    surfaceContainerLow = BackgroundDark,
+    surfaceContainerLowest = androidx.compose.ui.graphics.Color.Black,
+    surfaceContainerHighest = SurfaceVariantDark,
     outline = OutlineDark,
     outlineVariant = OutlineVariantDark
 )

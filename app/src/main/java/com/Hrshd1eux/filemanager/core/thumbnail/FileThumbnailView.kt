@@ -3,6 +3,7 @@ package com.Hrshd1eux.filemanager.core.thumbnail
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -80,7 +81,8 @@ fun FileThumbnailView(
         Box(
             modifier = modifier
                 .clip(shape)
-                .background(categoryColor.copy(alpha = 0.12f)),
+                .background(categoryColor.copy(alpha = 0.14f))
+                .border(0.5.dp, categoryColor.copy(alpha = 0.28f), shape),
             contentAlignment = Alignment.Center
         ) {
             Icon(

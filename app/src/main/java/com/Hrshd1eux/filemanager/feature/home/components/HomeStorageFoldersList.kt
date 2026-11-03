@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.home.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -49,6 +50,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
+import com.Hrshd1eux.filemanager.core.designsystem.TwoToneIconBadge
+import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
 import com.Hrshd1eux.filemanager.core.storage.model.StorageFolderShortcut
 
 /**
@@ -138,6 +141,7 @@ fun HomeStorageFoldersList(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -186,31 +190,24 @@ fun HomeStorageFoldersList(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showAddDialog = true }
+                        .bounceClick(scaleDown = 0.98f, onClick = { showAddDialog = true })
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    TwoToneIconBadge(
+                        icon = Icons.Default.Add,
+                        tint = MaterialTheme.colorScheme.primary,
+                        size = 38.dp,
+                        iconSize = 20.dp,
+                        shape = RoundedCornerShape(10.dp)
+                    )
 
                     Spacer(modifier = Modifier.width(14.dp))
 
                     Text(
                         text = "Add custom folder...",
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -261,7 +258,7 @@ private fun StorageFolderRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .bounceClick(scaleDown = 0.98f, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -270,20 +267,13 @@ private fun StorageFolderRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(FolderYellow.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Folder,
-                    contentDescription = null,
-                    tint = FolderYellow,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            TwoToneIconBadge(
+                icon = Icons.Default.Folder,
+                tint = FolderYellow,
+                size = 38.dp,
+                iconSize = 20.dp,
+                shape = RoundedCornerShape(10.dp)
+            )
 
             Spacer(modifier = Modifier.width(14.dp))
 

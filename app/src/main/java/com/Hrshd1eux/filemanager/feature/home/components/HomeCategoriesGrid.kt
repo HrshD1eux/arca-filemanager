@@ -39,6 +39,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Hrshd1eux.filemanager.core.designsystem.CategoryAmber
+import com.Hrshd1eux.filemanager.core.designsystem.CategoryBlue
+import com.Hrshd1eux.filemanager.core.designsystem.CategoryCoral
+import com.Hrshd1eux.filemanager.core.designsystem.CategoryCyan
+import com.Hrshd1eux.filemanager.core.designsystem.CategoryGreen
+import com.Hrshd1eux.filemanager.core.designsystem.CategoryPurple
+import com.Hrshd1eux.filemanager.core.designsystem.CategoryRed
+import com.Hrshd1eux.filemanager.core.designsystem.TwoToneIconBadge
+import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 
 /**
@@ -73,8 +82,7 @@ fun HomeCategoriesGrid(
             CategoryGridItem(
                 icon = Icons.Default.Image,
                 label = "Images",
-                iconTint = Color(0xFF00ACC1), // Cyan
-                containerColor = Color(0xFF00ACC1).copy(alpha = 0.12f),
+                iconTint = CategoryCyan,
                 onClick = { onCategoryClick(CategoryFilter.IMAGES) },
                 modifier = Modifier.weight(1f)
             )
@@ -82,8 +90,7 @@ fun HomeCategoriesGrid(
             CategoryGridItem(
                 icon = Icons.Default.VideoLibrary,
                 label = "Videos",
-                iconTint = Color(0xFF8E24AA), // Purple
-                containerColor = Color(0xFF8E24AA).copy(alpha = 0.12f),
+                iconTint = CategoryPurple,
                 onClick = { onCategoryClick(CategoryFilter.VIDEOS) },
                 modifier = Modifier.weight(1f)
             )
@@ -91,8 +98,7 @@ fun HomeCategoriesGrid(
             CategoryGridItem(
                 icon = Icons.Default.Audiotrack,
                 label = "Audio",
-                iconTint = Color(0xFFFF7043), // Coral / Orange
-                containerColor = Color(0xFFFF7043).copy(alpha = 0.12f),
+                iconTint = CategoryCoral,
                 onClick = { onCategoryClick(CategoryFilter.AUDIO) },
                 modifier = Modifier.weight(1f)
             )
@@ -100,8 +106,7 @@ fun HomeCategoriesGrid(
             CategoryGridItem(
                 icon = Icons.Default.Description,
                 label = "Documents",
-                iconTint = Color(0xFF1E88E5), // Blue
-                containerColor = Color(0xFF1E88E5).copy(alpha = 0.12f),
+                iconTint = CategoryBlue,
                 onClick = { onCategoryClick(CategoryFilter.DOCUMENTS) },
                 modifier = Modifier.weight(1f)
             )
@@ -115,8 +120,7 @@ fun HomeCategoriesGrid(
             CategoryGridItem(
                 icon = Icons.Default.Download,
                 label = "Downloads",
-                iconTint = Color(0xFFE53935), // Red
-                containerColor = Color(0xFFE53935).copy(alpha = 0.12f),
+                iconTint = CategoryRed,
                 onClick = {
                     if (onDownloadsClick != null) {
                         onDownloadsClick()
@@ -130,8 +134,7 @@ fun HomeCategoriesGrid(
             CategoryGridItem(
                 icon = Icons.Default.FolderZip,
                 label = "Archives",
-                iconTint = Color(0xFFFB8C00), // Amber
-                containerColor = Color(0xFFFB8C00).copy(alpha = 0.12f),
+                iconTint = CategoryAmber,
                 onClick = { onCategoryClick(CategoryFilter.ARCHIVES) },
                 modifier = Modifier.weight(1f)
             )
@@ -139,8 +142,7 @@ fun HomeCategoriesGrid(
             CategoryGridItem(
                 icon = Icons.Default.Android,
                 label = "Apps & APKs",
-                iconTint = Color(0xFF43A047), // Green
-                containerColor = Color(0xFF43A047).copy(alpha = 0.12f),
+                iconTint = CategoryGreen,
                 onClick = {
                     if (onAppsClick != null) {
                         onAppsClick()
@@ -154,8 +156,7 @@ fun HomeCategoriesGrid(
             CategoryGridItem(
                 icon = Icons.Default.DeleteSweep,
                 label = "Trash",
-                iconTint = Color(0xFFE53935), // Red
-                containerColor = Color(0xFFE53935).copy(alpha = 0.12f),
+                iconTint = CategoryRed,
                 onClick = {
                     if (onTrashClick != null) {
                         onTrashClick()
@@ -174,18 +175,17 @@ private fun CategoryGridItem(
     icon: ImageVector,
     label: String,
     iconTint: Color,
-    containerColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick),
+            .bounceClick(scaleDown = 0.94f, onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -195,27 +195,20 @@ private fun CategoryGridItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(containerColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = iconTint,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            TwoToneIconBadge(
+                icon = icon,
+                tint = iconTint,
+                size = 42.dp,
+                iconSize = 22.dp,
+                shape = RoundedCornerShape(12.dp)
+            )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(7.dp))
 
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
