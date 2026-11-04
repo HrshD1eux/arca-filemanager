@@ -20,3 +20,7 @@ local.properties
 keystore.properties
 .kotlin/
 keystore/
+
+# Developer local assets
+devlogo.svg
+sync_devlogo.py
