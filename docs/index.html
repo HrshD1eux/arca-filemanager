@@ -7,7 +7,7 @@
   <meta name="description" content="ARCA is a privacy-first, offline-first Android file manager built with Jetpack Compose & Material 3. Multi-archive, encrypted vault, network storage, and zero tracking.">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" type="image/png" href="assets/logo.png">
-  <link rel="apple-touch-icon" href="assets/logo.png"><path d='M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/></svg>">
+  <link rel="apple-touch-icon" href="assets/logo.png">
 </head>
 <body>
 
@@ -20,9 +20,10 @@
         </a>
         <ul class="nav-links">
           <li><a href="index.html" class="active">Home</a></li>
-          <li><a href="privacy.html">Privacy Policy</a></li>
-          <li><a href="data-deletion.html">Data Deletion</a></li>
-          <li><a href="terms.html">Terms</a></li>
+          <li><a href="#about">About</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#screenshots">Screenshots</a></li>
           <li><a href="contact.html">Contact</a></li>
           <li><a href="https://github.com/HrshD1eux/arca-filemanager" class="btn btn-outline" target="_blank" rel="noopener">GitHub</a></li>
         </ul>
@@ -31,17 +32,14 @@
   </header>
 
   <main>
-    <!-- Hero Section -->
+    <!-- Hero Section (Clean & Centered - No bulky logo) -->
     <section class="hero">
       <div class="container">
-        <div class="hero-logo-wrapper">
-          <img src="assets/logo.png" alt="ARCA File Manager" class="hero-logo">
-        </div>
         <div class="badge-pill">
           <span>🛡️ Free & Open Source under GPLv3</span>
         </div>
         <h1>Modern, Fast & Private<br>File Manager for Android</h1>
-        <p>ARCA puts complete control over local and remote storage in your hands. Engineered with Jetpack Compose, spring physics micro-interactions, encrypted vaults, and zero tracking.</p>
+        <p>ARCA puts complete control over local and remote storage in your hands. Engineered with Jetpack Compose, spring physics micro-interactions, hardware-backed vaults, and zero tracking.</p>
         <div class="hero-actions">
           <a href="https://github.com/HrshD1eux/arca-filemanager/releases/latest" class="btn btn-primary" target="_blank" rel="noopener">
             ⬇️ Download Latest APK
@@ -53,64 +51,303 @@
       </div>
     </section>
 
-    <!-- Key Highlights Grid -->
-    <section class="container">
+    <!-- About ARCA Section -->
+    <section id="about" class="container">
       <div class="section-title">
-        <h2>Engineered for Power & Privacy</h2>
-        <p>Everything you need in a modern Android utility without bloat, ads, or background trackers.</p>
+        <span class="section-tag">Philosophy & Mission</span>
+        <h2>About ARCA File Manager</h2>
+        <p>Your Files. Your Device. Zero Compromises.</p>
       </div>
 
-      <div class="grid-3">
-        <div class="card">
-          <div class="card-icon">🛡️</div>
-          <h3>Fully Offline & Private</h3>
-          <p>Zero telemetry, zero analytics SDKs, and zero cloud accounts. All local file operations, compression, and encryption execute strictly on your device.</p>
-        </div>
+      <div class="content-box">
+        <p style="font-size: 1.05rem; line-height: 1.7; color: var(--text-secondary); margin-bottom: 18px;">
+          Most pre-installed mobile file managers have morphed into ad-supported bloatware packed with intrusive cleaners, background telemetry daemons, push notifications, and forced cloud storage subscriptions.
+        </p>
+        <p style="font-size: 1.05rem; line-height: 1.7; color: var(--text-secondary); margin-bottom: 24px;">
+          <strong>ARCA</strong> was built from scratch to restore file management to what it should be: a pure, deterministic, and lightning-fast offline utility. ARCA treats your device storage with respect. No user telemetry, no analytics SDKs, no ads, and no external account requirements. Everything runs natively on your hardware.
+        </p>
 
-        <div class="card">
-          <div class="card-icon">🎨</div>
-          <h3>Tonal Depth & Micro-Interactions</h3>
-          <p>True Obsidian OLED dark theme, subtle 0.5dp borders, two-tone iconography, and hardware-accelerated RenderNode scale-bounce tactile feedback.</p>
-        </div>
-
-        <div class="card">
-          <div class="card-icon">📦</div>
-          <h3>Multi-Archive Powerhouse</h3>
-          <p>Full support for 7z, ZIP, TAR, GZ, BZ2, XZ, and password-protected RAR extraction with resumable background integrity testing.</p>
-        </div>
-
-        <div class="card">
-          <div class="card-icon">🔐</div>
-          <h3>Hardware-Backed Vault</h3>
-          <p>Encrypt sensitive files and documents using authenticated AES-GCM encryption protected by biometrics or a custom secure PIN.</p>
-        </div>
-
-        <div class="card">
-          <div class="card-icon">🌐</div>
-          <h3>Network Storage & Wi-Fi PC Transfer</h3>
-          <p>Seamless SFTP, SMB, FTP, FTPS, and WebDAV client integration, plus an embedded local FTP server to transfer files to any PC over Wi-Fi.</p>
-        </div>
-
-        <div class="card">
-          <div class="card-icon">📊</div>
-          <h3>Storage Analyzer & Cleanups</h3>
-          <p>Visual storage breakdown, large file hunter, duplicate file discovery, and empty folder tidying with detailed properties inspection.</p>
+        <div class="grid-3" style="margin-top: 24px;">
+          <div class="card" style="padding: 18px;">
+            <h4 style="margin-bottom: 6px; color: var(--primary);">⚡ Pure Offline-First</h4>
+            <p style="font-size: 0.88rem; color: var(--text-secondary);">Internet permission is strictly reserved for your self-hosted remote connections (SFTP/FTP/SMB) and manual GitHub update checks.</p>
+          </div>
+          <div class="card" style="padding: 18px;">
+            <h4 style="margin-bottom: 6px; color: var(--primary);">🔓 Transparent GPLv3</h4>
+            <p style="font-size: 0.88rem; color: var(--text-secondary);">Every single line of code is open source and auditable. No hidden trackers, no proprietary analytics, and no locked features.</p>
+          </div>
+          <div class="card" style="padding: 18px;">
+            <h4 style="margin-bottom: 6px; color: var(--primary);">🎯 Zero Gimmicks</h4>
+            <p style="font-size: 0.88rem; color: var(--text-secondary);">No fake "memory boosters" or destructive cleanups. Clear, honest storage analytics backed by byte-exact filesystem scans.</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- App Specifications & Architecture -->
-    <section class="container">
-      <div class="content-box">
-        <h2>Technical Architecture & Transparency</h2>
-        <p>ARCA is built strictly following modern Android development best practices:</p>
-        <ul>
-          <li><strong>Language:</strong> 100% Kotlin 2.0+ with Coroutines & StateFlow</li>
-          <li><strong>UI Framework:</strong> Jetpack Compose with Material Design 3 guidelines</li>
-          <li><strong>Storage Isolation:</strong> Android 11+ Scoped Storage & MediaStore architecture with transparent permissions</li>
-          <li><strong>Licensing:</strong> Licensed under GNU General Public License v3.0 (GPLv3)</li>
-          <li><strong>Network Transparency:</strong> Internet permission used exclusively for user-configured remote servers (SFTP/SMB/FTP/WebDAV) and manual GitHub release updates</li>
-        </ul>
+    <!-- Comprehensive Detailed Features Section -->
+    <section id="features" class="container">
+      <div class="section-title">
+        <span class="section-tag">All Capabilities</span>
+        <h2>Detailed Features</h2>
+        <p>Engineered for everyday utility, media management, power users, and deep filesystem workflows.</p>
+      </div>
+
+      <div class="grid-3">
+        <!-- 1. Archive Engine -->
+        <div class="feature-detail-card">
+          <div class="card-icon">📦</div>
+          <h3>Multi-Format Archive Hub</h3>
+          <p>Full-featured compression and decompression engine. Create and extract 7z, ZIP, TAR, GZ, BZ2, and XZ. Supports password-protected RAR extraction with instant password verification and retry. Browse inside archives without extracting.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">7z</span>
+            <span class="feature-tag">ZIP</span>
+            <span class="feature-tag">RAR</span>
+            <span class="feature-tag">TAR.GZ</span>
+            <span class="feature-tag">Password Protected</span>
+          </div>
+        </div>
+
+        <!-- 2. Encrypted Vault -->
+        <div class="feature-detail-card">
+          <div class="card-icon">🔐</div>
+          <h3>Hardware-Backed Encrypted Vault</h3>
+          <p>Store sensitive documents, photos, and files in an isolated encrypted vault. Protected with hardware-backed AES-256-GCM authenticated encryption through the Android KeyStore HSM. Unlocks via Biometric (Fingerprint/Face) or master PIN.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">AES-256-GCM</span>
+            <span class="feature-tag">Android KeyStore</span>
+            <span class="feature-tag">Biometric Unlock</span>
+            <span class="feature-tag">Zero Plaintext Cache</span>
+          </div>
+        </div>
+
+        <!-- 3. Wi-Fi PC Transfer -->
+        <div class="feature-detail-card">
+          <div class="card-icon">🌐</div>
+          <h3>Transfer to PC & Local FTP</h3>
+          <p>Built-in high-speed FTP server allowing your PC, Mac, or Linux machine to access, copy, modify, download, and upload files over your local Wi-Fi or mobile hotspot. Zero USB cables and zero internet connection required.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">Full Read & Write</span>
+            <span class="feature-tag">Wi-Fi / Hotspot</span>
+            <span class="feature-tag">No Cables</span>
+            <span class="feature-tag">RFC 959 Standard</span>
+          </div>
+        </div>
+
+        <!-- 4. Remote Storage Protocols -->
+        <div class="feature-detail-card">
+          <div class="card-icon">☁️</div>
+          <h3>Remote Network Storage Suite</h3>
+          <p>Connect seamlessly to your home NAS, cloud servers, or office networks. Full client support for encrypted SFTP, FTPS, Windows Network Shares (SMB 2/3), and WebDAV protocols with encrypted credentials storage.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">SFTP</span>
+            <span class="feature-tag">SMB 2/3</span>
+            <span class="feature-tag">FTPS</span>
+            <span class="feature-tag">WebDAV</span>
+          </div>
+        </div>
+
+        <!-- 5. Storage Analyzer -->
+        <div class="feature-detail-card">
+          <div class="card-icon">📊</div>
+          <h3>Dual-Engine Storage Analyzer</h3>
+          <p>Visual storage breakdown across categories (Media, Docs, APKs, Archives). Discover large files, find exact byte-for-byte duplicates via SHA-256 hash matching, and safely clean empty folders with full path and properties inspection.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">Large Files</span>
+            <span class="feature-tag">SHA-256 Duplicates</span>
+            <span class="feature-tag">Empty Folders</span>
+            <span class="feature-tag">App Analyzer</span>
+          </div>
+        </div>
+
+        <!-- 6. Batch Renaming & Operations -->
+        <div class="feature-detail-card">
+          <div class="card-icon">⚡</div>
+          <h3>Batch Rename & Staged Queue</h3>
+          <p>Multi-select actions let you inspect aggregate properties (size, item count, paths), batch rename multiple files sequentially with customizable prefix, suffix, and index numbers, and stage copy/move operations cleanly.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">Sequential Batch Rename</span>
+            <span class="feature-tag">Multi-Select Properties</span>
+            <span class="feature-tag">Staged Transfers</span>
+            <span class="feature-tag">Trash Bin</span>
+          </div>
+        </div>
+
+        <!-- 7. Obsidian UI & Micro-Interactions -->
+        <div class="feature-detail-card">
+          <div class="card-icon">🎨</div>
+          <h3>Obsidian Design & Fluid Physics</h3>
+          <p>Crafted exclusively in Jetpack Compose with Material 3. Features a true Obsidian OLED dark theme, subtle 0.5dp hairline containers, two-tone iconography, and hardware-accelerated spring scale-bounce micro-interactions on every tap.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">Obsidian OLED (#0B0E14)</span>
+            <span class="feature-tag">RenderNode Spring</span>
+            <span class="feature-tag">Material 3</span>
+            <span class="feature-tag">120Hz Fluidity</span>
+          </div>
+        </div>
+
+        <!-- 8. Media & Package Dispatchers -->
+        <div class="feature-detail-card">
+          <div class="card-icon">🎬</div>
+          <h3>Integrated Media & APK Tools</h3>
+          <p>Direct "Play", "Open With", and viewer actions for audio, video, and documents. Inspect APK metadata, permissions, package version, and target SDK directly before installing with security warning disclosures.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">Media Dispatcher</span>
+            <span class="feature-tag">APK Package Inspector</span>
+            <span class="feature-tag">Image Preview</span>
+            <span class="feature-tag">Checksum Verifier</span>
+          </div>
+        </div>
+
+        <!-- 9. GitHub-Direct Updater -->
+        <div class="feature-detail-card">
+          <div class="card-icon">🔄</div>
+          <h3>Direct GitHub Release Updater</h3>
+          <p>Check for app updates directly against GitHub Releases without Google Play Services. Resumable background downloads via Android DownloadManager with SHA-256 verification and seamless PackageInstaller prompts.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">GitHub Releases</span>
+            <span class="feature-tag">Resumable Downloads</span>
+            <span class="feature-tag">SHA-256 Verified</span>
+            <span class="feature-tag">Google-Free</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Technical Architecture Section -->
+    <section id="architecture" class="container">
+      <div class="section-title">
+        <span class="section-tag">Engineering Blueprint</span>
+        <h2>Technical Architecture</h2>
+        <p>Built with Clean Architecture, Kotlin 2.0+, and modern Android reactive patterns.</p>
+      </div>
+
+      <div class="arch-grid">
+        <div class="arch-layer-card">
+          <span class="arch-layer-badge">UI Layer</span>
+          <h3>Presentation & Interaction</h3>
+          <ul>
+            <li><strong>Pure Jetpack Compose:</strong> Declarative UI without XML or WebViews</li>
+            <li><strong>Material 3 Design System:</strong> Adaptive tonal palettes and components</li>
+            <li><strong>Type-Safe Navigation:</strong> Kotlin Serialization-backed route management</li>
+            <li><strong>Spring Physics:</strong> Hardware GPU RenderNode scale micro-interactions</li>
+          </ul>
+        </div>
+
+        <div class="arch-layer-card">
+          <span class="arch-layer-badge">Domain Layer</span>
+          <h3>State & Use Cases</h3>
+          <ul>
+            <li><strong>Unidirectional Data Flow:</strong> StateFlow and SharedFlow reactivity</li>
+            <li><strong>Kotlin Coroutines:</strong> Structured concurrency and background task dispatch</li>
+            <li><strong>Zero Background Drain:</strong> Active operations run only on explicit user intent</li>
+            <li><strong>Strict Encapsulation:</strong> Decoupled repository and use case boundaries</li>
+          </ul>
+        </div>
+
+        <div class="arch-layer-card">
+          <span class="arch-layer-badge">Engine Layer</span>
+          <h3>Storage & Network</h3>
+          <ul>
+            <li><strong>Unified StorageNode:</strong> Common model for local, OTG, and remote files</li>
+            <li><strong>ArcaFtpServer:</strong> Low-overhead RFC 959 bidirectional socket engine</li>
+            <li><strong>Multi-Archive Hub:</strong> Native Apache Commons Compress & UnRAR</li>
+            <li><strong>Network Protocols:</strong> High-performance JSch, SMBJ, and WebDAV</li>
+          </ul>
+        </div>
+
+        <div class="arch-layer-card">
+          <span class="arch-layer-badge">Security Layer</span>
+          <h3>Cryptographic Integrity</h3>
+          <ul>
+            <li><strong>Android KeyStore:</strong> Hardware-backed HSM key generation and storage</li>
+            <li><strong>AES-256-GCM:</strong> Authenticated symmetric cipher with zero plaintext swap</li>
+            <li><strong>BiometricPrompt API:</strong> Strong biometric face & fingerprint gating</li>
+            <li><strong>Encrypted SharedPreferences:</strong> Secure encrypted remote credentials storage</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screenshots Showcase Section -->
+    <section id="screenshots" class="container">
+      <div class="section-title">
+        <span class="section-tag">Visual Tour</span>
+        <h2>Application Screenshots</h2>
+        <p>A glimpse into ARCA's Obsidian interface, micro-interactions, and feature workflows.</p>
+      </div>
+
+      <div class="screenshots-grid">
+        <!-- Showcase 1 -->
+        <div class="screenshot-card">
+          <div class="screenshot-placeholder-frame">
+            <div class="screenshot-placeholder-icon">📁</div>
+            <span class="screenshot-placeholder-badge">Obsidian File Browser</span>
+          </div>
+          <div class="screenshot-info">
+            <h3>Filesystem Explorer</h3>
+            <p>High-speed browsing across internal storage, SD cards, and USB OTG drives with 120Hz smooth scrolling.</p>
+          </div>
+        </div>
+
+        <!-- Showcase 2 -->
+        <div class="screenshot-card">
+          <div class="screenshot-placeholder-frame">
+            <div class="screenshot-placeholder-icon">🔐</div>
+            <span class="screenshot-placeholder-badge">Hardware-Backed Vault</span>
+          </div>
+          <div class="screenshot-info">
+            <h3>Encrypted Security Vault</h3>
+            <p>Isolated secure container locked with biometric authentication and authenticated AES-GCM encryption.</p>
+          </div>
+        </div>
+
+        <!-- Showcase 3 -->
+        <div class="screenshot-card">
+          <div class="screenshot-placeholder-frame">
+            <div class="screenshot-placeholder-icon">📊</div>
+            <span class="screenshot-placeholder-badge">Storage Intelligence</span>
+          </div>
+          <div class="screenshot-info">
+            <h3>Storage Analyzer & Cleanups</h3>
+            <p>Visual category graphs, large file locators, SHA-256 duplicate finders, and empty directory inspectors.</p>
+          </div>
+        </div>
+
+        <!-- Showcase 4 -->
+        <div class="screenshot-card">
+          <div class="screenshot-placeholder-frame">
+            <div class="screenshot-placeholder-icon">🌐</div>
+            <span class="screenshot-placeholder-badge">Local FTP Server</span>
+          </div>
+          <div class="screenshot-info">
+            <h3>Transfer to PC Over Wi-Fi</h3>
+            <p>Instant file upload, download, modification, and deletion from your PC browser or FTP client with no cables.</p>
+          </div>
+        </div>
+
+        <!-- Showcase 5 -->
+        <div class="screenshot-card">
+          <div class="screenshot-placeholder-frame">
+            <div class="screenshot-placeholder-icon">📦</div>
+            <span class="screenshot-placeholder-badge">Archive Powerhouse</span>
+          </div>
+          <div class="screenshot-info">
+            <h3>Multi-Archive Viewer</h3>
+            <p>Fast extraction of 7z, ZIP, TAR, GZ, and password-protected RAR archives with internal file preview.</p>
+          </div>
+        </div>
+
+        <!-- Showcase 6 -->
+        <div class="screenshot-card">
+          <div class="screenshot-placeholder-frame">
+            <div class="screenshot-placeholder-icon">⚡</div>
+            <span class="screenshot-placeholder-badge">Power User Tools</span>
+          </div>
+          <div class="screenshot-info">
+            <h3>Batch Renaming & Multi-Select</h3>
+            <p>Sequential batch renamer with customizable prefix, suffix, and counter, plus aggregate properties inspector.</p>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -120,13 +357,14 @@
       <div class="footer-content">
         <div>
           <p><strong>ARCA File Manager</strong> • Developed by <strong>Harsh Pahal</strong> (hrshd1eux Studio)</p>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Licensed under GNU General Public License v3.0 (GPLv3).</p>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Licensed under GNU General Public License v3.0 (GPLv3). Completely offline-first and private.</p>
         </div>
         <ul class="footer-nav">
           <li><a href="privacy.html">Privacy Policy</a></li>
           <li><a href="data-deletion.html">Data Deletion</a></li>
-          <li><a href="terms.html">Terms</a></li>
+          <li><a href="terms.html">Terms of Service</a></li>
           <li><a href="contact.html">Contact</a></li>
+          <li><a href="https://github.com/HrshD1eux/arca-filemanager/issues" target="_blank" rel="noopener">GitHub Issues</a></li>
         </ul>
       </div>
     </div>

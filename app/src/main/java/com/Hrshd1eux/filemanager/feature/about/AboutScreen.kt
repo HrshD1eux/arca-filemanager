@@ -7,6 +7,9 @@ import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -173,7 +176,7 @@ fun AboutScreen(
             }
 
             item {
-                SupportAndFeedbackCard(versionName = versionInfo.versionName)
+                LeadDeveloperCard(versionName = versionInfo.versionName)
             }
 
             item {
@@ -608,7 +611,7 @@ private fun OpenSourceLicensesCard(
 }
 
 @Composable
-private fun SupportAndFeedbackCard(
+private fun LeadDeveloperCard(
     versionName: String,
     modifier: Modifier = Modifier
 ) {
@@ -619,67 +622,120 @@ private fun SupportAndFeedbackCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        border = BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.BugReport,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "Support & Feedback",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "We welcome constructive bug reports, technical inquiries, and feature suggestions through our public issue tracker.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "Lead Developer & Maintainer",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
+
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Profile header row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_developer_avatar),
+                    contentDescription = "Harsh Pahal",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Harsh Pahal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "@HrshD1eux",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:HrshD1eux@proton.me")
+                            putExtra(Intent.EXTRA_SUBJECT, "ARCA File Manager (v$versionName)")
+                        }
+                        runCatching {
+                            context.startActivity(Intent.createChooser(emailIntent, "Send Email"))
+                        }.onFailure {
+                            Toast.makeText(context, "Contact: HrshD1eux@proton.me", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Email",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                thickness = 0.5.dp
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // 1. Developer Portfolio
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         runCatching {
-                            uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/issues")
+                            uriHandler.openUri("https://github.com/HrshD1eux")
                         }.onFailure {
-                            Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/issues", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "https://github.com/HrshD1eux", Toast.LENGTH_LONG).show()
                         }
                     }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Code,
+                    imageVector = Icons.Default.Language,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "GitHub Issue Tracker",
+                        text = "Developer Portfolio",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Report bugs or request new features",
+                        text = "Personal profile, showcase & projects",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -692,40 +748,80 @@ private fun SupportAndFeedbackCard(
                 )
             }
 
+            // 2. Source Code (GitHub)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
-                        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:HrshD1eux@proton.me")
-                            putExtra(Intent.EXTRA_SUBJECT, "ARCA Feedback (v$versionName)")
-                        }
                         runCatching {
-                            context.startActivity(Intent.createChooser(emailIntent, "Send Feedback"))
+                            uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager")
                         }.onFailure {
-                            Toast.makeText(context, "Contact: HrshD1eux@proton.me", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager", Toast.LENGTH_LONG).show()
                         }
                     }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Email,
+                    imageVector = Icons.Default.Code,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Technical Feedback",
+                        text = "Source Code (GitHub)",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "HrshD1eux@proton.me",
+                        text = "github.com/HrshD1eux/arca-filemanager",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            // 3. Report Issues & Requests
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        runCatching {
+                            uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/issues")
+                        }.onFailure {
+                            Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/issues", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.BugReport,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Report Issues & Requests",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Submit bug reports & feature requests",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

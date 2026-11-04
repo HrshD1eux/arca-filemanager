@@ -1,0 +1,77 @@
+name: 🐛 Bug Report
+description: Report a bug, crash, or unexpected behavior in ARCA File Manager.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please provide detailed information so we can reproduce and fix the bug quickly.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: ARCA Version
+      description: The version of ARCA installed (found in Settings -> About ARCA, e.g. v1.6.19).
+      placeholder: "v1.6.19"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device Model & Android Version
+      description: E.g., Pixel 7 Pro running Android 14, Samsung Galaxy S23 running OneUI 6.
+      placeholder: "Pixel 7 Pro (Android 14)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior.
+      placeholder: |
+        1. Open '...'
+        2. Tap on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: "What should have happened instead..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logcat / Error Output (Optional)
+      description: Paste any crash logs, logcat output, or stack traces here.
+      render: shell
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have verified this bug occurs on the latest available release of ARCA.
+          required: true
+        - label: I have searched existing issues to ensure this is not a duplicate.
+          required: true
+        - label: This issue does not contain private or sensitive personal information.
+          required: true

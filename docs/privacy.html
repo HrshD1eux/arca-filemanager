@@ -16,11 +16,12 @@
           <img src="assets/logo.png" alt="ARCA Logo" class="logo-img">
           <span>ARCA</span>
         </a>
-        <ul class="nav-links">
+                        <ul class="nav-links">
           <li><a href="index.html">Home</a></li>
-          <li><a href="privacy.html" class="active">Privacy Policy</a></li>
-          <li><a href="data-deletion.html">Data Deletion</a></li>
-          <li><a href="terms.html">Terms</a></li>
+          <li><a href="index.html#about">About</a></li>
+          <li><a href="index.html#features">Features</a></li>
+          <li><a href="index.html#architecture">Architecture</a></li>
+          <li><a href="index.html#screenshots">Screenshots</a></li>
           <li><a href="contact.html">Contact</a></li>
           <li><a href="https://github.com/HrshD1eux/arca-filemanager" class="btn btn-outline" target="_blank" rel="noopener">GitHub</a></li>
         </ul>
@@ -54,7 +55,7 @@
         <h2>3. Device Permissions Explained</h2>
         <p>In order to function as a full-featured Android file manager, ARCA requests standard platform permissions:</p>
         <ul>
-          <li><strong>All Files Access (<code>MANAGE_EXTERNAL_STORAGE</code>):</strong> Required to browse, organize, move, copy, rename, extract, and delete files across your device's internal storage and attached SD cards / USB OTG drives. All file processing occurs 100% locally on your device's CPU and storage.</li>
+          <li><strong>All Files Access (<code>MANAGE_EXTERNAL_STORAGE</code>):</strong> Required to browse, organize, move, copy, rename, extract, and delete files across your device's internal storage and attached SD cards / USB OTG drives. All file processing occurs entirely locally on your device's CPU and storage.</li>
           <li><strong>Internet Permission (<code>INTERNET</code>):</strong> Used <em>exclusively</em> when you explicitly initiate remote network connections (such as connecting to an SFTP, FTP, SMB, or WebDAV server, hosting the local Wi-Fi Transfer server, or tapping 'Check for Updates'). ARCA never opens sockets or background connections on its own.</li>
           <li><strong>Biometric / Fingerprint (<code>USE_BIOMETRIC</code>):</strong> Used locally on your device to unlock the Encrypted Vault if you choose biometric authentication. Cryptographic keys are managed by Android Keystore and never leave your hardware.</li>
           <li><strong>Foreground Service (<code>FOREGROUND_SERVICE</code>):</strong> Used to keep long-running user-initiated tasks active without OS interruption (e.g., compressing large archives, transferring large batches of files, or hosting the local FTP server).</li>

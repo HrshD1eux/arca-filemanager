@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions & Questions
+    url: https://github.com/HrshD1eux/arca-filemanager/discussions
+    about: Ask questions, share ideas, and discuss with the community.
+  - name: 🛡️ Security Vulnerability Reporting
+    url: mailto:HrshD1eux@proton.me
+    about: Privately report sensitive security issues directly to the maintainer.

@@ -95,7 +95,7 @@ class AboutScreenProfessionalTest {
         assertTrue("Must reference OpenSourceRegistry", content.contains("OpenSourceRegistry.libraries"))
 
         // 6. Support & Feedback
-        assertTrue("Must include SupportAndFeedbackCard", content.contains("SupportAndFeedbackCard"))
+        assertTrue("Must include LeadDeveloperCard", content.contains("LeadDeveloperCard"))
         assertTrue("Must link to GitHub issues", content.contains("https://github.com/HrshD1eux/arca-filemanager/issues"))
         assertTrue("Must provide technical feedback email", content.contains("HrshD1eux@proton.me"))
 
