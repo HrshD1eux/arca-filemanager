@@ -30,7 +30,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.core.intent.ViewIntentResolver
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
-import com.Hrshd1eux.filemanager.feature.about.AboutDeveloperScreen
 import com.Hrshd1eux.filemanager.feature.archive.ArchiveViewerScreen
 import com.Hrshd1eux.filemanager.feature.backup.BackupScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
@@ -451,19 +450,7 @@ fun ArcaNavHost(
         ) {
             AboutScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
-                onNavigateToAboutDeveloper = { navController.navigate(Screen.AboutDeveloper) }
-            )
-        }
-
-        composable<Screen.AboutDeveloper>(
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
-        ) {
-            AboutDeveloperScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
             )
         }
 

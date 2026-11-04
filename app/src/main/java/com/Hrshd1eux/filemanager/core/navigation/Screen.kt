@@ -107,9 +107,6 @@ sealed interface Screen {
     data object Network : Screen
 
     @Serializable
-    data object AboutDeveloper : Screen
-
-    @Serializable
     data class NetworkBrowser(
         val connectionId: String,
         val initialPath: String? = null,

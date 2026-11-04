@@ -14,8 +14,7 @@
 <p align="center">
   <a href="https://hrshd1eux.github.io/arca-filemanager/">Website</a> •
   <a href="https://github.com/HrshD1eux/arca-filemanager/releases/latest">Download APK</a> •
-  <a href="https://hrshd1eux.github.io/arca-filemanager/privacy.html">Privacy Policy</a> •
-  <a href="https://hrshd1eux.github.io/arca-filemanager/about-developer.html">About Developer</a>
+  <a href="https://hrshd1eux.github.io/arca-filemanager/privacy.html">Privacy Policy</a>
 </p>
 
 <p align="center">

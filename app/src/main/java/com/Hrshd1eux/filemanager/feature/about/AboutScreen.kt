@@ -110,7 +110,6 @@ fun AboutScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToPrivacy: () -> Unit = {},
-    onNavigateToAboutDeveloper: () -> Unit = {},
     versionInfo: AppVersionInfo = rememberAppVersionInfo()
 ) {
     var selectedLibrary by remember { mutableStateOf<OpenSourceLibrary?>(null) }
@@ -171,10 +170,6 @@ fun AboutScreen(
                     libraries = OpenSourceRegistry.libraries,
                     onSelectLibrary = { selectedLibrary = it }
                 )
-            }
-
-            item {
-                AboutDeveloperCard(onNavigateToAboutDeveloper = onNavigateToAboutDeveloper)
             }
 
             item {
@@ -953,57 +948,4 @@ private fun LibraryDetailDialog(
             }
         }
     )
-}
-
-@Composable
-private fun AboutDeveloperCard(
-    onNavigateToAboutDeveloper: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .bounceClick(scaleDown = 0.98f, onClick = onNavigateToAboutDeveloper),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TwoToneIconBadge(
-                icon = Icons.Default.Person,
-                tint = MaterialTheme.colorScheme.primary,
-                size = 42.dp,
-                iconSize = 22.dp,
-                shape = RoundedCornerShape(10.dp)
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "About the Developer",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Harsh Pahal (hrshd1eux Studio) • Directory & Links",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
 }
