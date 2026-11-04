@@ -38,6 +38,10 @@ import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import com.Hrshd1eux.filemanager.core.designsystem.TwoToneIconBadge
+import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.AlertDialog
@@ -83,6 +87,9 @@ import com.Hrshd1eux.filemanager.feature.about.model.OpenSourceLibrary
 import androidx.compose.material.icons.filled.SystemUpdate
 import com.Hrshd1eux.filemanager.core.update.ui.AppUpdateDialog
 import com.Hrshd1eux.filemanager.feature.about.model.OpenSourceRegistry
+import com.Hrshd1eux.filemanager.feature.about.model.LicenseTexts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 /**
  * Dedicated professional About Screen for ARCA.
@@ -103,6 +110,7 @@ fun AboutScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToPrivacy: () -> Unit = {},
+    onNavigateToAboutDeveloper: () -> Unit = {},
     versionInfo: AppVersionInfo = rememberAppVersionInfo()
 ) {
     var selectedLibrary by remember { mutableStateOf<OpenSourceLibrary?>(null) }
@@ -163,6 +171,10 @@ fun AboutScreen(
                     libraries = OpenSourceRegistry.libraries,
                     onSelectLibrary = { selectedLibrary = it }
                 )
+            }
+
+            item {
+                AboutDeveloperCard(onNavigateToAboutDeveloper = onNavigateToAboutDeveloper)
             }
 
             item {
@@ -374,40 +386,24 @@ private fun AppUpdatesDisclosureCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
             )
             Spacer(modifier = Modifier.height(14.dp))
-            Row(
+            Button(
+                onClick = {
+                    runCatching {
+                        uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/releases")
+                    }.onFailure {
+                        Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/releases", Toast.LENGTH_LONG).show()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Button(
-                    onClick = onCheckForUpdates,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SystemUpdate,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Check for Updates")
-                }
-                OutlinedButton(
-                    onClick = {
-                        runCatching {
-                            uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/releases")
-                        }.onFailure {
-                            Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/releases", Toast.LENGTH_LONG).show()
-                        }
-                    },
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = "Open GitHub Releases",
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "View Releases on GitHub")
             }
         }
     }
@@ -665,9 +661,9 @@ private fun SupportAndFeedbackCard(
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         runCatching {
-                            uriHandler.openUri("https://github.com/HrshD1eux/filemanager/issues")
+                            uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/issues")
                         }.onFailure {
-                            Toast.makeText(context, "https://github.com/HrshD1eux/filemanager/issues", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/issues", Toast.LENGTH_LONG).show()
                         }
                     }
                     .padding(vertical = 8.dp),
@@ -878,49 +874,64 @@ private fun LibraryDetailDialog(
     val clipboardManager = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
+    var showFullLicenseText by remember { mutableStateOf(false) }
+    val fullText = remember(library) {
+        LicenseTexts.getTextForLibrary(library.name, library.license)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = library.name,
+                text = if (showFullLicenseText) "${library.name} License" else library.name,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Author: ${library.author}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "License: ${library.license}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-                Text(
-                    text = library.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            if (showFullLicenseText) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = fullText,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Author: ${library.author}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "License: ${library.license}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    Text(
+                        text = library.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = {
-                        runCatching {
-                            uriHandler.openUri(library.licenseUrl)
-                        }.onFailure {
-                            clipboardManager.setText(AnnotatedString(library.licenseUrl))
-                            Toast.makeText(context, "License URL copied to clipboard", Toast.LENGTH_SHORT).show()
-                        }
+                        showFullLicenseText = !showFullLicenseText
                     }
                 ) {
-                    Text("License")
+                    Text(if (showFullLicenseText) "Overview" else "View License Text")
                 }
                 Button(
                     onClick = {
@@ -942,4 +953,57 @@ private fun LibraryDetailDialog(
             }
         }
     )
+}
+
+@Composable
+private fun AboutDeveloperCard(
+    onNavigateToAboutDeveloper: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .bounceClick(scaleDown = 0.98f, onClick = onNavigateToAboutDeveloper),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TwoToneIconBadge(
+                icon = Icons.Default.Person,
+                tint = MaterialTheme.colorScheme.primary,
+                size = 42.dp,
+                iconSize = 22.dp,
+                shape = RoundedCornerShape(10.dp)
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "About the Developer",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Harsh Pahal (hrshd1eux Studio) • Directory & Links",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
 }

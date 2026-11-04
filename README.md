@@ -11,7 +11,7 @@
 
 ## ✨ Features
 
-- **🛡️ 100% Offline-First & Private:** No telemetry, no analytics SDKs, no cloud account requirements.
+- **🛡️ Fully Offline-First & Private:** No telemetry, no analytics SDKs, no cloud account requirements.
 - **🎨 Modern Design System:**
   - True Obsidian OLED dark base (`#0B0E14`) and Deep Slate elevated containers.
   - Zero-overhead GPU RenderNode spring micro-interactions (`bounceClick`).

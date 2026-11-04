@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Folder
@@ -53,7 +54,9 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -114,6 +117,7 @@ fun FtpServerScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showFolderPicker by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
+    var showSameNetworkDialog by remember { mutableStateOf(false) }
     var isStarting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -184,8 +188,7 @@ fun FtpServerScreen(
                     bytesReceived = state.bytesReceived,
                     onStartClick = {
                         if (!isStarting && !state.isRunning) {
-                            isStarting = true
-                            viewModel.startServer(context)
+                            showSameNetworkDialog = true
                         }
                     },
                     onStopClick = { viewModel.stopServer(context) },
@@ -301,6 +304,42 @@ fun FtpServerScreen(
                 showFolderPicker = false
             },
             onDismiss = { showFolderPicker = false }
+        )
+    }
+
+    // Same Network Confirmation Dialog
+    if (showSameNetworkDialog) {
+        AlertDialog(
+            onDismissRequest = { showSameNetworkDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Connect to Same Network")
+                }
+            },
+            text = {
+                Text(
+                    text = "Ensure both this Android device and your PC or receiving device are connected to the same Wi-Fi network or mobile hotspot so they can communicate.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSameNetworkDialog = false
+                        isStarting = true
+                        viewModel.startServer(context)
+                    }
+                ) {
+                    Text("Start Server")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSameNetworkDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 
@@ -700,33 +739,33 @@ private fun FtpServerSettingsCard(
                     }
                 }
 
-                // Read-Only Toggle
+                // Full Read & Write Access Info
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = VaultEmerald,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
                         Text(
-                            text = "Read-Only Access",
+                            text = "Full Read & Write Access",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (config.isReadOnly) "PC can only view and download files" else "PC can upload, modify, and delete files",
+                            text = "Connected devices can freely upload, download, modify, rename, cut, paste, and delete files.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
-                    Switch(
-                        checked = config.isReadOnly,
-                        onCheckedChange = { if (!isServerRunning) onUpdateReadOnly(it) },
-                        enabled = !isServerRunning
-                    )
                 }
             }
 

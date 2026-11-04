@@ -744,6 +744,29 @@ class FileBrowserViewModel @JvmOverloads constructor(
         }
     }
 
+    fun batchRename(
+        pairs: List<Pair<StorageNode, String>>,
+        hasPermission: Boolean
+    ) {
+        if (!hasPermission) {
+            _uiState.value = BrowserUiState.PermissionRequired()
+            return
+        }
+
+        clearSelection()
+        viewModelScope.launch {
+            var successCount = 0
+            for ((target, newName) in pairs) {
+                if (target.name != newName) {
+                    val result = operationEngine.rename(target = target, newName = newName)
+                    if (result.isSuccess) successCount++
+                }
+            }
+            _userMessage.emit("Renamed $successCount items successfully")
+            refresh(hasPermission)
+        }
+    }
+
     fun createDirectory(
         parentPath: String,
         dirName: String,

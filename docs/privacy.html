@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy | ARCA File Manager</title>
+  <meta name="description" content="Official Privacy Policy for ARCA File Manager. Explains zero data collection, offline file operations, and permissions transparency.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">
+          <div class="logo-badge">A</div>
+          <span>ARCA</span>
+        </a>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="privacy.html" class="active">Privacy Policy</a></li>
+          <li><a href="data-deletion.html">Data Deletion</a></li>
+          <li><a href="terms.html">Terms</a></li>
+          <li><a href="about-developer.html">About Developer</a></li>
+          <li><a href="contact.html">Contact</a></li>
+          <li><a href="https://github.com/HrshD1eux/arca-filemanager" class="btn btn-outline" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-header">
+      <div class="container">
+        <h1>Privacy Policy</h1>
+        <p>Effective Date: November 2026 • Last Updated: November 4, 2026</p>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="content-box">
+        <h2>1. Overview & Commitment to Zero Telemetry</h2>
+        <p>ARCA File Manager ("ARCA", "we", "us", or "our"), created by developer Harsh Pahal (hrshd1eux Studio), is built from the ground up as an offline-first utility. We believe that file managers should manage files—not monitor users.</p>
+        <p><strong>ARCA does not collect, record, track, transmit, monetize, or sell your personal information, files, metadata, device identifiers, or usage activity.</strong></p>
+
+        <h2>2. Data Collection & Analytics</h2>
+        <p>We do not integrate any third-party tracking, profiling, or analytics SDKs. Specifically:</p>
+        <ul>
+          <li><strong>No Analytics SDKs:</strong> No Google Firebase Analytics, Mixpanel, Segment, AppsFlyer, or Flurry.</li>
+          <li><strong>No Crash Reporting Telemetry:</strong> No automated background crash log uploads (e.g. Firebase Crashlytics, Sentry). Crashes remain in your device's local Android logcat.</li>
+          <li><strong>No Advertising Networks:</strong> Zero ads, banner networks, or behavioral targeting scripts.</li>
+          <li><strong>No Cloud Accounts:</strong> No user registration, email logins, passwords, or cloud database storage.</li>
+        </ul>
+
+        <h2>3. Device Permissions Explained</h2>
+        <p>In order to function as a full-featured Android file manager, ARCA requests standard platform permissions:</p>
+        <ul>
+          <li><strong>All Files Access (<code>MANAGE_EXTERNAL_STORAGE</code>):</strong> Required to browse, organize, move, copy, rename, extract, and delete files across your device's internal storage and attached SD cards / USB OTG drives. All file processing occurs 100% locally on your device's CPU and storage.</li>
+          <li><strong>Internet Permission (<code>INTERNET</code>):</strong> Used <em>exclusively</em> when you explicitly initiate remote network connections (such as connecting to an SFTP, FTP, SMB, or WebDAV server, hosting the local Wi-Fi Transfer server, or tapping 'Check for Updates'). ARCA never opens sockets or background connections on its own.</li>
+          <li><strong>Biometric / Fingerprint (<code>USE_BIOMETRIC</code>):</strong> Used locally on your device to unlock the Encrypted Vault if you choose biometric authentication. Cryptographic keys are managed by Android Keystore and never leave your hardware.</li>
+          <li><strong>Foreground Service (<code>FOREGROUND_SERVICE</code>):</strong> Used to keep long-running user-initiated tasks active without OS interruption (e.g., compressing large archives, transferring large batches of files, or hosting the local FTP server).</li>
+        </ul>
+
+        <h2>4. Remote Network Storage Isolation</h2>
+        <p>When you use ARCA to connect to remote servers (SFTP, SMB, FTP, WebDAV):</p>
+        <ul>
+          <li>All network traffic travels directly and exclusively between your Android device and the destination IP address or host you specify.</li>
+          <li>There are no intermediate proxy servers, relay nodes, or third-party gateways.</li>
+          <li>Server credentials (passwords, usernames, private keys) are encrypted locally using Android EncryptedSharedPreferences and are never transmitted to any third party.</li>
+        </ul>
+
+        <h2>5. In-App Updates</h2>
+        <p>When you tap "Check for Updates" in Settings or About, ARCA queries the public GitHub Releases API (<code>api.github.com/repos/HrshD1eux/arca-filemanager/releases</code>) to check if a newer release tag exists. No device identifiers, IMEI, IP logs, or personal details are included in this query.</p>
+
+        <h2>6. Contact & Inquiries</h2>
+        <p>If you have any questions or concerns regarding this Privacy Policy, please contact the developer directly:</p>
+        <p>
+          <strong>Developer:</strong> Harsh Pahal (hrshd1eux)<br>
+          <strong>Email:</strong> <a href="mailto:HrshD1eux@proton.me">HrshD1eux@proton.me</a><br>
+          <strong>Issue Tracker:</strong> <a href="https://github.com/HrshD1eux/arca-filemanager/issues" target="_blank" rel="noopener">github.com/HrshD1eux/arca-filemanager/issues</a>
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div>
+          <p><strong>ARCA File Manager</strong> • Developed by <strong>Harsh Pahal</strong> (hrshd1eux Studio)</p>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Licensed under GNU General Public License v3.0 (GPLv3).</p>
+        </div>
+        <ul class="footer-nav">
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="data-deletion.html">Data Deletion</a></li>
+          <li><a href="terms.html">Terms</a></li>
+          <li><a href="about-developer.html">About Developer</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

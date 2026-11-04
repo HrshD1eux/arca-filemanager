@@ -98,6 +98,18 @@ sealed interface Screen {
     data object FtpServer : Screen
 
     @Serializable
+    data object Favorites : Screen
+
+    @Serializable
+    data object Recent : Screen
+
+    @Serializable
+    data object Network : Screen
+
+    @Serializable
+    data object AboutDeveloper : Screen
+
+    @Serializable
     data class NetworkBrowser(
         val connectionId: String,
         val initialPath: String? = null,

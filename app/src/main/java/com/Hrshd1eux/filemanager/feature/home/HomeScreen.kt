@@ -94,6 +94,9 @@ fun HomeScreen(
     onNavigateToFtpServer: () -> Unit = {},
     onNavigateToPreview: (filePath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
+    onNavigateToFavorites: () -> Unit = {},
+    onNavigateToRecent: () -> Unit = {},
+    onNavigateToNetwork: () -> Unit = {},
     modifier: Modifier = Modifier,
     onNavigateToPrivacy: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
@@ -102,10 +105,6 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var showMenu by remember { mutableStateOf(false) }
-    var showFavoritesSheet by remember { mutableStateOf(false) }
-    var showRecentsSheet by remember { mutableStateOf(false) }
-    var showNetworkSheet by remember { mutableStateOf(false) }
-    var showClearRecentsDialog by remember { mutableStateOf(false) }
 
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
@@ -199,46 +198,6 @@ fun HomeScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Storage Analyzer") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Storage, contentDescription = null)
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToStorageAnalyzer()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Installed Apps") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Apps, contentDescription = null)
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToInstalledApps()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Large Files") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.CleaningServices, contentDescription = null)
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToLargeFiles(null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Duplicate Finder") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = null)
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToDuplicateFinder(null)
-                                }
-                            )
-                            DropdownMenuItem(
                                 text = { Text("Backup Profiles") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Backup, contentDescription = null)
@@ -303,10 +262,10 @@ fun HomeScreen(
                     favoriteCount = favorites.size,
                     recentCount = recents.size,
                     showVault = !lockSettings.isVaultHidden || !viewModel.isVaultConfigured,
-                    onFavoritesClick = { showFavoritesSheet = true },
-                    onRecentsClick = { showRecentsSheet = true },
+                    onFavoritesClick = onNavigateToFavorites,
+                    onRecentsClick = onNavigateToRecent,
                     onVaultClick = onNavigateToVault,
-                    onNetworkClick = { showNetworkSheet = true },
+                    onNetworkClick = onNavigateToNetwork,
                     onInternalStorageClick = {
                         onNavigateToBrowser(android.os.Environment.getExternalStorageDirectory().absolutePath, "Internal Storage")
                     }
@@ -353,99 +312,7 @@ fun HomeScreen(
         }
     }
 
-    // Favorites BottomSheet
-    if (showFavoritesSheet) {
-        FavoritesSheet(
-            favorites = favorites,
-            onItemClick = { item ->
-                showFavoritesSheet = false
-                val file = java.io.File(item.path)
-                if (item.isDirectory || file.isDirectory) {
-                    onNavigateToBrowser(item.path, item.displayName)
-                } else if (item.path.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(item.path)) {
-                    com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller.install(context, file).onFailure { e ->
-                        android.widget.Toast.makeText(context, "Cannot launch installer: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                } else if (FileTypeResolver.canPreviewArchive(item.path)) {
-                    onNavigateToArchiveViewer(item.path, item.displayName)
-                } else {
-                    onNavigateToPreview(item.path, null, file.parent)
-                }
-            },
-            onRemoveFavorite = { path ->
-                viewModel.removeFavorite(path)
-            },
-            onDismiss = { showFavoritesSheet = false }
-        )
-    }
 
-    // Recents BottomSheet
-    if (showRecentsSheet) {
-        RecentsSheet(
-            recents = recents,
-            onItemClick = { item ->
-                showRecentsSheet = false
-                val file = java.io.File(item.path)
-                if (item.isDirectory || file.isDirectory) {
-                    onNavigateToBrowser(item.path, item.displayName)
-                } else if (item.path.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(item.path)) {
-                    com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller.install(context, file).onFailure { e ->
-                        android.widget.Toast.makeText(context, "Cannot launch installer: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                } else if (FileTypeResolver.canPreviewArchive(item.path)) {
-                    onNavigateToArchiveViewer(item.path, item.displayName)
-                } else {
-                    onNavigateToPreview(item.path, null, file.parent)
-                }
-            },
-            onRemoveRecent = { path ->
-                viewModel.removeRecent(path)
-            },
-            onClearAll = {
-                showClearRecentsDialog = true
-            },
-            onDismiss = { showRecentsSheet = false }
-        )
-    }
-
-    // Network Connections Sheet
-    if (showNetworkSheet) {
-        NetworkConnectionsSheet(
-            onDismiss = { showNetworkSheet = false },
-            onConnectToRemote = { config ->
-                showNetworkSheet = false
-                onNavigateToNetworkBrowser(config.id, config.name)
-            },
-            onNavigateToFtpServer = {
-                showNetworkSheet = false
-                onNavigateToFtpServer()
-            }
-        )
-    }
-
-    // Clear Recents Confirmation Dialog
-    if (showClearRecentsDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearRecentsDialog = false },
-            title = { Text("Clear Recent History?") },
-            text = { Text("All items will be removed from your recent access history. Your actual files will not be deleted.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.clearRecents()
-                        showClearRecentsDialog = false
-                    }
-                ) {
-                    Text("Clear", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearRecentsDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 
     // First-Run Storage Explanation Dialog (shown once when storage permission is not yet granted)
     if (!hasAllFilesAccess && !firstRunExplanationCompleted) {

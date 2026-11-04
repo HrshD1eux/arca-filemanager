@@ -91,18 +91,6 @@ fun HomeStorageFoldersList(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(
-                    onClick = { showAddDialog = true }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add Path")
-                }
-
                 Box {
                     IconButton(
                         onClick = { showOptionsMenu = true },

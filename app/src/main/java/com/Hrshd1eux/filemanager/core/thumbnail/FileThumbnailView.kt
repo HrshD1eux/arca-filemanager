@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +40,7 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 @Composable
 fun FileThumbnailView(
     node: StorageNode,
-    categoryColor: Color,
+    categoryColor: Color = MaterialTheme.colorScheme.primary,
     modifier: Modifier = Modifier,
     iconSize: Dp = 24.dp,
     shape: RoundedCornerShape = RoundedCornerShape(10.dp)

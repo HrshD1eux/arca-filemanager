@@ -306,7 +306,7 @@ private fun NetworkFeaturesDisclosureCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             DisclosureItem(
-                title = "100% User-Initiated",
+                title = "Exclusively User-Initiated",
                 desc = "ARCA never opens network sockets or transmits packets on its own. Network activity occurs exclusively when you configure and connect to a server."
             )
             DisclosureItem(
@@ -474,9 +474,9 @@ private fun PrivacyContactCard(
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         runCatching {
-                            uriHandler.openUri("https://github.com/HrshD1eux/filemanager/issues")
+                            uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/issues")
                         }.onFailure {
-                            Toast.makeText(context, "https://github.com/HrshD1eux/filemanager/issues", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "https://github.com/HrshD1eux/arca-filemanager/issues", Toast.LENGTH_LONG).show()
                         }
                     }
                     .padding(vertical = 8.dp),
@@ -497,7 +497,7 @@ private fun PrivacyContactCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "github.com/HrshD1eux/filemanager/issues",
+                        text = "github.com/HrshD1eux/arca-filemanager/issues",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

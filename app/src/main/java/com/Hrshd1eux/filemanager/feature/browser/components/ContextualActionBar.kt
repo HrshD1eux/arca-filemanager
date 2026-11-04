@@ -4,6 +4,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,9 +21,9 @@ import androidx.compose.ui.text.font.FontWeight
  * Streamlined Selection Top App Bar.
  *
  * Displays:
- * [X] N selected                     [Select All / Deselect All]
+ * [X] N selected                     [Properties] [Share] [Select All / Deselect All]
  *
- * Primary actions (Move | Copy | Compress | More) are delegated to the signature SelectionBottomBar.
+ * Primary actions (Move to | Copy to | Properties | Delete | More) are also available on SelectionBottomBar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +60,20 @@ fun ContextualActionBar(
             }
         },
         actions = {
+            // Quick Properties button (always visible in selection top bar)
+            IconButton(onClick = onProperties) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Properties"
+                )
+            }
+            // Quick Share button
+            IconButton(onClick = onShare) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share"
+                )
+            }
             // Select All / Deselect All Toggle
             IconButton(onClick = onSelectAllToggle) {
                 Icon(

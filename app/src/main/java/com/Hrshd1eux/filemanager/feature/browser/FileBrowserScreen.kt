@@ -126,6 +126,7 @@ import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDi
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.RenameDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.BatchRenameDialog
 import com.Hrshd1eux.filemanager.core.actions.QuickActionType
 import com.Hrshd1eux.filemanager.feature.archive.components.ArchiveAddItemsDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.EncryptChoiceDialog
@@ -223,6 +224,7 @@ fun FileBrowserScreen(
     var nodeToMove by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
+    var nodesToBatchRename by remember { mutableStateOf<List<StorageNode>?>(null) }
     var nodeToCompress by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToExtract by remember { mutableStateOf<StorageNode?>(null) }
     var nodeForCustomExtract by remember { mutableStateOf<StorageNode?>(null) }
@@ -409,7 +411,25 @@ fun FileBrowserScreen(
                             }
                         },
                         onShare = { FileIntentDispatcher.shareMultiple(context, selectedItems) },
-                        onRename = { nodeToRename = selectedItems.firstOrNull() },
+                        onRename = {
+                            if (selectedItems.size == 1) {
+                                nodeToRename = selectedItems.first()
+                            } else if (selectedItems.size > 1) {
+                                nodesToBatchRename = selectedItems
+                            }
+                        },
+                        onOpenWith = {
+                            selectedItems.firstOrNull()?.let {
+                                FileIntentDispatcher.openWith(context, it)
+                            }
+                        },
+                        onPlay = {
+                            val mediaItem = selectedItems.firstOrNull { FileTypeResolver.isAudio(it.name) || FileTypeResolver.isVideo(it.name) }
+                                ?: selectedItems.firstOrNull()
+                            if (mediaItem != null) {
+                                FileIntentDispatcher.view(context, mediaItem)
+                            }
+                        },
                         onProperties = {
                             if (selectedItems.size == 1) {
                                 selectedNodeForProperties = selectedItems.first()
@@ -453,12 +473,21 @@ fun FileBrowserScreen(
         topBar = {
             if (selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
                 val allItems = (uiState as BrowserUiState.Success).items
+                val selectedItems = allItems.filter { selectedNodeIds.contains(it.id) }
 
                 ContextualActionBar(
                     selectedCount = selectedNodeIds.size,
                     totalCount = allItems.size,
                     onCloseSelection = { viewModel.clearSelection() },
-                    onSelectAllToggle = { viewModel.selectAll(allItems) }
+                    onSelectAllToggle = { viewModel.selectAll(allItems) },
+                    onShare = { FileIntentDispatcher.shareMultiple(context, selectedItems) },
+                    onProperties = {
+                        if (selectedItems.size == 1) {
+                            selectedNodeForProperties = selectedItems.first()
+                        } else {
+                            bulkNodesForProperties = selectedItems
+                        }
+                    }
                 )
             } else {
                 TopAppBar(
@@ -1016,6 +1045,20 @@ fun FileBrowserScreen(
                 )
             },
             onDismiss = { nodeToRename = null }
+        )
+    }
+
+    // Batch Rename Dialog
+    val batchTargets = nodesToBatchRename
+    if (batchTargets != null) {
+        BatchRenameDialog(
+            nodes = batchTargets,
+            onConfirmBatchRename = { pairs ->
+                nodesToBatchRename = null
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                viewModel.batchRename(pairs, hasPermission)
+            },
+            onDismiss = { nodesToBatchRename = null }
         )
     }
 

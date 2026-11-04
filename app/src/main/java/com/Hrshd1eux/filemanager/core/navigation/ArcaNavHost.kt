@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.Hrshd1eux.filemanager.core.intent.ViewIntentResolver
 import com.Hrshd1eux.filemanager.feature.about.AboutScreen
+import com.Hrshd1eux.filemanager.feature.about.AboutDeveloperScreen
 import com.Hrshd1eux.filemanager.feature.archive.ArchiveViewerScreen
 import com.Hrshd1eux.filemanager.feature.backup.BackupScreen
 import com.Hrshd1eux.filemanager.feature.browser.FileBrowserScreen
@@ -39,6 +40,9 @@ import com.Hrshd1eux.filemanager.feature.cleaner.duplicates.DuplicateFinderScree
 import com.Hrshd1eux.filemanager.feature.cleaner.largefiles.LargeFilesScreen
 import com.Hrshd1eux.filemanager.feature.cleaner.storage.StorageAnalyzerScreen
 import com.Hrshd1eux.filemanager.feature.home.HomeScreen
+import com.Hrshd1eux.filemanager.feature.home.FavoritesScreen
+import com.Hrshd1eux.filemanager.feature.home.RecentScreen
+import com.Hrshd1eux.filemanager.feature.network.NetworkStorageScreen
 import com.Hrshd1eux.filemanager.feature.search.FileSearchScreen
 import com.Hrshd1eux.filemanager.feature.network.browser.NetworkFileBrowserScreen
 import com.Hrshd1eux.filemanager.feature.network.diagnostics.NetworkPrivacyDiagnosticsScreen
@@ -148,6 +152,9 @@ fun ArcaNavHost(
                 onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
                 onNavigateToTrash = { navController.navigate(Screen.Trash) },
                 onNavigateToFtpServer = { navController.navigate(Screen.FtpServer) },
+                onNavigateToFavorites = { navController.navigate(Screen.Favorites) },
+                onNavigateToRecent = { navController.navigate(Screen.Recent) },
+                onNavigateToNetwork = { navController.navigate(Screen.Network) },
                 onNavigateToPreview = { filePath, categoryName, directoryPath ->
                     navController.navigate(Screen.Preview(initialPath = filePath, categoryName = categoryName, directoryPath = directoryPath))
                 },
@@ -444,7 +451,19 @@ fun ArcaNavHost(
         ) {
             AboutScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) }
+                onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
+                onNavigateToAboutDeveloper = { navController.navigate(Screen.AboutDeveloper) }
+            )
+        }
+
+        composable<Screen.AboutDeveloper>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            AboutDeveloperScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -493,6 +512,56 @@ fun ArcaNavHost(
         ) {
             com.Hrshd1eux.filemanager.feature.ftp.FtpServerScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.Favorites>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            FavoritesScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToBrowser = { path, title ->
+                    navController.navigate(Screen.Browser(initialPath = path, title = title))
+                },
+                onNavigateToPreview = { path ->
+                    navController.navigate(Screen.Preview(initialPath = path))
+                }
+            )
+        }
+
+        composable<Screen.Recent>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            RecentScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToBrowser = { path, title ->
+                    navController.navigate(Screen.Browser(initialPath = path, title = title))
+                },
+                onNavigateToPreview = { path ->
+                    navController.navigate(Screen.Preview(initialPath = path))
+                }
+            )
+        }
+
+        composable<Screen.Network>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) {
+            NetworkStorageScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onConnectToRemote = { config ->
+                    navController.navigate(Screen.NetworkBrowser(connectionId = config.id, title = config.name))
+                },
+                onNavigateToFtpServer = { navController.navigate(Screen.FtpServer) },
+                onNavigateToDiagnostics = { navController.navigate(Screen.NetworkDiagnostics) }
             )
         }
     }

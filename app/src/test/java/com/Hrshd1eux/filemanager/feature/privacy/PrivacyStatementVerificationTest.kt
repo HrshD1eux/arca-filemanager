@@ -108,7 +108,7 @@ class PrivacyStatementVerificationTest {
 
         // 3. Network Features
         assertTrue("Must explain network features", content.contains("What Happens When You Use Network Features"))
-        assertTrue("Must explain user-initiated only", content.contains("100% User-Initiated"))
+        assertTrue("Must explain user-initiated only", content.contains("Exclusively User-Initiated"))
         assertTrue("Must explain direct point-to-point", content.contains("Direct Point-to-Point Communication"))
         assertTrue("Must explain protocol encryption", content.contains("Protocol Encryption Standards"))
         assertTrue("Must explain App Update Checks", content.contains("App Update Checks"))
@@ -134,7 +134,7 @@ class PrivacyStatementVerificationTest {
 
         // 7. Contact & Privacy Inquiries
         assertTrue("Must disclose contact information", content.contains("Contact & Privacy Inquiries"))
-        assertTrue("Must provide issue tracker", content.contains("github.com/HrshD1eux/filemanager/issues"))
+        assertTrue("Must provide issue tracker", content.contains("github.com/HrshD1eux/arca-filemanager/issues"))
         assertTrue("Must provide contact email", content.contains("HrshD1eux@proton.me"))
     }
 

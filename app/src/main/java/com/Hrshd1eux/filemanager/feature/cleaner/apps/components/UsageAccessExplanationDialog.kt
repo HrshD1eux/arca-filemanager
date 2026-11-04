@@ -160,7 +160,7 @@ fun UsageAccessExplanationDialog(
                     )
                 ) {
                     Text(
-                        text = "Usage Access is 100% optional: ARCA already measures package sizes directly from storage. Zero telemetry or user analytics are ever collected.",
+                        text = "Usage Access is completely optional: ARCA already measures package sizes directly from storage. Zero telemetry or user analytics are ever collected.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(10.dp)

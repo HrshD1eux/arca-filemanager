@@ -96,6 +96,9 @@ import com.Hrshd1eux.filemanager.core.cleaner.model.DeletionTruthfulness
 import com.Hrshd1eux.filemanager.core.cleaner.model.DuplicateGroup
 import com.Hrshd1eux.filemanager.core.cleaner.model.DuplicateMatchLevel
 import com.Hrshd1eux.filemanager.core.cleaner.model.EmptyFolderItem
+import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
+import androidx.compose.material.icons.outlined.Info
 import com.Hrshd1eux.filemanager.core.cleaner.model.LargeFileThreshold
 import com.Hrshd1eux.filemanager.core.cleaner.model.OldFileThreshold
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
@@ -104,7 +107,6 @@ import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.model.AppTypeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.InstalledAppInfo
-import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher
 import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
@@ -152,6 +154,7 @@ fun StorageAnalyzerScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showCleanupReviewSheet by remember { mutableStateOf(false) }
+    var inspectedEmptyFolderNode by remember { mutableStateOf<StorageNode?>(null) }
 
     LaunchedEffect(Unit) {
         analyzer2ViewModel.userMessage.collect { message ->
@@ -355,11 +358,30 @@ fun StorageAnalyzerScreen(
                         onToggleSelection = { analyzer2ViewModel.toggleSelection(it) },
                         onSelectAll = { analyzer2ViewModel.selectAll() },
                         onClearSelection = { analyzer2ViewModel.clearSelection() },
-                        onReviewCleanup = { showCleanupReviewSheet = true }
+                        onReviewCleanup = { showCleanupReviewSheet = true },
+                        onShowProperties = { item ->
+                            inspectedEmptyFolderNode = StorageNode(
+                                id = item.id,
+                                name = item.name,
+                                path = item.path,
+                                size = 0L,
+                                lastModified = item.lastModified,
+                                isDirectory = true
+                            )
+                        }
                     )
                 }
             }
         }
+    }
+
+    // Empty Folder Properties Sheet
+    val emptyFolderNode = inspectedEmptyFolderNode
+    if (emptyFolderNode != null) {
+        FilePropertiesSheet(
+            node = emptyFolderNode,
+            onDismiss = { inspectedEmptyFolderNode = null }
+        )
     }
 
     // Safe Cleanup Review Bottom Sheet (1.4.15 & 1.4.16)
@@ -1161,7 +1183,8 @@ private fun EmptyFoldersTabContent(
     onToggleSelection: (String) -> Unit,
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
-    onReviewCleanup: () -> Unit
+    onReviewCleanup: () -> Unit,
+    onShowProperties: (EmptyFolderItem) -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Notice banner
@@ -1231,19 +1254,28 @@ private fun EmptyFoldersTabContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(uiState.emptyFolders, key = { it.id }) { item ->
+                    val isSelected = uiState.selectedIds.contains(item.id)
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onToggleSelection(item.id) },
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                            else MaterialTheme.colorScheme.surface
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            0.5.dp,
+                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
-                                checked = uiState.selectedIds.contains(item.id),
+                                checked = isSelected,
                                 onCheckedChange = { onToggleSelection(item.id) }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -1268,6 +1300,14 @@ private fun EmptyFoldersTabContent(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            IconButton(onClick = { onShowProperties(item) }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Info,
+                                    contentDescription = "Folder Properties",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
