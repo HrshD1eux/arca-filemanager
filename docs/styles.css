@@ -437,3 +437,38 @@ footer {
   nav { flex-direction: column; height: auto; padding: 16px 0; gap: 12px; }
   .nav-links { flex-wrap: wrap; justify-content: center; gap: 14px; }
 }
+
+.logo-img {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  box-shadow: var(--shadow-sm);
+  display: block;
+}
+
+.hero-logo-wrapper {
+  margin-bottom: 24px;
+  display: inline-block;
+}
+
+.hero-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  background: #ffffff;
+  display: block;
+  margin: 0 auto;
+}
+
+.app-card-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  object-fit: cover;
+  display: block;
+}

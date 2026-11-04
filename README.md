@@ -1,11 +1,29 @@
-# ARCA File Manager
+<p align="center">
+  <a href="https://hrshd1eux.github.io/arca-filemanager/">
+    <img src="docs/assets/logo.png" width="120" height="120" alt="ARCA File Manager Logo" style="border-radius: 24px;" />
+  </a>
+</p>
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)](https://android.com)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF.svg?logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4.svg)](https://developer.android.com/jetpack/compose)
+<h1 align="center">ARCA File Manager</h1>
 
-**ARCA** is a modern, privacy-first, offline-first Android file manager built with Jetpack Compose and Material 3. Designed for speed, aesthetic polish, and security, ARCA puts complete control over local and remote storage in the user's hands with zero bloat and zero tracking.
+<p align="center">
+  <b>Modern, Fast & Private Android File Manager</b><br>
+  Built with Jetpack Compose & Material 3 • Completely Offline-First • Zero Tracking
+</p>
+
+<p align="center">
+  <a href="https://hrshd1eux.github.io/arca-filemanager/">Website</a> •
+  <a href="https://github.com/HrshD1eux/arca-filemanager/releases/latest">Download APK</a> •
+  <a href="https://hrshd1eux.github.io/arca-filemanager/privacy.html">Privacy Policy</a> •
+  <a href="https://hrshd1eux.github.io/arca-filemanager/about-developer.html">About Developer</a>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
+  <a href="https://android.com"><img src="https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white" alt="Platform"></a>
+  <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.0+-7F52FF.svg?logo=kotlin&logoColor=white" alt="Kotlin"></a>
+  <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-4285F4.svg" alt="Compose"></a>
+</p>
 
 ---
 

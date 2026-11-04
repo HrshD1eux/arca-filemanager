@@ -1,5 +1,12 @@
 package com.Hrshd1eux.filemanager.feature.about
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.ImageBitmap
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -112,18 +119,36 @@ fun AboutDeveloperScreen(
                             .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(68.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "HP",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                        val appIconBitmap = remember(context) {
+                            runCatching {
+                                val drawable = context.packageManager.getApplicationIcon(context.packageName)
+                                val sizePx = (72 * context.resources.displayMetrics.density).toInt().coerceAtLeast(144)
+                                drawable.toBitmap(width = sizePx, height = sizePx, config = Bitmap.Config.ARGB_8888).asImageBitmap()
+                            }.getOrNull()
+                        }
+
+                        if (appIconBitmap != null) {
+                            Image(
+                                bitmap = appIconBitmap,
+                                contentDescription = "ARCA Logo",
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                            )
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(72.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "ARCA",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
                             }
                         }
 

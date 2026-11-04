@@ -31,6 +31,14 @@ class AppUpdateManagerTest {
     }
 
     @Test
+    fun isNewerVersion_sameVersionWithDifferentPrefixes_returnsFalse() {
+        assertFalse(AppUpdateManager.isNewerVersion("1.6.19", "v1.6.19"))
+        assertFalse(AppUpdateManager.isNewerVersion("v1.6.19", "1.6.19"))
+        assertFalse(AppUpdateManager.isNewerVersion("1.6.19-debug", "1.6.19"))
+        assertFalse(AppUpdateManager.isNewerVersion("1.6.19", "1.6.19-debug"))
+    }
+
+    @Test
     fun isNewerVersion_handlesVPrefixAndSuffixes() {
         assertTrue(AppUpdateManager.isNewerVersion("1.6.12", "1.6.13-beta1"))
         assertFalse(AppUpdateManager.isNewerVersion("1.6.13", "1.6.12-rc2"))

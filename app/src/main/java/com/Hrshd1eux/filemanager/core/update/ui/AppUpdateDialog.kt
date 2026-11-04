@@ -1,5 +1,10 @@
 package com.Hrshd1eux.filemanager.core.update.ui
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+
 import android.app.DownloadManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -91,25 +96,40 @@ fun AppUpdateDialog(
     var downloadProgress by remember { mutableStateOf<DownloadProgress?>(null) }
     var downloadedApkFile by remember { mutableStateOf<File?>(null) }
 
+    val appIconBitmap = remember(context) {
+        runCatching {
+            val drawable = context.packageManager.getApplicationIcon(context.packageName)
+            val sizePx = (32 * context.resources.displayMetrics.density).toInt().coerceAtLeast(64)
+            drawable.toBitmap(width = sizePx, height = sizePx, config = Bitmap.Config.ARGB_8888).asImageBitmap()
+        }.getOrNull()
+    }
+
     fun runUpdateCheck() {
         step = UpdateDialogStep.CHECKING
         errorMessage = null
+        downloadedApkFile = null
         scope.launch {
             AppUpdateManager.checkForUpdates(currentVersion)
                 .onSuccess { release ->
-                    if (release == null) {
+                    if (release == null || !release.isUpdateAvailable) {
                         step = UpdateDialogStep.UP_TO_DATE
+                        // If an older/matching downloaded APK lingered from previous runs, clean it up
+                        if (release != null) {
+                            AppUpdateManager.deleteDownloadedApkFile(context, release)
+                        }
                     } else {
                         releaseInfo = release
-                        // Check if file is already downloaded
+                        // Only when a strictly newer update is available, check if already downloaded
                         val existingFile = AppUpdateManager.getDownloadedApkFile(context, release)
-                        if (existingFile != null) {
+                        val isFullyDownloaded = existingFile != null &&
+                            existingFile.exists() &&
+                            (release.apkSize <= 0L || existingFile.length() == release.apkSize)
+
+                        if (isFullyDownloaded) {
                             downloadedApkFile = existingFile
                             step = UpdateDialogStep.DOWNLOAD_COMPLETED
-                        } else if (release.isUpdateAvailable) {
-                            step = UpdateDialogStep.UPDATE_AVAILABLE
                         } else {
-                            step = UpdateDialogStep.UP_TO_DATE
+                            step = UpdateDialogStep.UPDATE_AVAILABLE
                         }
                     }
                 }
@@ -132,6 +152,16 @@ fun AppUpdateDialog(
         },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (appIconBitmap != null) {
+                    Image(
+                        bitmap = appIconBitmap,
+                        contentDescription = "ARCA Logo",
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                }
                 val icon = when (step) {
                     UpdateDialogStep.CHECKING -> Icons.Default.SystemUpdate
                     UpdateDialogStep.UP_TO_DATE -> Icons.Default.CheckCircle

@@ -127,15 +127,19 @@ object AppUpdateManager {
     }
 
     /**
-     * Compares semver version strings (e.g., "1.6.13" vs "1.6.12").
+     * Compares semver version strings (e.g., "1.6.13" vs "1.6.12", "v1.6.19" vs "1.6.19").
      * Returns true if remoteVersion is strictly newer than currentVersion.
      */
     fun isNewerVersion(currentVersion: String, remoteVersion: String): Boolean {
         if (currentVersion.isBlank() || remoteVersion.isBlank()) return false
-        if (currentVersion == remoteVersion) return false
+        val cleanCurrent = currentVersion.removePrefix("v").removePrefix("V").trim()
+        val cleanRemote = remoteVersion.removePrefix("v").removePrefix("V").trim()
+        if (cleanCurrent.equals(cleanRemote, ignoreCase = true)) return false
 
-        val currentParts = currentVersion.substringBefore("-").split(".").mapNotNull { it.toIntOrNull() }
-        val remoteParts = remoteVersion.substringBefore("-").split(".").mapNotNull { it.toIntOrNull() }
+        val currentParts = cleanCurrent.substringBefore("-").split(".").mapNotNull { it.toIntOrNull() }
+        val remoteParts = cleanRemote.substringBefore("-").split(".").mapNotNull { it.toIntOrNull() }
+
+        if (currentParts.isEmpty() || remoteParts.isEmpty()) return false
 
         val maxLength = maxOf(currentParts.size, remoteParts.size)
         for (i in 0 until maxLength) {
@@ -222,6 +226,15 @@ object AppUpdateManager {
         val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: return null
         val apkFile = File(downloadsDir, releaseInfo.apkFileName)
         return if (apkFile.exists() && apkFile.isFile && apkFile.length() > 0) apkFile else null
+    }
+
+    /**
+     * Deletes any previously downloaded APK file for this release if present.
+     */
+    fun deleteDownloadedApkFile(context: Context, releaseInfo: ReleaseInfo): Boolean {
+        val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: return false
+        val apkFile = File(downloadsDir, releaseInfo.apkFileName)
+        return if (apkFile.exists()) apkFile.delete() else false
     }
 
     /**
