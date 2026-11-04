@@ -5,9 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARCA File Manager | Modern, Fast & Private Android File Manager</title>
   <meta name="description" content="ARCA is a privacy-first, offline-first Android file manager built with Jetpack Compose & Material 3. Multi-archive, encrypted vault, network storage, and zero tracking.">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=1.6.22">
   <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="apple-touch-icon" href="assets/logo.png">
+  <style>
+    /* Critical Inline Fallback for Features, Architecture & Coming Soon */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 32px; }
+    .feature-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); display: flex; flex-direction: column; transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease; }
+    .feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px -4px rgba(37,99,235,0.12); border-color: #93C5FD; }
+    .feature-icon-badge { width: 54px; height: 54px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.65rem; margin-bottom: 20px; transition: transform 0.25s ease; }
+    .feature-card:hover .feature-icon-badge { transform: scale(1.1); }
+    .icon-blue { background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; }
+    .icon-emerald { background: #ECFDF5; border: 1px solid #A7F3D0; color: #059669; }
+    .icon-sky { background: #F0F9FF; border: 1px solid #BAE6FD; color: #0284C7; }
+    .icon-indigo { background: #EEF2FF; border: 1px solid #C7D2FE; color: #4F46E5; }
+    .icon-amber { background: #FFFBEB; border: 1px solid #FDE68A; color: #D97706; }
+    .icon-purple { background: #FAF5FF; border: 1px solid #E9D5FF; color: #9333EA; }
+    .icon-slate { background: #F1F5F9; border: 1px solid #CBD5E1; color: #334155; }
+    .icon-rose { background: #FFF1F2; border: 1px solid #FECDD3; color: #E11D48; }
+    .icon-teal { background: #F0FDFA; border: 1px solid #99F6E4; color: #0D9488; }
+    .feature-card h3 { font-size: 1.22rem; font-weight: 700; color: #0F172A; margin-bottom: 10px; line-height: 1.35; }
+    .feature-card p { font-size: 0.94rem; color: #475569; line-height: 1.6; margin-bottom: 18px; flex-grow: 1; }
+    .feature-tag-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: auto; padding-top: 16px; border-top: 1px solid #F1F5F9; }
+    .feature-tag { display: inline-block; font-size: 0.76rem; font-weight: 600; padding: 4px 10px; border-radius: 9999px; background: #F8FAFC; color: #475569; border: 1px solid #E2E8F0; }
+    .feature-card:hover .feature-tag { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
+    .arch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-top: 32px; }
+    .arch-layer-card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 26px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); display: flex; flex-direction: column; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .arch-layer-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px -3px rgba(0,0,0,0.08); border-color: #CBD5E1; }
+    .arch-ui { border-top: 4px solid #2563EB; }
+    .arch-domain { border-top: 4px solid #7C3AED; }
+    .arch-engine { border-top: 4px solid #0284C7; }
+    .arch-security { border-top: 4px solid #059669; }
+    .arch-layer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .arch-layer-badge { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 9999px; }
+    .badge-blue { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .badge-purple { background: #FAF5FF; color: #7C3AED; border: 1px solid #E9D5FF; }
+    .badge-sky { background: #F0F9FF; color: #0284C7; border: 1px solid #BAE6FD; }
+    .badge-emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+    .arch-specs { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+    .arch-specs li { font-size: 0.88rem; color: #475569; line-height: 1.5; display: flex; align-items: flex-start; gap: 8px; }
+    .arch-specs li::before { content: "✓"; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 0.7rem; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
+    .arch-ui .arch-specs li::before { background: #EFF6FF; color: #2563EB; }
+    .arch-domain .arch-specs li::before { background: #FAF5FF; color: #7C3AED; }
+    .arch-engine .arch-specs li::before { background: #F0F9FF; color: #0284C7; }
+    .arch-security .arch-specs li::before { background: #ECFDF5; color: #059669; }
+    .coming-soon-card { background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%); border: 1px solid #E2E8F0; border-radius: 20px; padding: 48px 32px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); max-width: 860px; margin: 32px auto 0; }
+    .coming-soon-badge-pill { display: inline-flex; align-items: center; gap: 8px; background: #EFF6FF; color: #2563EB; font-size: 0.82rem; font-weight: 700; padding: 6px 14px; border-radius: 9999px; border: 1px solid #BFDBFE; margin-bottom: 18px; }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #2563EB; animation: pulse-ring 1.8s infinite; }
+    @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(37,99,235,0.7); } 70% { box-shadow: 0 0 0 8px rgba(37,99,235,0); } 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); } }
+    .coming-soon-preview-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 720px; margin: 0 auto 32px; }
+    .preview-feature-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9999px; font-size: 0.86rem; font-weight: 600; color: #0F172A; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  </style>
 </head>
 <body>
 
@@ -84,7 +132,7 @@
       </div>
     </section>
 
-    <!-- Comprehensive Detailed Features Section -->
+        <!-- Comprehensive Detailed Features Section -->
     <section id="features" class="container">
       <div class="section-title">
         <span class="section-tag">All Capabilities</span>
@@ -92,10 +140,10 @@
         <p>Engineered for everyday utility, media management, power users, and deep filesystem workflows.</p>
       </div>
 
-      <div class="grid-3">
+      <div class="features-grid">
         <!-- 1. Archive Engine -->
-        <div class="feature-detail-card">
-          <div class="card-icon">📦</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-blue">📦</div>
           <h3>Multi-Format Archive Hub</h3>
           <p>Full-featured compression and decompression engine. Create and extract 7z, ZIP, TAR, GZ, BZ2, and XZ. Supports password-protected RAR extraction with instant password verification and retry. Browse inside archives without extracting.</p>
           <div class="feature-tag-list">
@@ -108,8 +156,8 @@
         </div>
 
         <!-- 2. Encrypted Vault -->
-        <div class="feature-detail-card">
-          <div class="card-icon">🔐</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-emerald">🔐</div>
           <h3>Hardware-Backed Encrypted Vault</h3>
           <p>Store sensitive documents, photos, and files in an isolated encrypted vault. Protected with hardware-backed AES-256-GCM authenticated encryption through the Android KeyStore HSM. Unlocks via Biometric (Fingerprint/Face) or master PIN.</p>
           <div class="feature-tag-list">
@@ -121,8 +169,8 @@
         </div>
 
         <!-- 3. Wi-Fi PC Transfer -->
-        <div class="feature-detail-card">
-          <div class="card-icon">🌐</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-sky">🌐</div>
           <h3>Transfer to PC & Local FTP</h3>
           <p>Built-in high-speed FTP server allowing your PC, Mac, or Linux machine to access, copy, modify, download, and upload files over your local Wi-Fi or mobile hotspot. Zero USB cables and zero internet connection required.</p>
           <div class="feature-tag-list">
@@ -134,8 +182,8 @@
         </div>
 
         <!-- 4. Remote Storage Protocols -->
-        <div class="feature-detail-card">
-          <div class="card-icon">☁️</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-indigo">☁️</div>
           <h3>Remote Network Storage Suite</h3>
           <p>Connect seamlessly to your home NAS, cloud servers, or office networks. Full client support for encrypted SFTP, FTPS, Windows Network Shares (SMB 2/3), and WebDAV protocols with encrypted credentials storage.</p>
           <div class="feature-tag-list">
@@ -147,8 +195,8 @@
         </div>
 
         <!-- 5. Storage Analyzer -->
-        <div class="feature-detail-card">
-          <div class="card-icon">📊</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-amber">📊</div>
           <h3>Dual-Engine Storage Analyzer</h3>
           <p>Visual storage breakdown across categories (Media, Docs, APKs, Archives). Discover large files, find exact byte-for-byte duplicates via SHA-256 hash matching, and safely clean empty folders with full path and properties inspection.</p>
           <div class="feature-tag-list">
@@ -160,8 +208,8 @@
         </div>
 
         <!-- 6. Batch Renaming & Operations -->
-        <div class="feature-detail-card">
-          <div class="card-icon">⚡</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-purple">⚡</div>
           <h3>Batch Rename & Staged Queue</h3>
           <p>Multi-select actions let you inspect aggregate properties (size, item count, paths), batch rename multiple files sequentially with customizable prefix, suffix, and index numbers, and stage copy/move operations cleanly.</p>
           <div class="feature-tag-list">
@@ -173,8 +221,8 @@
         </div>
 
         <!-- 7. Obsidian UI & Micro-Interactions -->
-        <div class="feature-detail-card">
-          <div class="card-icon">🎨</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-slate">🎨</div>
           <h3>Obsidian Design & Fluid Physics</h3>
           <p>Crafted exclusively in Jetpack Compose with Material 3. Features a true Obsidian OLED dark theme, subtle 0.5dp hairline containers, two-tone iconography, and hardware-accelerated spring scale-bounce micro-interactions on every tap.</p>
           <div class="feature-tag-list">
@@ -186,8 +234,8 @@
         </div>
 
         <!-- 8. Media & Package Dispatchers -->
-        <div class="feature-detail-card">
-          <div class="card-icon">🎬</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-rose">🎬</div>
           <h3>Integrated Media & APK Tools</h3>
           <p>Direct "Play", "Open With", and viewer actions for audio, video, and documents. Inspect APK metadata, permissions, package version, and target SDK directly before installing with security warning disclosures.</p>
           <div class="feature-tag-list">
@@ -199,8 +247,8 @@
         </div>
 
         <!-- 9. GitHub-Direct Updater -->
-        <div class="feature-detail-card">
-          <div class="card-icon">🔄</div>
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-teal">🔄</div>
           <h3>Direct GitHub Release Updater</h3>
           <p>Check for app updates directly against GitHub Releases without Google Play Services. Resumable background downloads via Android DownloadManager with SHA-256 verification and seamless PackageInstaller prompts.</p>
           <div class="feature-tag-list">
@@ -222,131 +270,120 @@
       </div>
 
       <div class="arch-grid">
-        <div class="arch-layer-card">
-          <span class="arch-layer-badge">UI Layer</span>
+        <div class="arch-layer-card arch-ui">
+          <div class="arch-layer-header">
+            <span class="arch-layer-badge badge-blue">Layer 01 • UI</span>
+            <span class="arch-icon">🎨</span>
+          </div>
           <h3>Presentation & Interaction</h3>
-          <ul>
-            <li><strong>Pure Jetpack Compose:</strong> Declarative UI without XML or WebViews</li>
-            <li><strong>Material 3 Design System:</strong> Adaptive tonal palettes and components</li>
-            <li><strong>Type-Safe Navigation:</strong> Kotlin Serialization-backed route management</li>
-            <li><strong>Spring Physics:</strong> Hardware GPU RenderNode scale micro-interactions</li>
+          <p class="arch-desc">Declarative, zero-XML modern UI with hardware-accelerated spring dynamics.</p>
+          <ul class="arch-specs">
+            <li><strong>Pure Jetpack Compose:</strong> Declarative UI without legacy XML or WebViews</li>
+            <li><strong>Material 3 Adaptive:</strong> Tonal surfaces, obsidian AMOLED dark mode</li>
+            <li><strong>Type-Safe Navigation:</strong> Serialization-backed typed route dispatch</li>
+            <li><strong>Spring Physics:</strong> RenderNode GPU-accelerated micro-interactions</li>
           </ul>
         </div>
 
-        <div class="arch-layer-card">
-          <span class="arch-layer-badge">Domain Layer</span>
-          <h3>State & Use Cases</h3>
-          <ul>
-            <li><strong>Unidirectional Data Flow:</strong> StateFlow and SharedFlow reactivity</li>
-            <li><strong>Kotlin Coroutines:</strong> Structured concurrency and background task dispatch</li>
-            <li><strong>Zero Background Drain:</strong> Active operations run only on explicit user intent</li>
-            <li><strong>Strict Encapsulation:</strong> Decoupled repository and use case boundaries</li>
+        <div class="arch-layer-card arch-domain">
+          <div class="arch-layer-header">
+            <span class="arch-layer-badge badge-purple">Layer 02 • Domain</span>
+            <span class="arch-icon">🧠</span>
+          </div>
+          <h3>State & Reactive Concurrency</h3>
+          <p class="arch-desc">Unidirectional data flow with zero background idle battery drain.</p>
+          <ul class="arch-specs">
+            <li><strong>StateFlow & SharedFlow:</strong> Reactive, observable state orchestration</li>
+            <li><strong>Kotlin Coroutines:</strong> Structured concurrency and lifecycle safety</li>
+            <li><strong>Strict Decoupling:</strong> Pure domain use cases without Android dependencies</li>
+            <li><strong>Zero Daemon Drain:</strong> Background tasks operate strictly on user trigger</li>
           </ul>
         </div>
 
-        <div class="arch-layer-card">
-          <span class="arch-layer-badge">Engine Layer</span>
-          <h3>Storage & Network</h3>
-          <ul>
-            <li><strong>Unified StorageNode:</strong> Common model for local, OTG, and remote files</li>
-            <li><strong>ArcaFtpServer:</strong> Low-overhead RFC 959 bidirectional socket engine</li>
+        <div class="arch-layer-card arch-engine">
+          <div class="arch-layer-header">
+            <span class="arch-layer-badge badge-sky">Layer 03 • Storage</span>
+            <span class="arch-icon">⚙️</span>
+          </div>
+          <h3>Unified Filesystem & Protocols</h3>
+          <p class="arch-desc">Polymorphic storage abstraction across local, OTG, and remote paths.</p>
+          <ul class="arch-specs">
+            <li><strong>Unified StorageNode:</strong> Seamless abstraction across local and network</li>
+            <li><strong>Embedded FTP (RFC 959):</strong> Low-overhead local socket server with write access</li>
             <li><strong>Multi-Archive Hub:</strong> Native Apache Commons Compress & UnRAR</li>
-            <li><strong>Network Protocols:</strong> High-performance JSch, SMBJ, and WebDAV</li>
+            <li><strong>Enterprise Protocols:</strong> Hardened SFTP (JSch), SMB 2/3, and WebDAV</li>
           </ul>
         </div>
 
-        <div class="arch-layer-card">
-          <span class="arch-layer-badge">Security Layer</span>
-          <h3>Cryptographic Integrity</h3>
-          <ul>
-            <li><strong>Android KeyStore:</strong> Hardware-backed HSM key generation and storage</li>
-            <li><strong>AES-256-GCM:</strong> Authenticated symmetric cipher with zero plaintext swap</li>
-            <li><strong>BiometricPrompt API:</strong> Strong biometric face & fingerprint gating</li>
-            <li><strong>Encrypted SharedPreferences:</strong> Secure encrypted remote credentials storage</li>
+        <div class="arch-layer-card arch-security">
+          <div class="arch-layer-header">
+            <span class="arch-layer-badge badge-emerald">Layer 04 • Security</span>
+            <span class="arch-icon">🛡️</span>
+          </div>
+          <h3>Hardware Cryptography & HSM</h3>
+          <p class="arch-desc">Hardware-backed keystore vaults with authenticated symmetric ciphers.</p>
+          <ul class="arch-specs">
+            <li><strong>Android KeyStore HSM:</strong> Hardware-isolated cryptographic key generation</li>
+            <li><strong>AES-256-GCM Cipher:</strong> Authenticated encryption with zero plaintext leakage</li>
+            <li><strong>BiometricPrompt API:</strong> Strong biometric fingerprint and facial gating</li>
+            <li><strong>Encrypted Preferences:</strong> Secure local credential vault for network logins</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <!-- Screenshots Showcase Section -->
+    <!-- Screenshots Showcase Section (Coming Soon) -->
     <section id="screenshots" class="container">
       <div class="section-title">
         <span class="section-tag">Visual Tour</span>
         <h2>Application Screenshots</h2>
-        <p>A glimpse into ARCA's Obsidian interface, micro-interactions, and feature workflows.</p>
+        <p>Obsidian AMOLED interface, fluid micro-interactions, and visual workflows.</p>
       </div>
 
-      <div class="screenshots-grid">
-        <!-- Showcase 1 -->
-        <div class="screenshot-card">
-          <div class="screenshot-placeholder-frame">
-            <div class="screenshot-placeholder-icon">📁</div>
-            <span class="screenshot-placeholder-badge">Obsidian File Browser</span>
+      <div class="coming-soon-card">
+        <div class="coming-soon-badge-pill">
+          <span class="pulse-dot"></span>
+          <span>Coming Soon</span>
+        </div>
+        <h3>Screenshots & Interactive Preview Coming Soon</h3>
+        <p class="coming-soon-desc">
+          We are preparing high-resolution screenshot galleries, AMOLED obsidian walkthroughs, and animated screen captures for the upcoming release.
+        </p>
+
+        <div class="coming-soon-preview-grid">
+          <div class="preview-feature-pill">
+            <span>📁</span>
+            <span>Obsidian AMOLED Explorer</span>
           </div>
-          <div class="screenshot-info">
-            <h3>Filesystem Explorer</h3>
-            <p>High-speed browsing across internal storage, SD cards, and USB OTG drives with 120Hz smooth scrolling.</p>
+          <div class="preview-feature-pill">
+            <span>🔐</span>
+            <span>Hardware-Backed Biometric Vault</span>
+          </div>
+          <div class="preview-feature-pill">
+            <span>📊</span>
+            <span>Dual-Engine Storage Analyzer</span>
+          </div>
+          <div class="preview-feature-pill">
+            <span>🌐</span>
+            <span>Local Wi-Fi PC Transfer Interface</span>
+          </div>
+          <div class="preview-feature-pill">
+            <span>📦</span>
+            <span>Multi-Archive Extraction Hub</span>
+          </div>
+          <div class="preview-feature-pill">
+            <span>⚡</span>
+            <span>Sequential Batch Renamer</span>
           </div>
         </div>
 
-        <!-- Showcase 2 -->
-        <div class="screenshot-card">
-          <div class="screenshot-placeholder-frame">
-            <div class="screenshot-placeholder-icon">🔐</div>
-            <span class="screenshot-placeholder-badge">Hardware-Backed Vault</span>
-          </div>
-          <div class="screenshot-info">
-            <h3>Encrypted Security Vault</h3>
-            <p>Isolated secure container locked with biometric authentication and authenticated AES-GCM encryption.</p>
-          </div>
-        </div>
-
-        <!-- Showcase 3 -->
-        <div class="screenshot-card">
-          <div class="screenshot-placeholder-frame">
-            <div class="screenshot-placeholder-icon">📊</div>
-            <span class="screenshot-placeholder-badge">Storage Intelligence</span>
-          </div>
-          <div class="screenshot-info">
-            <h3>Storage Analyzer & Cleanups</h3>
-            <p>Visual category graphs, large file locators, SHA-256 duplicate finders, and empty directory inspectors.</p>
-          </div>
-        </div>
-
-        <!-- Showcase 4 -->
-        <div class="screenshot-card">
-          <div class="screenshot-placeholder-frame">
-            <div class="screenshot-placeholder-icon">🌐</div>
-            <span class="screenshot-placeholder-badge">Local FTP Server</span>
-          </div>
-          <div class="screenshot-info">
-            <h3>Transfer to PC Over Wi-Fi</h3>
-            <p>Instant file upload, download, modification, and deletion from your PC browser or FTP client with no cables.</p>
-          </div>
-        </div>
-
-        <!-- Showcase 5 -->
-        <div class="screenshot-card">
-          <div class="screenshot-placeholder-frame">
-            <div class="screenshot-placeholder-icon">📦</div>
-            <span class="screenshot-placeholder-badge">Archive Powerhouse</span>
-          </div>
-          <div class="screenshot-info">
-            <h3>Multi-Archive Viewer</h3>
-            <p>Fast extraction of 7z, ZIP, TAR, GZ, and password-protected RAR archives with internal file preview.</p>
-          </div>
-        </div>
-
-        <!-- Showcase 6 -->
-        <div class="screenshot-card">
-          <div class="screenshot-placeholder-frame">
-            <div class="screenshot-placeholder-icon">⚡</div>
-            <span class="screenshot-placeholder-badge">Power User Tools</span>
-          </div>
-          <div class="screenshot-info">
-            <h3>Batch Renaming & Multi-Select</h3>
-            <p>Sequential batch renamer with customizable prefix, suffix, and counter, plus aggregate properties inspector.</p>
-          </div>
+        <div class="coming-soon-actions">
+          <a href="https://github.com/HrshD1eux/arca-filemanager/releases/latest" class="btn btn-primary" target="_blank" rel="noopener">
+            ⬇️ Download Latest APK
+          </a>
+          <a href="https://github.com/HrshD1eux/arca-filemanager" class="btn btn-outline" target="_blank" rel="noopener">
+            ⭐ Explore on GitHub
+          </a>
         </div>
       </div>
     </section>
