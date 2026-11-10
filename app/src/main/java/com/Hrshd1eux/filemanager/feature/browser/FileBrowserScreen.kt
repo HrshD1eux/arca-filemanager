@@ -201,6 +201,16 @@ fun FileBrowserScreen(
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val showHiddenFiles by viewModel.showHiddenFiles.collectAsStateWithLifecycle()
     val isDualPaneMode by viewModel.isDualPaneMode.collectAsStateWithLifecycle()
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val screenWidthDp = configuration.screenWidthDp
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isAdaptiveEligible = screenWidthDp >= 840 || (isLandscape && screenWidthDp >= 600)
+
+    var userCollapsedDualPane by remember(isAdaptiveEligible) { mutableStateOf(false) }
+    val effectiveDualPane = isAdaptiveEligible && !userCollapsedDualPane
+
+    val rightViewModel: FileBrowserViewModel = viewModel(key = "right_pane_browser_vm")
+    var activePaneSide by remember { mutableStateOf(com.Hrshd1eux.filemanager.feature.browser.components.PaneSide.LEFT) }
     val isTabsMode by viewModel.isTabsMode.collectAsStateWithLifecycle()
     val tabs by viewModel.tabs.collectAsStateWithLifecycle()
     val activeTabId by viewModel.activeTabId.collectAsStateWithLifecycle()
@@ -321,14 +331,29 @@ fun FileBrowserScreen(
     BackHandler {
         if (selectedNodeIds.isNotEmpty()) {
             viewModel.clearSelection()
+        } else if (effectiveDualPane) {
+            val activeVm = if (activePaneSide == com.Hrshd1eux.filemanager.feature.browser.components.PaneSide.LEFT) viewModel else rightViewModel
+            val otherVm = if (activePaneSide == com.Hrshd1eux.filemanager.feature.browser.components.PaneSide.LEFT) rightViewModel else viewModel
+            val activeSelected = activeVm.selectedNodeIds.value
+
+            if (activeSelected.isNotEmpty()) {
+                activeVm.clearSelection()
+            } else {
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                val handled = activeVm.navigateUp(hasPermission)
+                if (!handled) {
+                    val otherHandled = otherVm.navigateUp(hasPermission)
+                    if (!otherHandled) {
+                        onNavigateBack()
+                    }
+                }
+            }
         } else {
             val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
             val handled = viewModel.navigateUp(hasPermission)
             if (!handled) {
                 if (stagedNodesToMove != null) {
                     viewModel.clearStagedMove()
-                } else if (isDualPaneMode) {
-                    viewModel.toggleDualPaneMode()
                 } else if (isTabsMode && tabs.size > 1) {
                     val activeTab = tabs.find { it.id == activeTabId }
                     if (activeTab != null && activeTab.isClosable) {
@@ -352,7 +377,7 @@ fun FileBrowserScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            if (!isDualPaneMode && uiState is BrowserUiState.Success && selectedNodeIds.isEmpty()) {
+            if (!effectiveDualPane && uiState is BrowserUiState.Success && selectedNodeIds.isEmpty()) {
                 FloatingActionButton(
                     onClick = { showCreateFolderDialog = true },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -366,7 +391,7 @@ fun FileBrowserScreen(
             }
         },
         bottomBar = {
-            if (!isDualPaneMode && selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
+            if (!effectiveDualPane && selectedNodeIds.isNotEmpty() && uiState is BrowserUiState.Success) {
                 val allItems = (uiState as? BrowserUiState.Success)?.items ?: emptyList()
                 val selectedItems = allItems.filter { selectedNodeIds.contains(it.id) }
 
@@ -440,7 +465,7 @@ fun FileBrowserScreen(
                         onCompare = { nodesToCompare = selectedItems }
                     )
                 }
-            } else if (!isDualPaneMode && stagedTransfer != null && uiState is BrowserUiState.Success) {
+            } else if (!effectiveDualPane && stagedTransfer != null && uiState is BrowserUiState.Success) {
                 val successState = uiState as BrowserUiState.Success
                 val currentFolder = StorageNode(
                     id = successState.currentPath,
@@ -549,12 +574,14 @@ fun FileBrowserScreen(
                                 contentDescription = "Search"
                             )
                         }
-                        IconButton(onClick = { viewModel.toggleDualPaneMode() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.CompareArrows,
-                                contentDescription = if (isDualPaneMode) "Exit Dual-pane mode" else "Dual-pane mode",
-                                tint = if (isDualPaneMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
-                            )
+                        if (isAdaptiveEligible) {
+                            IconButton(onClick = { userCollapsedDualPane = !userCollapsedDualPane }) {
+                                Icon(
+                                    imageVector = if (effectiveDualPane) Icons.AutoMirrored.Filled.ViewList else Icons.AutoMirrored.Filled.CompareArrows,
+                                    contentDescription = if (effectiveDualPane) "Collapse to Single Pane" else "Split into Dual-Pane",
+                                    tint = if (effectiveDualPane) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                                )
+                            }
                         }
                         IconButton(onClick = { viewModel.toggleTabsMode(context) }) {
                             Icon(
@@ -598,12 +625,13 @@ fun FileBrowserScreen(
             }
         }
     ) { innerPadding ->
-        if (isDualPaneMode) {
-            val rightViewModel: FileBrowserViewModel = viewModel(key = "right_pane_browser_vm")
+        if (effectiveDualPane) {
             DualPaneBrowserView(
                 leftViewModel = viewModel,
                 rightViewModel = rightViewModel,
                 onNavigateToArchiveViewer = onNavigateToArchiveViewer,
+                activePane = activePaneSide,
+                onActivePaneChange = { activePaneSide = it },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)

@@ -71,6 +71,14 @@ class AppSettingsRepository(context: Context? = null) {
         _firstRunExplanationCompleted.value = false
         prefs?.edit()?.remove(KEY_FIRST_RUN_EXPLANATION_COMPLETED)?.apply()
     }
+    fun getLastPromptedUpdateVersion(): String? {
+        return prefs?.getString(KEY_LAST_PROMPTED_UPDATE_VERSION, null)
+    }
+
+    fun setLastPromptedUpdateVersion(version: String) {
+        prefs?.edit()?.putString(KEY_LAST_PROMPTED_UPDATE_VERSION, version)?.apply()
+    }
+
 
     private fun loadThemeMode(): ThemeMode {
         val sp = prefs ?: return ThemeMode.SYSTEM
@@ -106,6 +114,7 @@ class AppSettingsRepository(context: Context? = null) {
         private const val KEY_HAPTIC_FEEDBACK = "app_haptic_feedback"
         private const val KEY_SOUND_FEEDBACK = "app_sound_feedback"
         private const val KEY_FIRST_RUN_EXPLANATION_COMPLETED = "app_first_run_storage_explanation_completed"
+        private const val KEY_LAST_PROMPTED_UPDATE_VERSION = "app_last_prompted_update_version"
 
         @Volatile
         private var instance: AppSettingsRepository? = null

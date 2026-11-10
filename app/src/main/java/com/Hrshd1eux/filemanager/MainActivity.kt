@@ -21,6 +21,15 @@ import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 import com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import com.Hrshd1eux.filemanager.core.update.AppUpdateManager
+import com.Hrshd1eux.filemanager.core.update.model.ReleaseInfo
+import com.Hrshd1eux.filemanager.core.update.ui.AppUpdateDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 
 class MainActivity : ComponentActivity() {
 
@@ -51,6 +60,31 @@ class MainActivity : ComponentActivity() {
             val dynamicColor by appSettings.dynamicColor.collectAsStateWithLifecycle()
             val pendingIntent by pendingIntentFlow.collectAsStateWithLifecycle()
 
+            var launchUpdateRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
+            val currentVersionName = remember {
+                runCatching {
+                    val pInfo = applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
+                    pInfo.versionName ?: "1.6.21"
+                }.getOrDefault("1.6.21")
+            }
+
+            LaunchedEffect(Unit) {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        val result = AppUpdateManager.checkForUpdates(currentVersionName)
+                        val release = result.getOrNull()
+                        if (release != null && release.isUpdateAvailable) {
+                            val lastPrompted = appSettings.getLastPromptedUpdateVersion()
+                            if (lastPrompted != release.versionName) {
+                                // Strictly record version so the user is only prompted once for this release
+                                appSettings.setLastPromptedUpdateVersion(release.versionName)
+                                launchUpdateRelease = release
+                            }
+                        }
+                    }
+                }
+            }
+
             val isDark = when (themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
@@ -68,6 +102,14 @@ class MainActivity : ComponentActivity() {
                         incomingIntent = pendingIntent,
                         onIntentHandled = { pendingIntentFlow.value = null }
                     )
+
+                    launchUpdateRelease?.let { release ->
+                        AppUpdateDialog(
+                            currentVersion = currentVersionName,
+                            initialRelease = release,
+                            onDismiss = { launchUpdateRelease = null }
+                        )
+                    }
                 }
             }
         }

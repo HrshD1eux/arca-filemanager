@@ -82,14 +82,23 @@ private enum class UpdateDialogStep {
 fun AppUpdateDialog(
     currentVersion: String,
     onDismiss: () -> Unit,
+    initialRelease: ReleaseInfo? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
-    var step by remember { mutableStateOf(UpdateDialogStep.CHECKING) }
-    var releaseInfo by remember { mutableStateOf<ReleaseInfo?>(null) }
+    var step by remember {
+        mutableStateOf(
+            if (initialRelease != null) {
+                if (initialRelease.isUpdateAvailable) UpdateDialogStep.UPDATE_AVAILABLE else UpdateDialogStep.UP_TO_DATE
+            } else {
+                UpdateDialogStep.CHECKING
+            }
+        )
+    }
+    var releaseInfo by remember { mutableStateOf(initialRelease) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var downloadId by remember { mutableLongStateOf(-1L) }
@@ -141,7 +150,21 @@ fun AppUpdateDialog(
     }
 
     LaunchedEffect(Unit) {
-        runUpdateCheck()
+        if (initialRelease != null && initialRelease.isUpdateAvailable) {
+            val existingFile = AppUpdateManager.getDownloadedApkFile(context, initialRelease)
+            val isFullyDownloaded = existingFile != null &&
+                existingFile.exists() &&
+                (initialRelease.apkSize <= 0L || existingFile.length() == initialRelease.apkSize)
+
+            if (isFullyDownloaded) {
+                downloadedApkFile = existingFile
+                step = UpdateDialogStep.DOWNLOAD_COMPLETED
+            } else {
+                step = UpdateDialogStep.UPDATE_AVAILABLE
+            }
+        } else if (initialRelease == null) {
+            runUpdateCheck()
+        }
     }
 
     AlertDialog(
@@ -453,35 +476,57 @@ fun AppUpdateDialog(
                 }
 
                 UpdateDialogStep.UPDATE_AVAILABLE -> {
-                    Button(
-                        onClick = {
-                            val release = releaseInfo ?: return@Button
-                            if (release.apkUrl.isBlank()) {
-                                Toast.makeText(context, "No APK asset found for this release.", Toast.LENGTH_SHORT).show()
-                                return@Button
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val release = releaseInfo ?: return@OutlinedButton
+                                if (release.apkUrl.isBlank()) {
+                                    Toast.makeText(context, "No APK asset found for this release.", Toast.LENGTH_SHORT).show()
+                                    return@OutlinedButton
+                                }
+                                AppUpdateManager.startDownload(context, release)
+                                Toast.makeText(context, "Downloading update in background...", Toast.LENGTH_SHORT).show()
+                                onDismiss()
                             }
-                            step = UpdateDialogStep.DOWNLOADING
-                            val id = AppUpdateManager.startDownload(context, release)
-                            downloadId = id
+                        ) {
+                            Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Background")
+                        }
 
-                            scope.launch {
-                                AppUpdateManager.observeDownloadProgress(context, id).collectLatest { progress ->
-                                    downloadProgress = progress
-                                    if (progress.isSuccess) {
-                                        val apk = AppUpdateManager.getDownloadedApkFile(context, release)
-                                        downloadedApkFile = apk
-                                        step = UpdateDialogStep.DOWNLOAD_COMPLETED
-                                    } else if (progress.isFailed) {
-                                        errorMessage = "Download failed. Please check network and retry."
-                                        step = UpdateDialogStep.ERROR
+                        Button(
+                            onClick = {
+                                val release = releaseInfo ?: return@Button
+                                if (release.apkUrl.isBlank()) {
+                                    Toast.makeText(context, "No APK asset found for this release.", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                step = UpdateDialogStep.DOWNLOADING
+                                val id = AppUpdateManager.startDownload(context, release)
+                                downloadId = id
+
+                                scope.launch {
+                                    AppUpdateManager.observeDownloadProgress(context, id).collectLatest { progress ->
+                                        downloadProgress = progress
+                                        if (progress.isSuccess) {
+                                            val apk = AppUpdateManager.getDownloadedApkFile(context, release)
+                                            downloadedApkFile = apk
+                                            step = UpdateDialogStep.DOWNLOAD_COMPLETED
+                                        } else if (progress.isFailed) {
+                                            errorMessage = "Download failed. Please check network and retry."
+                                            step = UpdateDialogStep.ERROR
+                                        }
                                     }
                                 }
                             }
+                        ) {
+                            Icon(imageVector = Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Update Now")
                         }
-                    ) {
-                        Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Download & Install")
                     }
                 }
 
@@ -552,7 +597,7 @@ fun AppUpdateDialog(
                     }
                 }
                 UpdateDialogStep.UPDATE_AVAILABLE -> {
-                    OutlinedButton(onClick = onDismiss) {
+                    TextButton(onClick = onDismiss) {
                         Text("Later")
                     }
                 }

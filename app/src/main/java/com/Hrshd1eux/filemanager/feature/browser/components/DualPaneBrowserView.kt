@@ -83,10 +83,11 @@ fun DualPaneBrowserView(
     leftViewModel: FileBrowserViewModel,
     rightViewModel: FileBrowserViewModel,
     onNavigateToArchiveViewer: (String, String) -> Unit,
+    activePane: PaneSide = PaneSide.LEFT,
+    onActivePaneChange: (PaneSide) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var activePane by remember { mutableStateOf(PaneSide.LEFT) }
     var comparisonReport by remember { mutableStateOf<FolderComparisonReport?>(null) }
     var showCreateFolderForPane by remember { mutableStateOf<PaneSide?>(null) }
 
@@ -109,7 +110,12 @@ fun DualPaneBrowserView(
         if (rightState is BrowserUiState.Loading) {
             val root = rightViewModel.storageProvider.getRootNode()
             val downloadDir = File(root.path, "Download")
-            val initialRightPath = if (downloadDir.exists()) downloadDir.absolutePath else root.path
+            val downloadsDir = File(root.path, "Downloads")
+            val initialRightPath = when {
+                downloadDir.exists() && downloadDir.isDirectory -> downloadDir.absolutePath
+                downloadsDir.exists() && downloadsDir.isDirectory -> downloadsDir.absolutePath
+                else -> root.path
+            }
             rightViewModel.initialize(initialRightPath, hasPermission)
         }
     }
@@ -249,7 +255,7 @@ fun DualPaneBrowserView(
                 selectedIds = leftSelectedIds,
                 selectedNodes = leftSelectedNodes,
                 isActive = activePane == PaneSide.LEFT,
-                onFocus = { activePane = PaneSide.LEFT },
+                onFocus = { onActivePaneChange(PaneSide.LEFT) },
                 onNewFolder = { showCreateFolderForPane = PaneSide.LEFT },
                 onNavigateToArchiveViewer = onNavigateToArchiveViewer,
                 onDropFromOther = { payload ->
@@ -270,7 +276,7 @@ fun DualPaneBrowserView(
                     .fillMaxHeight()
             )
 
-            VerticalDivider(modifier = Modifier.fillMaxHeight(), thickness = 2.dp, color = MaterialTheme.colorScheme.outlineVariant)
+            VerticalDivider(modifier = Modifier.fillMaxHeight(), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
             // Right Pane
             SinglePaneColumn(
@@ -280,7 +286,7 @@ fun DualPaneBrowserView(
                 selectedIds = rightSelectedIds,
                 selectedNodes = rightSelectedNodes,
                 isActive = activePane == PaneSide.RIGHT,
-                onFocus = { activePane = PaneSide.RIGHT },
+                onFocus = { onActivePaneChange(PaneSide.RIGHT) },
                 onNewFolder = { showCreateFolderForPane = PaneSide.RIGHT },
                 onNavigateToArchiveViewer = onNavigateToArchiveViewer,
                 onDropFromOther = { payload ->
