@@ -101,7 +101,11 @@ import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.ftp.server.FtpActivityLog
 import com.Hrshd1eux.filemanager.core.ftp.server.FtpServerConfig
+import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.FolderShared
+import androidx.compose.foundation.layout.PaddingValues
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import java.io.File
@@ -118,6 +122,7 @@ fun FtpServerScreen(
     var showFolderPicker by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
     var showSameNetworkDialog by remember { mutableStateOf(false) }
+    var showStoragePermissionDialog by remember { mutableStateOf(false) }
     var isStarting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -188,7 +193,12 @@ fun FtpServerScreen(
                     bytesReceived = state.bytesReceived,
                     onStartClick = {
                         if (!isStarting && !state.isRunning) {
-                            showSameNetworkDialog = true
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            if (!hasPermission) {
+                                showStoragePermissionDialog = true
+                            } else {
+                                showSameNetworkDialog = true
+                            }
                         }
                     },
                     onStopClick = { viewModel.stopServer(context) },
@@ -250,6 +260,59 @@ fun FtpServerScreen(
                 }
             }
 
+            // Storage Permission Warning Banner if All Files Access is not granted
+            if (!state.isRunning && !StoragePermissionManager.hasAllFilesAccess(context)) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
+                        ),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WarningAmber,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Storage Permission Limited",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    text = "Grant All-Files Access to allow your computer to copy and read all photos, media, and documents from this phone.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    runCatching {
+                                        context.startActivity(StoragePermissionManager.createManageAllFilesIntent(context))
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text("Grant", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
+            }
+
             // 2. Configuration & Access Settings Card
             item {
                 FtpServerSettingsCard(
@@ -304,6 +367,51 @@ fun FtpServerScreen(
                 showFolderPicker = false
             },
             onDismiss = { showFolderPicker = false }
+        )
+    }
+
+    // Storage Permission Dialog
+    if (showStoragePermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showStoragePermissionDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.FolderShared,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "All-Files Access Required",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "To allow your computer to browse, read, and copy photos, documents, and downloads from this phone via FTP, Android requires 'All Files Access' permission.\n\nWithout this permission, Android strictly blocks reading files created by other apps.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showStoragePermissionDialog = false
+                        runCatching {
+                            context.startActivity(StoragePermissionManager.createManageAllFilesIntent(context))
+                        }
+                    }
+                ) {
+                    Text("Grant Permission")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStoragePermissionDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 

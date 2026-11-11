@@ -254,5 +254,82 @@ class ArcaFtpServerTest {
         } finally {
             blocker.close()
         }
+     }
+
+    @Test
+    fun server_windowsBackslashPathResolution_succeeds() {
+        val config = FtpServerConfig(
+            port = testPort + 3,
+            rootDirectoryPath = rootDir.absolutePath
+        )
+        server = ArcaFtpServer(config)
+
+        // Windows-style backslash paths
+        val fileWithLeadingBackslash = server.resolvePhysicalFile("\\test_document.txt")
+        assertNotNull("Leading backslash path must resolve", fileWithLeadingBackslash)
+        assertTrue(fileWithLeadingBackslash!!.exists())
+
+        val nestedWithBackslash = server.resolvePhysicalFile("SubFolder\\nested.txt")
+        assertNotNull("Nested backslash path must resolve", nestedWithBackslash)
+        assertTrue(nestedWithBackslash!!.exists())
+
+        val mixedSlashPath = server.resolvePhysicalFile("/SubFolder\\nested.txt")
+        assertNotNull("Mixed slash path must resolve", mixedSlashPath)
+        assertTrue(mixedSlashPath!!.exists())
+    }
+
+    @Test
+    fun client_downloadFileRetr_viaPassiveMode_succeeds() = runBlocking {
+        val config = FtpServerConfig(
+            port = testPort + 4,
+            isAnonymousAllowed = true,
+            rootDirectoryPath = rootDir.absolutePath
+        )
+        server = ArcaFtpServer(config)
+        server.start()
+
+        val socket = Socket("127.0.0.1", testPort + 4)
+        val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+        val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream()))
+
+        reader.readLine() // 220
+        writer.write("USER anonymous\r\n")
+        writer.flush()
+        reader.readLine() // 230
+
+        // Send PASV
+        writer.write("PASV\r\n")
+        writer.flush()
+        val pasvResp = reader.readLine() // 227 Entering Passive Mode (h1,h2,h3,h4,p1,p2)
+        assertTrue("PASV must be 227", pasvResp.startsWith("227"))
+
+        // Parse PASV port
+        val regex = Regex("""\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)""")
+        val match = regex.find(pasvResp)
+        assertNotNull("Must match PASV response format", match)
+        val p1 = match!!.groupValues[5].toInt()
+        val p2 = match.groupValues[6].toInt()
+        val dataPort = (p1 shl 8) or p2
+
+        // Send RETR command
+        writer.write("RETR test_document.txt\r\n")
+        writer.flush()
+
+        // Connect to data port
+        val dataSocket = Socket("127.0.0.1", dataPort)
+        val retrResp = reader.readLine() // 150
+        assertTrue("RETR start response must be 150", retrResp.startsWith("150"))
+
+        val dataReader = BufferedReader(InputStreamReader(dataSocket.getInputStream()))
+        val downloadedContent = dataReader.readText()
+        dataSocket.close()
+
+        val completeResp = reader.readLine() // 226
+        assertTrue("RETR complete response must be 226", completeResp.startsWith("226"))
+        assertEquals("Hello from ARCA FTP Server!", downloadedContent)
+
+        writer.write("QUIT\r\n")
+        writer.flush()
+        socket.close()
     }
 }

@@ -279,7 +279,7 @@ class ArcaFtpServer(
                             "SIZE",
                             "MDTM",
                             "REST STREAM",
-                            "MLST type*;size*;modify*;",
+                            "MLST type*;size*;modify*;perm*;",
                             "MLSD",
                             "PASV",
                             "EPSV",
@@ -423,7 +423,7 @@ class ArcaFtpServer(
                                 val lineOut = when {
                                     isMlsd -> item.toMlsdString()
                                     isNlst -> "${item.name}\r\n"
-                                    else -> item.toUnixListString()
+                                    else -> item.toUnixListString(currentUser ?: "ftp")
                                 }
                                 dWriter.write(lineOut)
                             }
@@ -448,6 +448,13 @@ class ArcaFtpServer(
                             continue
                         }
 
+                        if (!targetFile.canRead()) {
+                            sendReply(550, "Permission denied: System storage permission required to read this file.")
+                            emitLog("Permission denied reading: ${targetFile.name} (Android All-Files Access may be missing)", isError = true)
+                            closeDataServer()
+                            continue
+                        }
+
                         val totalSize = targetFile.length()
                         sendReply(150, "Opening binary mode data connection for ${targetFile.name} ($totalSize bytes).")
 
@@ -460,24 +467,24 @@ class ArcaFtpServer(
                         }
 
                         try {
-                            val inStream = FileInputStream(targetFile)
-                            if (restOffset > 0L && restOffset < totalSize) {
-                                inStream.skip(restOffset)
-                            }
-                            restOffset = 0L
-
-                            val outStream = dataSocket.getOutputStream()
-                            val buffer = ByteArray(64 * 1024)
-                            var read: Int
                             var transferred = 0L
+                            FileInputStream(targetFile).use { inStream ->
+                                if (restOffset > 0L && restOffset < totalSize) {
+                                    inStream.skip(restOffset)
+                                }
+                                restOffset = 0L
 
-                            while (inStream.read(buffer).also { read = it } != -1) {
-                                outStream.write(buffer, 0, read)
-                                transferred += read
-                                bytesSent.addAndGet(read.toLong())
+                                val outStream = dataSocket.getOutputStream()
+                                val buffer = ByteArray(64 * 1024)
+                                var read: Int
+
+                                while (inStream.read(buffer).also { read = it } != -1) {
+                                    outStream.write(buffer, 0, read)
+                                    transferred += read
+                                    bytesSent.addAndGet(read.toLong())
+                                }
+                                outStream.flush()
                             }
-                            outStream.flush()
-                            inStream.close()
                             dataSocket.close()
 
                             emitLog("Sent file: ${targetFile.name} ($transferred bytes to $clientIp)")
@@ -485,6 +492,7 @@ class ArcaFtpServer(
                             sendReply(226, "Transfer complete.")
                         } catch (e: Exception) {
                             runCatching { dataSocket.close() }
+                            emitLog("Transfer failed for ${targetFile.name}: ${e.message}", isError = true)
                             sendReply(451, "Transfer aborted: ${e.message}")
                         }
                     }
@@ -523,19 +531,19 @@ class ArcaFtpServer(
 
                         try {
                             val append = command == "APPE" || restOffset > 0L
-                            val outStream = FileOutputStream(targetFile, append)
-                            val inStream = dataSocket.getInputStream()
-                            val buffer = ByteArray(64 * 1024)
-                            var read: Int
                             var transferred = 0L
+                            FileOutputStream(targetFile, append).use { outStream ->
+                                val inStream = dataSocket.getInputStream()
+                                val buffer = ByteArray(64 * 1024)
+                                var read: Int
 
-                            while (inStream.read(buffer).also { read = it } != -1) {
-                                outStream.write(buffer, 0, read)
-                                transferred += read
-                                bytesReceived.addAndGet(read.toLong())
+                                while (inStream.read(buffer).also { read = it } != -1) {
+                                    outStream.write(buffer, 0, read)
+                                    transferred += read
+                                    bytesReceived.addAndGet(read.toLong())
+                                }
+                                outStream.flush()
                             }
-                            outStream.flush()
-                            outStream.close()
                             dataSocket.close()
                             restOffset = 0L
 
@@ -544,6 +552,7 @@ class ArcaFtpServer(
                             sendReply(226, "Transfer complete.")
                         } catch (e: Exception) {
                             runCatching { dataSocket.close() }
+                            emitLog("Upload failed for ${targetFile.name}: ${e.message}", isError = true)
                             sendReply(451, "Upload failed: ${e.message}")
                         }
                     }
@@ -706,32 +715,50 @@ class ArcaFtpServer(
      */
     fun resolvePhysicalFile(virtualPath: String): File? {
         val root = config.rootFile
-        val cleanVirtual = virtualPath.trim().removeSurrounding("\"").removeSurrounding("'").trim().removePrefix("/").ifEmpty { "" }
+        val cleanVirtual = virtualPath.replace('\\', '/')
+            .trim()
+            .removeSurrounding("\"")
+            .removeSurrounding("'")
+            .trim()
+            .removePrefix("/")
+            .ifEmpty { "" }
         val target = if (cleanVirtual.isEmpty()) root else File(root, cleanVirtual)
         return try {
             val rootCanonical = root.canonicalPath
             val targetCanonical = target.canonicalPath
-            if (targetCanonical.startsWith(rootCanonical)) {
+            if (targetCanonical == rootCanonical || targetCanonical.startsWith(rootCanonical + File.separator) || targetCanonical.startsWith(rootCanonical)) {
                 target
             } else {
                 null // Blocked directory traversal!
             }
         } catch (_: Exception) {
-            null
+            try {
+                val rootAbs = root.absolutePath
+                val targetAbs = target.absolutePath
+                if (targetAbs == rootAbs || targetAbs.startsWith(rootAbs + File.separator) || targetAbs.startsWith(rootAbs)) {
+                    target
+                } else null
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
     private fun resolveRelativePath(currentWorkingDir: String, target: String): String {
-        val trimmed = target.trim().removeSurrounding("\"").removeSurrounding("'").trim()
-        if (trimmed.startsWith("/")) {
-            return normalizeVirtualPath(trimmed)
+        val sanitized = target.replace('\\', '/')
+            .trim()
+            .removeSurrounding("\"")
+            .removeSurrounding("'")
+            .trim()
+        if (sanitized.startsWith("/")) {
+            return normalizeVirtualPath(sanitized)
         }
-        val combined = "$currentWorkingDir/$trimmed"
+        val combined = "$currentWorkingDir/$sanitized"
         return normalizeVirtualPath(combined)
     }
 
     private fun normalizeVirtualPath(path: String): String {
-        val segments = path.split("/").filter { it.isNotBlank() && it != "." }
+        val segments = path.replace('\\', '/').split("/").filter { it.isNotBlank() && it != "." }
         val stack = ArrayList<String>()
         for (seg in segments) {
             if (seg == "..") {
@@ -748,8 +775,9 @@ class ArcaFtpServer(
      */
     private fun getVirtualApkFile(virtualPath: String): File? {
         if (!config.shareApkEnabled) return null
-        if (!virtualPath.startsWith("/APKs/")) return null
-        val fileName = virtualPath.removePrefix("/APKs/")
+        val normalized = virtualPath.replace('\\', '/')
+        if (!normalized.startsWith("/APKs/")) return null
+        val fileName = normalized.removePrefix("/APKs/")
 
         // 1. ARCA's own APK binary
         if (fileName.startsWith("ARCA_") && fileName.endsWith(".apk")) {
@@ -773,20 +801,30 @@ class ArcaFtpServer(
         val name: String,
         val isDirectory: Boolean,
         val size: Long,
-        val lastModified: Long
+        val lastModified: Long,
+        val isReadOnly: Boolean = false
     ) {
-        fun toUnixListString(): String {
-            val perms = if (isDirectory) "drwxr-xr-x" else "-rw-r--r--"
+        fun toUnixListString(user: String = "ftp"): String {
+            val perms = if (isDirectory) {
+                if (isReadOnly) "dr-xr-xr-x" else "drwxrwxrwx"
+            } else {
+                if (isReadOnly) "-r--r--r--" else "-rw-rw-rw-"
+            }
             val sdf = SimpleDateFormat("MMM dd HH:mm", Locale.US)
             val dateStr = sdf.format(Date(lastModified))
-            return "$perms 1 owner group $size $dateStr $name\r\n"
+            return "$perms 1 $user $user $size $dateStr $name\r\n"
         }
 
         fun toMlsdString(): String {
             val typeStr = if (isDirectory) "dir" else "file"
+            val permStr = if (isDirectory) {
+                if (isReadOnly) "el" else "cdeflmp"
+            } else {
+                if (isReadOnly) "r" else "adfrw"
+            }
             val sdf = SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
             val dateStr = sdf.format(Date(lastModified))
-            return "type=$typeStr;size=$size;modify=$dateStr; $name\r\n"
+            return "type=$typeStr;size=$size;modify=$dateStr;perm=$permStr; $name\r\n"
         }
     }
 
@@ -801,34 +839,49 @@ class ArcaFtpServer(
                 val apkFile = File(sourceDir)
                 if (apkFile.exists()) {
                     val ver = appContext.packageManager?.getPackageInfo(appContext.packageName, 0)?.versionName ?: "latest"
-                    result.add(FtpEntryInfo("ARCA_FileManager_v$ver.apk", false, apkFile.length(), apkFile.lastModified()))
+                    result.add(FtpEntryInfo("ARCA_FileManager_v$ver.apk", false, apkFile.length(), apkFile.lastModified(), config.isReadOnly))
                 }
             }
             // Exported shared APKs
             val sharedDir = File(appContext?.cacheDir, ApkShareManager.SHARED_APKS_DIR_NAME)
             if (sharedDir.exists()) {
                 sharedDir.listFiles()?.forEach { file ->
-                    result.add(FtpEntryInfo(file.name, file.isDirectory, file.length(), file.lastModified()))
+                    result.add(FtpEntryInfo(file.name, file.isDirectory, file.length(), file.lastModified(), config.isReadOnly))
                 }
             }
             return result
         }
 
-        // Physical directory listing
-        val dir = resolvePhysicalFile(virtualPath)
-        if (dir != null && dir.exists() && dir.isDirectory) {
-            // Include /APKs virtual folder entry when at root "/"
-            if (config.shareApkEnabled && virtualPath == "/") {
-                result.add(FtpEntryInfo("APKs", true, 4096L, System.currentTimeMillis()))
+        // Virtual APK single file query
+        val virtualApk = getVirtualApkFile(virtualPath)
+        if (virtualApk != null && virtualApk.exists()) {
+            result.add(FtpEntryInfo(virtualApk.name, false, virtualApk.length(), virtualApk.lastModified(), config.isReadOnly))
+            return result
+        }
+
+        // Physical directory or single file listing
+        val fileOrDir = resolvePhysicalFile(virtualPath)
+        if (fileOrDir != null && fileOrDir.exists()) {
+            if (fileOrDir.isFile) {
+                // Return single file entry for file queries (e.g. `LIST filename` or `NLST filename`)
+                result.add(FtpEntryInfo(fileOrDir.name, false, fileOrDir.length(), fileOrDir.lastModified(), config.isReadOnly))
+                return result
             }
 
-            val files = dir.listFiles()
-            if (files != null) {
-                // Directories first, then files sorted by name
-                val sorted = files.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase(Locale.ROOT) }))
-                for (f in sorted) {
-                    if (f.name.startsWith(".")) continue // Skip hidden Unix files
-                    result.add(FtpEntryInfo(f.name, f.isDirectory, if (f.isDirectory) 4096L else f.length(), f.lastModified()))
+            if (fileOrDir.isDirectory) {
+                // Include /APKs virtual folder entry when at root "/"
+                if (config.shareApkEnabled && virtualPath == "/") {
+                    result.add(FtpEntryInfo("APKs", true, 4096L, System.currentTimeMillis(), config.isReadOnly))
+                }
+
+                val files = fileOrDir.listFiles()
+                if (files != null) {
+                    // Directories first, then files sorted by name
+                    val sorted = files.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase(Locale.ROOT) }))
+                    for (f in sorted) {
+                        if (f.name.startsWith(".")) continue // Skip hidden Unix files
+                        result.add(FtpEntryInfo(f.name, f.isDirectory, if (f.isDirectory) 4096L else f.length(), f.lastModified(), config.isReadOnly))
+                    }
                 }
             }
         }
