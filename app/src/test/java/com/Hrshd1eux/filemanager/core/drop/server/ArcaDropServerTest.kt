@@ -86,10 +86,23 @@ class ArcaDropServerTest {
         assertEquals(200, withCookie.statusCode)
         assertTrue(withCookie.body.toString(Charsets.UTF_8).contains("\"running\":true"))
 
-        // 5. Open favicon.svg serves ARCA vector logo without auth
-        val favicon = sendRawHttp("GET /favicon.svg HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
-        assertEquals(200, favicon.statusCode)
-        assertTrue(favicon.body.toString(Charsets.UTF_8).contains("<svg"))
+        // 5. Open logo & favicon routes serve original ARCA PNG logo without auth
+        val faviconPng = sendRawHttp("GET /favicon.png HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        assertEquals(200, faviconPng.statusCode)
+        assertEquals("image/png", faviconPng.headers["content-type"])
+        assertTrue(faviconPng.body.size > 1000)
+        assertEquals(0x89.toByte(), faviconPng.body[0])
+        assertEquals('P'.code.toByte(), faviconPng.body[1])
+        assertEquals('N'.code.toByte(), faviconPng.body[2])
+        assertEquals('G'.code.toByte(), faviconPng.body[3])
+
+        val faviconIco = sendRawHttp("GET /favicon.ico HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        assertEquals(200, faviconIco.statusCode)
+        assertEquals("image/png", faviconIco.headers["content-type"])
+
+        val faviconSvg = sendRawHttp("GET /favicon.svg HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        assertEquals(200, faviconSvg.statusCode)
+        assertTrue(faviconSvg.body.toString(Charsets.UTF_8).contains("<svg"))
     }
 
     @Test

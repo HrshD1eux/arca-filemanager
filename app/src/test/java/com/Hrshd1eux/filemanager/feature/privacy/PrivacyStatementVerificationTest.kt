@@ -106,6 +106,10 @@ class PrivacyStatementVerificationTest {
         assertTrue("Must disclose permissions requested", content.contains("Permissions Requested & Why"))
         assertTrue("Must explain All Files Access", content.contains("All Files Access (MANAGE_EXTERNAL_STORAGE)"))
         assertTrue("Must explain Notifications", content.contains("Notifications (POST_NOTIFICATIONS)"))
+        assertTrue("Must explain Installed Apps Visibility", content.contains("Installed Apps Visibility (QUERY_ALL_PACKAGES)"))
+        assertTrue("Must explain App Usage Statistics", content.contains("App Usage Statistics (PACKAGE_USAGE_STATS)"))
+        assertTrue("Must explain Package Installation Requests", content.contains("Package Installation Requests (REQUEST_INSTALL_PACKAGES)"))
+        assertTrue("Must explain Haptic Feedback", content.contains("Haptic Feedback (VIBRATE)"))
         assertTrue("Must explain Foreground Service", content.contains("Foreground Service (DATA_SYNC)"))
         assertTrue("Must explain Wake Lock", content.contains("Wake Lock (WAKE_LOCK)"))
         assertTrue("Must explain Internet Access", content.contains("Internet Access (INTERNET)"))
@@ -136,6 +140,7 @@ class PrivacyStatementVerificationTest {
         assertTrue("Must disclose Apache Commons Compress", content.contains("Apache Commons Compress"))
         assertTrue("Must disclose Tukaani XZ for Java", content.contains("Tukaani XZ for Java"))
         assertTrue("Must disclose Junrar", content.contains("Junrar"))
+        assertTrue("Must disclose Zip4j", content.contains("Zip4j"))
         assertTrue("Must disclose Palantir ISO File Reader", content.contains("Palantir ISO File Reader"))
 
         // 7. Contact & Privacy Inquiries

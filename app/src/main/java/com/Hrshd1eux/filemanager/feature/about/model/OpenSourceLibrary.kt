@@ -40,6 +40,14 @@ object OpenSourceRegistry {
             licenseUrl = "https://raw.githubusercontent.com/junrar/junrar/master/LICENSE"
         ),
         OpenSourceLibrary(
+            name = "Zip4j",
+            author = "Srikanth Reddy Lingala",
+            license = "Apache License 2.0",
+            description = "Handles encrypted and standard ZIP archive creation and extraction locally on device.",
+            projectUrl = "https://github.com/srikanth-lingala/zip4j",
+            licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        ),
+        OpenSourceLibrary(
             name = "Palantir ISO File Reader",
             author = "Palantir Technologies",
             license = "Apache License 2.0",

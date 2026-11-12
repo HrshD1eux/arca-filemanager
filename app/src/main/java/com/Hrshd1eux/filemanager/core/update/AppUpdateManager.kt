@@ -4,17 +4,22 @@ import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import android.os.SystemClock
 import com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller
 import com.Hrshd1eux.filemanager.core.update.model.DownloadProgress
 import com.Hrshd1eux.filemanager.core.update.model.ReleaseInfo
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -193,57 +198,214 @@ object AppUpdateManager {
     }
 
     /**
+     * Streams the release APK directly via HTTPS (following GitHub CDN redirects) for immediate
+     * in-dialog "Update Now" downloads with reliable progress and cancellation support.
+     */
+    fun downloadApkDirect(context: Context, releaseInfo: ReleaseInfo): Flow<DownloadProgress> = flow {
+        require(releaseInfo.apkUrl.isNotBlank()) { "Release does not contain a valid APK download URL." }
+
+        val targetDir = getUpdateDownloadsDir(context)
+        val finalFile = File(targetDir, releaseInfo.apkFileName)
+        val tempFile = File(targetDir, "${releaseInfo.apkFileName}.part")
+        if (tempFile.exists()) tempFile.delete()
+        if (finalFile.exists()) finalFile.delete()
+
+        emit(
+            DownloadProgress(
+                status = DownloadManager.STATUS_RUNNING,
+                bytesDownloaded = 0L,
+                totalBytes = releaseInfo.apkSize
+            )
+        )
+
+        var conn: HttpURLConnection? = null
+        try {
+            conn = openWithRedirects(releaseInfo.apkUrl, releaseInfo.versionName)
+            val contentLength = conn.contentLengthLong.takeIf { it > 0L } ?: releaseInfo.apkSize
+            val buffer = ByteArray(32 * 1024)
+            var downloaded = 0L
+            var lastEmitTimeMs = 0L
+
+            conn.inputStream.use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        downloaded += read
+
+                        val nowMs = SystemClock.elapsedRealtime()
+                        if (nowMs - lastEmitTimeMs >= 120L) {
+                            lastEmitTimeMs = nowMs
+                            emit(
+                                DownloadProgress(
+                                    status = DownloadManager.STATUS_RUNNING,
+                                    bytesDownloaded = downloaded,
+                                    totalBytes = maxOf(contentLength, downloaded)
+                                )
+                            )
+                        }
+                    }
+                    output.flush()
+                }
+            }
+
+            if (downloaded <= 0L) {
+                tempFile.delete()
+                emit(
+                    DownloadProgress(
+                        status = DownloadManager.STATUS_FAILED,
+                        bytesDownloaded = 0L,
+                        totalBytes = contentLength,
+                        isFailed = true,
+                        errorMessage = "Downloaded file was empty."
+                    )
+                )
+                return@flow
+            }
+
+            if (!tempFile.renameTo(finalFile)) {
+                tempFile.copyTo(finalFile, overwrite = true)
+                tempFile.delete()
+            }
+
+            emit(
+                DownloadProgress(
+                    status = DownloadManager.STATUS_SUCCESSFUL,
+                    bytesDownloaded = downloaded,
+                    totalBytes = downloaded,
+                    isSuccess = true
+                )
+            )
+        } catch (ce: CancellationException) {
+            tempFile.delete()
+            throw ce
+        } catch (e: Exception) {
+            tempFile.delete()
+            emit(
+                DownloadProgress(
+                    status = DownloadManager.STATUS_FAILED,
+                    bytesDownloaded = 0L,
+                    totalBytes = releaseInfo.apkSize,
+                    isFailed = true,
+                    errorMessage = e.localizedMessage ?: "Download failed. Please check your connection."
+                )
+            )
+        } finally {
+            conn?.disconnect()
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private fun openWithRedirects(initialUrl: String, versionTag: String): HttpURLConnection {
+        var currentUrl = initialUrl
+        for (hop in 0 until 6) {
+            val conn = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                instanceFollowRedirects = false
+                useCaches = false
+                setRequestProperty("User-Agent", "ARCA-FileManager/$versionTag")
+                connectTimeout = 15000
+                readTimeout = 30000
+            }
+            val code = conn.responseCode
+            if (code in 300..399) {
+                val location = conn.getHeaderField("Location")
+                conn.disconnect()
+                if (location.isNullOrBlank()) {
+                    throw java.io.IOException("Redirect missing Location header (HTTP $code)")
+                }
+                val resolved = URL(URL(currentUrl), location)
+                if (!resolved.protocol.equals("https", ignoreCase = true)) {
+                    throw java.io.IOException("Refusing non-HTTPS redirect to ${resolved.protocol}")
+                }
+                currentUrl = resolved.toString()
+                continue
+            }
+            if (code != HttpURLConnection.HTTP_OK) {
+                conn.disconnect()
+                throw java.io.IOException("HTTP $code while downloading update")
+            }
+            return conn
+        }
+        throw java.io.IOException("Too many redirects while downloading update")
+    }
+
+    /**
      * Observes live progress of the DownloadManager task until completion or failure.
      */
     fun observeDownloadProgress(context: Context, downloadId: Long): Flow<DownloadProgress> = flow {
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         var isRunning = true
+        var missingRowRetries = 0
 
         while (isRunning) {
             val query = DownloadManager.Query().setFilterById(downloadId)
             val cursor = downloadManager.query(query)
 
             if (cursor != null && cursor.moveToFirst()) {
-                val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                val bytesDownloadedIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                val totalBytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                missingRowRetries = 0
+                try {
+                    val statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                    val bytesDownloadedIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val totalBytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
 
-                val status = if (statusIdx >= 0) cursor.getInt(statusIdx) else DownloadManager.STATUS_FAILED
-                val bytesDownloaded = if (bytesDownloadedIdx >= 0) cursor.getLong(bytesDownloadedIdx) else 0L
-                val totalBytes = if (totalBytesIdx >= 0) cursor.getLong(totalBytesIdx) else 0L
+                    val status = if (statusIdx >= 0) cursor.getInt(statusIdx) else DownloadManager.STATUS_FAILED
+                    val bytesDownloaded = if (bytesDownloadedIdx >= 0) cursor.getLong(bytesDownloadedIdx) else 0L
+                    val totalBytes = if (totalBytesIdx >= 0) cursor.getLong(totalBytesIdx) else 0L
 
-                val isSuccess = status == DownloadManager.STATUS_SUCCESSFUL
-                val isFailed = status == DownloadManager.STATUS_FAILED
+                    val isSuccess = status == DownloadManager.STATUS_SUCCESSFUL
+                    val isFailed = status == DownloadManager.STATUS_FAILED
 
-                emit(
-                    DownloadProgress(
-                        status = status,
-                        bytesDownloaded = bytesDownloaded,
-                        totalBytes = totalBytes,
-                        isSuccess = isSuccess,
-                        isFailed = isFailed
+                    emit(
+                        DownloadProgress(
+                            status = status,
+                            bytesDownloaded = bytesDownloaded,
+                            totalBytes = totalBytes,
+                            isSuccess = isSuccess,
+                            isFailed = isFailed
+                        )
                     )
-                )
 
-                if (isSuccess || isFailed) {
-                    isRunning = false
+                    if (isSuccess || isFailed) {
+                        isRunning = false
+                    }
+                } finally {
+                    cursor.close()
                 }
             } else {
-                isRunning = false
+                cursor?.close()
+                missingRowRetries++
+                if (missingRowRetries >= 5) {
+                    emit(
+                        DownloadProgress(
+                            status = DownloadManager.STATUS_FAILED,
+                            bytesDownloaded = 0L,
+                            totalBytes = 0L,
+                            isFailed = true,
+                            errorMessage = "System DownloadManager did not start the download."
+                        )
+                    )
+                    isRunning = false
+                }
             }
-            cursor?.close()
 
             if (isRunning) {
-                delay(600)
+                delay(500)
             }
         }
     }.flowOn(Dispatchers.IO)
 
+    private fun getUpdateDownloadsDir(context: Context): File {
+        return context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: File(context.cacheDir, "updates").apply { mkdirs() }
+    }
+
     /**
-     * Returns the downloaded APK file in the app external downloads dir if it exists.
+     * Returns the downloaded APK file in the app update downloads dir if it exists.
      */
     fun getDownloadedApkFile(context: Context, releaseInfo: ReleaseInfo): File? {
-        val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: return null
+        val downloadsDir = getUpdateDownloadsDir(context)
         val apkFile = File(downloadsDir, releaseInfo.apkFileName)
         return if (apkFile.exists() && apkFile.isFile && apkFile.length() > 0) apkFile else null
     }
@@ -252,8 +414,10 @@ object AppUpdateManager {
      * Deletes any previously downloaded APK file for this release if present.
      */
     fun deleteDownloadedApkFile(context: Context, releaseInfo: ReleaseInfo): Boolean {
-        val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: return false
+        val downloadsDir = getUpdateDownloadsDir(context)
         val apkFile = File(downloadsDir, releaseInfo.apkFileName)
+        val tempFile = File(downloadsDir, "${releaseInfo.apkFileName}.part")
+        if (tempFile.exists()) tempFile.delete()
         return if (apkFile.exists()) apkFile.delete() else false
     }
 

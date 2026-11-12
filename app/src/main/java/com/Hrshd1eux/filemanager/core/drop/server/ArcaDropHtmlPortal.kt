@@ -8,19 +8,29 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
  */
 object ArcaDropHtmlPortal {
 
+    val ARCA_LOGO_PNG_BYTES: ByteArray? = runCatching {
+        ArcaDropHtmlPortal::class.java.getResourceAsStream("/arca_logo.png")?.use { it.readBytes() }
+    }.getOrNull()
+
     /**
-     * Exact ARCA adaptive launcher icon geometry wrapped into a crisp vector SVG
-     * for browser header branding and <link rel="icon"> favicon.
+     * Fallback vector artwork mirroring ARCA's zippered folder + security shield emblem.
      */
     val ARCA_LOGO_SVG = """
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="40" height="40" role="img" aria-label="ARCA Logo">
-          <rect width="108" height="108" rx="26" fill="#0B0E14"/>
-          <path fill="#3B82F6" d="M34,36h14l6,6h20c2.2,0 4,1.8 4,4v26c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4V40c0,-2.2 1.8,-4 4,-4z"/>
-          <path fill="#FFFFFF" d="M48,56l6,-6 6,6 -2,2 -4,-4 -4,4 -2,-2z"/>
+          <rect width="108" height="108" rx="24" fill="#FFFFFF"/>
+          <path fill="#1565D8" d="M18,28h22l8,8h42c5.5,0 10,4.5 10,10v36c0,5.5 -4.5,10 -10,10H18c-5.5,0 -10,-4.5 -10,-10V38c0,-5.5 4.5,-10 10,-10z"/>
+          <rect x="40" y="36" width="8" height="36" rx="2" fill="#FFFFFF"/>
+          <path fill="#1E8E3E" stroke="#FFFFFF" stroke-width="3" d="M74,48l18,8v13c0,11 -8,20 -18,24c-10,-4 -18,-13 -18,-24V56z"/>
+          <rect x="67" y="67" width="14" height="11" rx="2" fill="#FFFFFF"/>
+          <path fill="none" stroke="#FFFFFF" stroke-width="2.6" d="M70,67v-4a4,4 0 0 1 8,0v4"/>
         </svg>
     """.trimIndent()
 
     val ARCA_FAVICON_BYTES: ByteArray = ARCA_LOGO_SVG.toByteArray(Charsets.UTF_8)
+
+    private val ARCA_BRAND_MARKUP = """
+        <img src="/arca-logo.png" alt="ARCA Logo" width="40" height="40" style="width:40px;height:40px;border-radius:10px;object-fit:contain;display:block;flex-shrink:0;" />
+    """.trimIndent()
 
     fun escapeHtml(raw: String): String {
         val sb = StringBuilder(raw.length + 16)
@@ -51,7 +61,9 @@ object ArcaDropHtmlPortal {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ARCA Drop — Enter PIN</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/arca-logo.png" />
   <style>
     :root {
       color-scheme: light;
@@ -156,7 +168,7 @@ object ArcaDropHtmlPortal {
 <body>
   <main class="card">
     <div class="brand">
-      $ARCA_LOGO_SVG
+      $ARCA_BRAND_MARKUP
       <span class="brand-title">ARCA Drop</span>
     </div>
     <p>Enter the 6-digit PIN shown on your Android device to connect over local Wi-Fi.</p>
@@ -223,7 +235,9 @@ object ArcaDropHtmlPortal {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ARCA Drop — Local Wi-Fi File Transfer</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/arca-logo.png" />
   <style>
     :root {
       color-scheme: light;
@@ -557,7 +571,7 @@ object ArcaDropHtmlPortal {
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        $ARCA_LOGO_SVG
+        $ARCA_BRAND_MARKUP
         <div>
           <div class="brand-name">ARCA Drop</div>
           <div class="brand-sub">Direct Local Wi-Fi File Transfer • Zero Cloud</div>

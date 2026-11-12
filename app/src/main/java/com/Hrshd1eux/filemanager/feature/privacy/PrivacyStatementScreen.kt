@@ -268,6 +268,22 @@ private fun PermissionsDisclosureCard(
                 desc = "Required on Android 13+ (API 33+) exclusively to show user-visible progress indicators during batch file tasks (e.g. compressing a large zip, extracting an archive, bulk copy/move) and vault background lock alerts. Never used for marketing or background notifications."
             )
             DisclosureItem(
+                title = "Installed Apps Visibility (QUERY_ALL_PACKAGES)",
+                desc = "Used locally by the App Analyzer and App Backup tools so you can inspect installed package sizes, permissions, versions, or back up APK files on your own device without sending app lists anywhere."
+            )
+            DisclosureItem(
+                title = "App Usage Statistics (PACKAGE_USAGE_STATS)",
+                desc = "Optional user-granted special permission used locally by Storage Analyzer to display accurate app storage/cache breakdowns when you open the App Manager."
+            )
+            DisclosureItem(
+                title = "Package Installation Requests (REQUEST_INSTALL_PACKAGES)",
+                desc = "Used exclusively when you explicitly tap an APK file to install it via Android's PackageInstaller or choose to install a user-approved GitHub release update."
+            )
+            DisclosureItem(
+                title = "Haptic Feedback (VIBRATE)",
+                desc = "Used optionally for subtle tactile feedback on gestures and interactions when haptics are enabled in Settings."
+            )
+            DisclosureItem(
                 title = "Foreground Service (DATA_SYNC)",
                 desc = "Prevents the Android operating system from prematurely killing active archive compression, extraction, file transfer tasks, or user-started Local FTP / ARCA Drop sessions when you navigate away from the app."
             )
@@ -438,6 +454,10 @@ private fun ThirdPartyLibrariesDisclosureCard(
             DisclosureItem(
                 title = "Junrar",
                 desc = "Used exclusively for reading and extracting uncompressed/compressed RAR archives locally on device."
+            )
+            DisclosureItem(
+                title = "Zip4j",
+                desc = "Used locally for standard and password-encrypted ZIP archive creation and extraction without any network code."
             )
             DisclosureItem(
                 title = "Palantir ISO File Reader",

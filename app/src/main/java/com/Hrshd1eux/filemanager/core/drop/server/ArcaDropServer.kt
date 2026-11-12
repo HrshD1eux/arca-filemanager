@@ -248,16 +248,28 @@ class ArcaDropServer(
                 return
             }
 
-            // Open favicon routes so browser tab always displays ARCA's original logo
-            if (method == "GET" && (path == "/favicon.svg" || path == "/favicon.ico")) {
-                sendBytes(
-                    output = output,
-                    statusCode = 200,
-                    statusText = "OK",
-                    contentType = "image/svg+xml; charset=utf-8",
-                    body = ArcaDropHtmlPortal.ARCA_FAVICON_BYTES,
-                    extraHeaders = listOf("Cache-Control: public, max-age=3600")
-                )
+            // Open favicon & logo routes so browser tab and login screen always display ARCA's original logo
+            if (method == "GET" && (path == "/arca-logo.png" || path == "/favicon.png" || path == "/favicon.ico" || path == "/favicon.svg")) {
+                val pngBytes = ArcaDropHtmlPortal.ARCA_LOGO_PNG_BYTES
+                if (path != "/favicon.svg" && pngBytes != null) {
+                    sendBytes(
+                        output = output,
+                        statusCode = 200,
+                        statusText = "OK",
+                        contentType = "image/png",
+                        body = pngBytes,
+                        extraHeaders = listOf("Cache-Control: public, max-age=3600")
+                    )
+                } else {
+                    sendBytes(
+                        output = output,
+                        statusCode = 200,
+                        statusText = "OK",
+                        contentType = "image/svg+xml; charset=utf-8",
+                        body = ArcaDropHtmlPortal.ARCA_FAVICON_BYTES,
+                        extraHeaders = listOf("Cache-Control: public, max-age=3600")
+                    )
+                }
                 return
             }
 

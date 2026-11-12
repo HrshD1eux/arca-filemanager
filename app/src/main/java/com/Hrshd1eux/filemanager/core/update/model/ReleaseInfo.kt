@@ -23,7 +23,8 @@ data class DownloadProgress(
     val bytesDownloaded: Long,
     val totalBytes: Long,
     val isSuccess: Boolean = false,
-    val isFailed: Boolean = false
+    val isFailed: Boolean = false,
+    val errorMessage: String? = null
 ) {
     val progressRatio: Float
         get() = if (totalBytes > 0) (bytesDownloaded.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f) else 0f

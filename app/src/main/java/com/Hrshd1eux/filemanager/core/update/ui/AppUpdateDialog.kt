@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,6 +66,7 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.update.AppUpdateManager
 import com.Hrshd1eux.filemanager.core.update.model.DownloadProgress
 import com.Hrshd1eux.filemanager.core.update.model.ReleaseInfo
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
@@ -105,6 +107,7 @@ fun AppUpdateDialog(
     var downloadId by remember { mutableLongStateOf(-1L) }
     var downloadProgress by remember { mutableStateOf<DownloadProgress?>(null) }
     var downloadedApkFile by remember { mutableStateOf<File?>(null) }
+    var downloadJob by remember { mutableStateOf<Job?>(null) }
 
     val appIconBitmap = remember(context) {
         runCatching {
@@ -382,7 +385,7 @@ fun AppUpdateDialog(
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "Downloading in background via Android DownloadManager. You can leave this screen; a system notification will alert you upon completion.",
+                            text = "Downloading update APK directly from GitHub Releases...",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -478,29 +481,14 @@ fun AppUpdateDialog(
                 }
 
                 UpdateDialogStep.UPDATE_AVAILABLE -> {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                val release = releaseInfo ?: return@OutlinedButton
-                                if (release.apkUrl.isBlank()) {
-                                    Toast.makeText(context, "No APK asset found for this release.", Toast.LENGTH_SHORT).show()
-                                    return@OutlinedButton
-                                }
-                                AppUpdateManager.startDownload(context, release)
-                                Toast.makeText(context, "Downloading update in background...", Toast.LENGTH_SHORT).show()
-                                onUserInteracted(release.versionName)
-                                onDismiss()
-                            }
-                        ) {
-                            Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Background")
-                        }
-
                         Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp),
                             onClick = {
                                 val release = releaseInfo ?: return@Button
                                 if (release.apkUrl.isBlank()) {
@@ -509,27 +497,81 @@ fun AppUpdateDialog(
                                 }
                                 onUserInteracted(release.versionName)
                                 step = UpdateDialogStep.DOWNLOADING
-                                val id = AppUpdateManager.startDownload(context, release)
-                                downloadId = id
-
-                                scope.launch {
-                                    AppUpdateManager.observeDownloadProgress(context, id).collectLatest { progress ->
+                                errorMessage = null
+                                downloadProgress = DownloadProgress(
+                                    status = DownloadManager.STATUS_RUNNING,
+                                    bytesDownloaded = 0L,
+                                    totalBytes = release.apkSize
+                                )
+                                downloadJob?.cancel()
+                                downloadJob = scope.launch {
+                                    AppUpdateManager.downloadApkDirect(context, release).collectLatest { progress ->
                                         downloadProgress = progress
                                         if (progress.isSuccess) {
                                             val apk = AppUpdateManager.getDownloadedApkFile(context, release)
                                             downloadedApkFile = apk
                                             step = UpdateDialogStep.DOWNLOAD_COMPLETED
+                                            if (apk != null && ApkInstaller.canInstallPackages(context)) {
+                                                AppUpdateManager.installUpdate(context, apk)
+                                            }
                                         } else if (progress.isFailed) {
-                                            errorMessage = "Download failed. Please check network and retry."
+                                            errorMessage = progress.errorMessage
+                                                ?: "Download failed. Please check network and retry."
                                             step = UpdateDialogStep.ERROR
                                         }
                                     }
                                 }
                             }
                         ) {
-                            Icon(imageVector = Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Update Now")
+                            Icon(imageVector = Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Update Now", maxLines = 1, softWrap = false, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 42.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                onClick = {
+                                    val release = releaseInfo ?: return@OutlinedButton
+                                    if (release.apkUrl.isBlank()) {
+                                        Toast.makeText(context, "No APK asset found for this release.", Toast.LENGTH_SHORT).show()
+                                        return@OutlinedButton
+                                    }
+                                    runCatching {
+                                        AppUpdateManager.startDownload(context, release)
+                                    }.onSuccess {
+                                        Toast.makeText(context, "Downloading update in background...", Toast.LENGTH_SHORT).show()
+                                        onUserInteracted(release.versionName)
+                                        onDismiss()
+                                    }.onFailure { err ->
+                                        errorMessage = err.localizedMessage ?: "Failed to start background download."
+                                        step = UpdateDialogStep.ERROR
+                                    }
+                                }
+                            ) {
+                                Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Background", maxLines = 1, softWrap = false)
+                            }
+
+                            TextButton(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 42.dp),
+                                onClick = {
+                                    releaseInfo?.versionName?.let(onUserInteracted)
+                                    onDismiss()
+                                }
+                            ) {
+                                Text("Later", maxLines = 1, softWrap = false)
+                            }
                         }
                     }
                 }
@@ -537,9 +579,12 @@ fun AppUpdateDialog(
                 UpdateDialogStep.DOWNLOADING -> {
                     OutlinedButton(
                         onClick = {
+                            downloadJob?.cancel()
+                            downloadJob = null
                             if (downloadId != -1L) {
                                 val dm = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as DownloadManager
                                 dm.remove(downloadId)
+                                downloadId = -1L
                             }
                             step = UpdateDialogStep.UPDATE_AVAILABLE
                         }
@@ -585,42 +630,36 @@ fun AppUpdateDialog(
                 }
             }
         },
-        dismissButton = {
-            when (step) {
-                UpdateDialogStep.UP_TO_DATE -> {
-                    TextButton(
-                        onClick = {
-                            runCatching {
-                                uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/releases")
+        dismissButton = if (step == UpdateDialogStep.UPDATE_AVAILABLE) {
+            null
+        } else {
+            {
+                when (step) {
+                    UpdateDialogStep.UP_TO_DATE -> {
+                        TextButton(
+                            onClick = {
+                                runCatching {
+                                    uriHandler.openUri("https://github.com/HrshD1eux/arca-filemanager/releases")
+                                }
                             }
+                        ) {
+                            Text("Releases Webpage")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                         }
-                    ) {
-                        Text("Releases Webpage")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                     }
-                }
-                UpdateDialogStep.UPDATE_AVAILABLE -> {
-                    TextButton(
-                        onClick = {
-                            releaseInfo?.versionName?.let(onUserInteracted)
-                            onDismiss()
+                    UpdateDialogStep.DOWNLOAD_COMPLETED -> {
+                        OutlinedButton(onClick = onDismiss) {
+                            Text("Close")
                         }
-                    ) {
-                        Text("Later")
                     }
-                }
-                UpdateDialogStep.DOWNLOAD_COMPLETED -> {
-                    OutlinedButton(onClick = onDismiss) {
-                        Text("Close")
+                    UpdateDialogStep.ERROR -> {
+                        OutlinedButton(onClick = onDismiss) {
+                            Text("Close")
+                        }
                     }
+                    else -> {}
                 }
-                UpdateDialogStep.ERROR -> {
-                    OutlinedButton(onClick = onDismiss) {
-                        Text("Close")
-                    }
-                }
-                else -> {}
             }
         },
         modifier = modifier
