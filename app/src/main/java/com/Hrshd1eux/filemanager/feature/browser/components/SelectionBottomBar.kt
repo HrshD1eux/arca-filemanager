@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -73,6 +74,7 @@ fun SelectionBottomBar(
     onOpenWith: (() -> Unit)? = null,
     onPlay: (() -> Unit)? = null,
     onCompare: (() -> Unit)? = null,
+    onSendViaArcaDrop: (() -> Unit)? = null,
     lastMoveDestination: StorageNode? = null,
     onMoveToRecent: ((StorageNode) -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -269,6 +271,24 @@ fun SelectionBottomBar(
                                 onShare()
                             }
                         )
+
+                        // Send via ARCA Drop
+                        if (onSendViaArcaDrop != null) {
+                            DropdownMenuItem(
+                                text = { Text("Send via ARCA Drop") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Wifi,
+                                        contentDescription = "Send via ARCA Drop",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    onSendViaArcaDrop()
+                                }
+                            )
+                        }
 
                         // Encrypt
                         DropdownMenuItem(

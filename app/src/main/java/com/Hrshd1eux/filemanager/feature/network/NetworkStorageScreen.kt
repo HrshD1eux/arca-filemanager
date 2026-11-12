@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -79,7 +80,8 @@ fun NetworkStorageScreen(
     onNavigateToFtpServer: () -> Unit,
     onNavigateToDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
-    repository: NetworkConnectionRepository? = null
+    repository: NetworkConnectionRepository? = null,
+    onNavigateToArcaDrop: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val actualRepository = repository ?: remember(context) {
@@ -149,6 +151,53 @@ fun NetworkStorageScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // ARCA Drop (QR / Browser Wi-Fi Share) Banner
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .bounceClick(scaleDown = 0.98f, onClick = onNavigateToArcaDrop),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    border = BorderStroke(
+                        0.5.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TwoToneIconBadge(
+                            icon = Icons.Default.Wifi,
+                            tint = MaterialTheme.colorScheme.primary,
+                            size = 44.dp,
+                            iconSize = 22.dp,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "ARCA Drop (QR & Browser Share)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Share or receive files, folders, and text with any browser on your local Wi-Fi via QR code and 6-digit PIN.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
             // Transfer to PC (Local FTP Server) Banner
             item {
                 Card(

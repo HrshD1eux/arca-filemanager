@@ -53,6 +53,13 @@ class CategoryViewModel @JvmOverloads constructor(
     private val _isOperating = MutableStateFlow(false)
     val isOperating: StateFlow<Boolean> = _isOperating.asStateFlow()
 
+    // In-place search state
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     private var rawItems: List<StorageNode> = emptyList()
     private var currentRootPath: String? = null
     private var isInitialized = false
@@ -70,6 +77,8 @@ class CategoryViewModel @JvmOverloads constructor(
         isInitialized = true
         _category.value = cat
         currentRootPath = rootPath
+        _isSearching.value = false
+        _searchQuery.value = ""
         clearSelection()
 
         // Default ViewMode: Grid for Images and Videos, List for documents/audio/archives
@@ -120,7 +129,8 @@ class CategoryViewModel @JvmOverloads constructor(
     }
 
     fun selectAll() {
-        _selectedNodes.value = rawItems.toSet()
+        val items = (uiState.value as? CategoryUiState.Success)?.items ?: rawItems
+        _selectedNodes.value = items.toSet()
     }
 
     fun toggleSelectAll() {
@@ -134,6 +144,34 @@ class CategoryViewModel @JvmOverloads constructor(
 
     fun clearSelection() {
         _selectedNodes.value = emptySet()
+    }
+
+    // --- In-Place Search Controls ---
+
+    fun toggleSearch() {
+        if (_isSearching.value) {
+            closeSearch()
+        } else {
+            _isSearching.value = true
+        }
+    }
+
+    fun closeSearch() {
+        val hadQuery = _searchQuery.value.isNotBlank()
+        _isSearching.value = false
+        _searchQuery.value = ""
+        if (hadQuery && rawItems.isNotEmpty()) {
+            applySortingAndEmit()
+        } else if (rawItems.isEmpty() && _uiState.value !is CategoryUiState.Loading && _uiState.value !is CategoryUiState.Error) {
+            _uiState.value = CategoryUiState.Empty(message = getCategoryEmptyMessage(_category.value))
+        }
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+        if (rawItems.isNotEmpty()) {
+            applySortingAndEmit()
+        }
     }
 
     // --- Sorting Controls ---
@@ -179,7 +217,29 @@ class CategoryViewModel @JvmOverloads constructor(
     }
 
     private fun applySortingAndEmit() {
-        val sorted = repository.sortItems(rawItems, _sortOrder.value)
+        val query = _searchQuery.value.trim()
+        val filtered = if (query.isEmpty()) {
+            rawItems
+        } else {
+            rawItems.filter { node ->
+                node.name.contains(query, ignoreCase = true)
+            }
+        }
+
+        if (filtered.isEmpty() && query.isNotEmpty()) {
+            val categoryLabel = if (_category.value == CategoryFilter.APKS) {
+                "Apps & APKs"
+            } else {
+                _category.value.displayName
+            }
+            _uiState.value = CategoryUiState.Empty(
+                message = "No $categoryLabel match \"$query\".",
+                isSearchFilterEmpty = true
+            )
+            return
+        }
+
+        val sorted = repository.sortItems(filtered, _sortOrder.value)
         val totalSize = sorted.sumOf { it.size }
         _uiState.value = CategoryUiState.Success(
             items = sorted,

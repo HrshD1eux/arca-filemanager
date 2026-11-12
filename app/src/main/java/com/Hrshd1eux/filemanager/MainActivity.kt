@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.Hrshd1eux.filemanager.core.designsystem.ArcaTheme
+import com.Hrshd1eux.filemanager.core.lock.manager.AppLockManager
 import com.Hrshd1eux.filemanager.core.navigation.ArcaNavHost
 import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 import com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository
@@ -33,7 +35,13 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
+    private companion object {
+        private const val UPDATE_CHECK_COOLDOWN_MS = 15 * 60 * 1000L
+    }
+
     private val pendingIntentFlow = MutableStateFlow<Intent?>(null)
+    private val updateCheckTrigger = MutableStateFlow(1)
+    private var lastSuccessfulUpdateCheckElapsedMs: Long = 0L
 
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -56,31 +64,37 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val appSettings = remember { AppSettingsRepository.getInstance(applicationContext) }
+            val appLockManager = remember { AppLockManager.getInstance(applicationContext) }
             val themeMode by appSettings.themeMode.collectAsStateWithLifecycle()
             val dynamicColor by appSettings.dynamicColor.collectAsStateWithLifecycle()
             val pendingIntent by pendingIntentFlow.collectAsStateWithLifecycle()
+            val isAppLocked by appLockManager.isAppLocked.collectAsStateWithLifecycle()
+            val checkTrigger by updateCheckTrigger.collectAsStateWithLifecycle()
 
             var launchUpdateRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
             val currentVersionName = remember {
                 runCatching {
                     val pInfo = applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
-                    pInfo.versionName ?: "1.6.21"
-                }.getOrDefault("1.6.21")
+                    pInfo.versionName ?: "1.6.25"
+                }.getOrDefault("1.6.25")
             }
 
-            LaunchedEffect(Unit) {
-                withContext(Dispatchers.IO) {
-                    runCatching {
-                        val result = AppUpdateManager.checkForUpdates(currentVersionName)
-                        val release = result.getOrNull()
-                        if (release != null && release.isUpdateAvailable) {
-                            val lastPrompted = appSettings.getLastPromptedUpdateVersion()
-                            if (lastPrompted != release.versionName) {
-                                // Strictly record version so the user is only prompted once for this release
-                                appSettings.setLastPromptedUpdateVersion(release.versionName)
-                                launchUpdateRelease = release
-                            }
-                        }
+            LaunchedEffect(checkTrigger, isAppLocked) {
+                if (isAppLocked || launchUpdateRelease != null) return@LaunchedEffect
+                val now = SystemClock.elapsedRealtime()
+                val elapsedSinceLast = now - lastSuccessfulUpdateCheckElapsedMs
+                if (lastSuccessfulUpdateCheckElapsedMs != 0L && elapsedSinceLast < UPDATE_CHECK_COOLDOWN_MS) {
+                    return@LaunchedEffect
+                }
+
+                val result = withContext(Dispatchers.IO) {
+                    AppUpdateManager.checkForUpdates(currentVersionName)
+                }
+                result.onSuccess { release ->
+                    lastSuccessfulUpdateCheckElapsedMs = SystemClock.elapsedRealtime()
+                    val lastPrompted = appSettings.getLastPromptedUpdateVersion()
+                    if (AppUpdateManager.shouldPromptForUpdate(currentVersionName, release, lastPrompted)) {
+                        launchUpdateRelease = release
                     }
                 }
             }
@@ -107,7 +121,13 @@ class MainActivity : ComponentActivity() {
                         AppUpdateDialog(
                             currentVersion = currentVersionName,
                             initialRelease = release,
-                            onDismiss = { launchUpdateRelease = null }
+                            onUserInteracted = { version ->
+                                appSettings.setLastPromptedUpdateVersion(version)
+                            },
+                            onDismiss = {
+                                appSettings.setLastPromptedUpdateVersion(release.versionName)
+                                launchUpdateRelease = null
+                            }
                         )
                     }
                 }
@@ -131,6 +151,12 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         VaultLockManager.getInstance(applicationContext).onAppForegrounded()
+        val now = SystemClock.elapsedRealtime()
+        if (lastSuccessfulUpdateCheckElapsedMs == 0L ||
+            (now - lastSuccessfulUpdateCheckElapsedMs) >= UPDATE_CHECK_COOLDOWN_MS
+        ) {
+            updateCheckTrigger.value += 1
+        }
     }
 
     override fun onStop() {

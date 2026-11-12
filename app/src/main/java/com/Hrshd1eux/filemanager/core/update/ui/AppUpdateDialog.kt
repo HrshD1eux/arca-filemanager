@@ -83,6 +83,7 @@ fun AppUpdateDialog(
     currentVersion: String,
     onDismiss: () -> Unit,
     initialRelease: ReleaseInfo? = null,
+    onUserInteracted: (versionName: String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -170,6 +171,7 @@ fun AppUpdateDialog(
     AlertDialog(
         onDismissRequest = {
             if (step != UpdateDialogStep.DOWNLOADING) {
+                releaseInfo?.versionName?.let(onUserInteracted)
                 onDismiss()
             }
         },
@@ -489,6 +491,7 @@ fun AppUpdateDialog(
                                 }
                                 AppUpdateManager.startDownload(context, release)
                                 Toast.makeText(context, "Downloading update in background...", Toast.LENGTH_SHORT).show()
+                                onUserInteracted(release.versionName)
                                 onDismiss()
                             }
                         ) {
@@ -504,6 +507,7 @@ fun AppUpdateDialog(
                                     Toast.makeText(context, "No APK asset found for this release.", Toast.LENGTH_SHORT).show()
                                     return@Button
                                 }
+                                onUserInteracted(release.versionName)
                                 step = UpdateDialogStep.DOWNLOADING
                                 val id = AppUpdateManager.startDownload(context, release)
                                 downloadId = id
@@ -597,7 +601,12 @@ fun AppUpdateDialog(
                     }
                 }
                 UpdateDialogStep.UPDATE_AVAILABLE -> {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = {
+                            releaseInfo?.versionName?.let(onUserInteracted)
+                            onDismiss()
+                        }
+                    ) {
                         Text("Later")
                     }
                 }

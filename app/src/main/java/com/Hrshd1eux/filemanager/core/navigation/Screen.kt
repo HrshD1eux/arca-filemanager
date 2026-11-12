@@ -98,6 +98,12 @@ sealed interface Screen {
     data object FtpServer : Screen
 
     @Serializable
+    data class ArcaDrop(
+        val receiveDir: String? = null,
+        val autoStart: Boolean = false
+    ) : Screen
+
+    @Serializable
     data object Favorites : Screen
 
     @Serializable

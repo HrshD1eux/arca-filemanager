@@ -91,10 +91,13 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tab
+import androidx.compose.material.icons.filled.Wifi
+import com.Hrshd1eux.filemanager.core.drop.server.ArcaDropManager
 import com.Hrshd1eux.filemanager.feature.browser.components.BrowserTabBar
 import com.Hrshd1eux.filemanager.feature.browser.components.DualPaneBrowserView
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -124,6 +127,8 @@ import com.Hrshd1eux.filemanager.feature.browser.components.ContextualActionBar
 import com.Hrshd1eux.filemanager.feature.browser.components.CreateFolderDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DeleteConfirmationDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.GoToPathDialog
+import com.Hrshd1eux.filemanager.feature.browser.components.PaneSide
 import com.Hrshd1eux.filemanager.feature.browser.components.OperationProgressDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.RenameDialog
 import com.Hrshd1eux.filemanager.feature.browser.components.BatchRenameDialog
@@ -182,6 +187,7 @@ fun FileBrowserScreen(
     onNavigateToImageViewer: (imagePath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToVideoViewer: (videoPath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToPreview: (filePath: String, categoryName: String?, directoryPath: String?) -> Unit = onNavigateToImageViewer,
+    onNavigateToArcaDrop: (receiveDir: String?, autoStart: Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     onNavigateToPrivacy: () -> Unit = {},
     viewModel: FileBrowserViewModel = viewModel()
@@ -246,6 +252,8 @@ fun FileBrowserScreen(
     }
     var nodeForChecksums by remember { mutableStateOf<StorageNode?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
+    var showGoToPathDialog by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     var showSortBottomSheet by remember { mutableStateOf(false) }
 
     var quickActionNode by remember { mutableStateOf<StorageNode?>(null) }
@@ -462,7 +470,13 @@ fun FileBrowserScreen(
                                 bulkNodesForProperties = selectedItems
                             }
                         },
-                        onCompare = { nodesToCompare = selectedItems }
+                        onCompare = { nodesToCompare = selectedItems },
+                        onSendViaArcaDrop = {
+                            val currentDir = (uiState as? BrowserUiState.Success)?.currentPath
+                            ArcaDropManager.getInstance().addStorageNodes(selectedItems)
+                            viewModel.clearSelection()
+                            onNavigateToArcaDrop(currentDir, true)
+                        }
                     )
                 }
             } else if (!effectiveDualPane && stagedTransfer != null && uiState is BrowserUiState.Success) {
@@ -615,6 +629,47 @@ fun FileBrowserScreen(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Refresh"
                             )
+                        }
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More options"
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Go to Path") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.FolderOpen,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showGoToPathDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("ARCA Drop (Share / Receive)") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Wifi,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        val currentDir = (uiState as? BrowserUiState.Success)?.currentPath ?: initialPath
+                                        onNavigateToArcaDrop(currentDir, false)
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -1107,6 +1162,44 @@ fun FileBrowserScreen(
                 )
             },
             onDismiss = { showCreateFolderDialog = false }
+        )
+    }
+
+    // Go to Path Dialog
+    if (showGoToPathDialog) {
+        val targetViewModel = if (effectiveDualPane && activePaneSide == PaneSide.RIGHT) {
+            rightViewModel
+        } else {
+            viewModel
+        }
+        val activeUiState = if (effectiveDualPane && activePaneSide == PaneSide.RIGHT) {
+            rightViewModel.uiState.value
+        } else {
+            uiState
+        }
+        val currentPath = (activeUiState as? BrowserUiState.Success)?.currentPath
+            ?: initialPath
+            ?: viewModel.storageProvider.getRootNode().path
+
+        GoToPathDialog(
+            currentPath = currentPath,
+            onNavigateToDirectory = { targetPath ->
+                showGoToPathDialog = false
+                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                targetViewModel.loadDirectory(targetPath, hasPermission)
+            },
+            onOpenFile = { docFile ->
+                showGoToPathDialog = false
+                when {
+                    FileTypeResolver.canPreviewArchive(docFile.fileName) ->
+                        onNavigateToArchiveViewer(docFile.filePath, docFile.fileName)
+                    docFile.fileName.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(docFile.fileName) ->
+                        apkToInstall = File(docFile.filePath)
+                    else ->
+                        onNavigateToPreview(docFile.filePath, null, docFile.parentPath)
+                }
+            },
+            onDismiss = { showGoToPathDialog = false }
         )
     }
 

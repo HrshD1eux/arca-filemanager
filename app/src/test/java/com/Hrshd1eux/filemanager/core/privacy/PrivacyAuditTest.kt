@@ -124,11 +124,14 @@ class PrivacyAuditTest {
         for (file in kotlinFiles) {
             val normalizedPath = file.invariantSeparatorsPath
             val isLocalFtpServer = normalizedPath.contains("core/ftp/server")
+            val isArcaDropServer = normalizedPath.contains("core/drop/server")
             val isAppUpdate = normalizedPath.contains("core/update")
             val content = file.readText()
             for (forbidden in forbiddenImports) {
-                // Sockets are permitted exclusively within the user-configured local embedded FTP server engine
-                if (isLocalFtpServer && (forbidden == "java.net.Socket" || forbidden == "java.net.ServerSocket")) {
+                // Sockets are permitted exclusively within user-initiated local Wi-Fi transfer engines (FTP & ARCA Drop)
+                if ((isLocalFtpServer || isArcaDropServer) &&
+                    (forbidden == "java.net.Socket" || forbidden == "java.net.ServerSocket")
+                ) {
                     continue
                 }
                 // HttpURLConnection & URL are permitted exclusively within the user-initiated GitHub update manager

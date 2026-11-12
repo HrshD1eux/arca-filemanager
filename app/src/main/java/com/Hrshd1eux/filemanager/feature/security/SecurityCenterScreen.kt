@@ -460,9 +460,9 @@ private fun VerifiedCapabilitiesOverviewCard(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "• Operates offline-first: Zero third-party trackers, zero advertising SDKs, and zero developer cloud endpoints.\n" +
-                        "• User-initiated remote networking: ARCA communicates over a network ONLY when you explicitly configure and connect to a remote server (SFTP, FTPS, FTP, SMB, WebDAV). Outbound traffic is strictly point-to-point.\n" +
+                        "• User-initiated networking only: ARCA communicates over a network ONLY when you explicitly connect to a remote server (SFTP, FTPS, FTP, SMB, WebDAV) or start local Wi-Fi transfer (Local FTP / ARCA Drop with 6-digit PIN and Host header validation).\n" +
                         "• Cryptography at rest: Vault files are encrypted with AES-256-GCM. Decryption keys live in volatile RAM only while unlocked and are purged upon lock.\n" +
-                        "• Honest platform limits: ARCA operates within standard Android OS sandboxing and respects hardware wear-leveling realities on modern flash media.",
+                        "• Honest platform limits: ARCA operates within standard Android OS sandboxing, local HTTP LAN sharing uses plaintext over trusted Wi-Fi without cloud relays, and secure deletion respects flash wear-leveling realities.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

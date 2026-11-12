@@ -31,7 +31,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
@@ -42,6 +44,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
@@ -65,6 +68,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -105,6 +109,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FileIntentDispatcher
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+import com.Hrshd1eux.filemanager.core.storage.util.PathJumpTarget
 import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
 import com.Hrshd1eux.filemanager.feature.browser.components.BulkDeleteConfirmationDialog
@@ -148,6 +153,7 @@ fun FileSearchScreen(
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val detectedPathTarget by viewModel.detectedPathTarget.collectAsStateWithLifecycle()
 
     val selectedNodes by viewModel.selectedNodes.collectAsStateWithLifecycle()
     val isOperating by viewModel.isOperating.collectAsStateWithLifecycle()
@@ -380,6 +386,25 @@ fun FileSearchScreen(
                 )
             }
 
+            // Instant "Open path" card when user pastes or types a valid filesystem path
+            val pathTarget = detectedPathTarget
+            if (!isSelectionMode && pathTarget != null) {
+                DirectPathJumpCard(
+                    target = pathTarget,
+                    onOpenFolder = { folderPath -> onNavigateToDirectory(folderPath) },
+                    onOpenFile = { docFile ->
+                        val node = docFile.toStorageNode()
+                        val file = File(docFile.filePath)
+                        when {
+                            FileTypeResolver.isAudio(node.name) -> audioController.playTrack(node, listOf(node))
+                            node.name.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(node.name) ->
+                                ApkInstaller.install(context, file)
+                            else -> FileIntentDispatcher.view(context, node)
+                        }
+                    }
+                )
+            }
+
             // Search Content
             when (val state = uiState) {
                 is SearchUiState.Idle -> {
@@ -403,7 +428,9 @@ fun FileSearchScreen(
                 }
 
                 is SearchUiState.Empty -> {
-                    SearchEmptyView(query = query)
+                    if (pathTarget == null) {
+                        SearchEmptyView(query = query)
+                    }
                 }
 
                 is SearchUiState.Success -> {
@@ -1232,6 +1259,128 @@ private fun SearchEmptyView(query: String, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
+        }
+    }
+}
+
+@Composable
+private fun DirectPathJumpCard(
+    target: PathJumpTarget,
+    onOpenFolder: (path: String) -> Unit,
+    onOpenFile: (PathJumpTarget.DocumentFile) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val primaryClick = {
+        when (target) {
+            is PathJumpTarget.Directory -> onOpenFolder(target.path)
+            is PathJumpTarget.DocumentFile -> onOpenFile(target)
+        }
+    }
+
+    Card(
+        onClick = primaryClick,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when (target) {
+                            is PathJumpTarget.Directory -> Icons.Default.FolderOpen
+                            is PathJumpTarget.DocumentFile -> Icons.AutoMirrored.Filled.InsertDriveFile
+                        },
+                        contentDescription = null,
+                        tint = when (target) {
+                            is PathJumpTarget.Directory -> FolderYellow
+                            is PathJumpTarget.DocumentFile -> MaterialTheme.colorScheme.primary
+                        },
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = when (target) {
+                            is PathJumpTarget.Directory -> "Open path • ${target.displayName}"
+                            is PathJumpTarget.DocumentFile -> "Open path • ${target.fileName}"
+                        },
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = target.displayPath,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Open path",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            if (target is PathJumpTarget.DocumentFile) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(
+                        onClick = { onOpenFolder(target.parentPath) },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Folder,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Open Folder", maxLines = 1)
+                    }
+                    OutlinedButton(
+                        onClick = { onOpenFile(target) },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Open File (${FileFormatter.formatFileSize(target.sizeBytes)})",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
         }
     }
 }

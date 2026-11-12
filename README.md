@@ -38,8 +38,9 @@
   - Resumable background extraction and integrity testing.
 - **🔐 Encrypted Vault:**
   - Hardware-backed AES-GCM encryption with biometric authentication or custom secure PIN.
-- **🌐 Network Storage Protocols:**
+- **🌐 Network Storage & Zero-Cloud Wi-Fi Transfer:**
   - Seamless SFTP, FTP, SMB, and WebDAV client integration.
+  - **ARCA Drop:** Two-way local Wi-Fi browser portal with pure-Kotlin QR code, 6-digit session PIN (`HttpOnly; SameSite=Strict` cookie + Host-header DNS-rebinding guard), streaming ZIP folder downloads, drag-and-drop uploads, shared text snippets, and Android Share Sheet target (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`).
   - Built-in local FTP server for high-speed Wi-Fi PC file transfers.
 - **📊 Storage Analyzer:**
   - Interactive storage breakdown, largest files detection, duplicate scanner, and visual image/media previews.

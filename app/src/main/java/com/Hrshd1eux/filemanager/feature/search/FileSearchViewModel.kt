@@ -16,6 +16,9 @@ import com.Hrshd1eux.filemanager.core.search.model.SizeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.provider.StorageProvider
+import com.Hrshd1eux.filemanager.core.storage.util.PathJumpResolver
+import com.Hrshd1eux.filemanager.core.storage.util.PathJumpTarget
+import com.Hrshd1eux.filemanager.core.storage.util.PathResolutionResult
 import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import com.Hrshd1eux.filemanager.feature.category.CategoryRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -92,6 +95,9 @@ class FileSearchViewModel @JvmOverloads constructor(
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
+    private val _detectedPathTarget = MutableStateFlow<PathJumpTarget?>(null)
+    val detectedPathTarget: StateFlow<PathJumpTarget?> = _detectedPathTarget.asStateFlow()
+
     private val _selectedNodes = MutableStateFlow<Set<StorageNode>>(emptySet())
     val selectedNodes: StateFlow<Set<StorageNode>> = _selectedNodes.asStateFlow()
 
@@ -149,11 +155,25 @@ class FileSearchViewModel @JvmOverloads constructor(
         if (path != null && path != storageProvider.getRootNode().path) {
             _searchEverywhere.value = false
         }
+        updateDetectedPath(_query.value)
         triggerCurrentSearch()
     }
 
     fun onQueryChange(newQuery: String) {
         _query.value = newQuery
+        updateDetectedPath(newQuery)
+    }
+
+    private fun updateDetectedPath(rawQuery: String) {
+        if (!PathJumpResolver.looksLikeExplicitPath(rawQuery)) {
+            _detectedPathTarget.value = null
+            return
+        }
+        val resolution = PathJumpResolver.resolve(
+            rawInput = rawQuery,
+            externalStorageRoot = storageProvider.getRootNode().path
+        )
+        _detectedPathTarget.value = (resolution as? PathResolutionResult.Valid)?.target
     }
 
     fun onCategorySelect(newCategory: CategoryFilter) {
@@ -215,6 +235,7 @@ class FileSearchViewModel @JvmOverloads constructor(
 
     fun clearQuery() {
         _query.value = ""
+        _detectedPathTarget.value = null
     }
 
     private fun triggerCurrentSearch() {
@@ -394,6 +415,11 @@ class FileSearchViewModel @JvmOverloads constructor(
 
         if (criteria.query.isNotBlank()) {
             addRecentSearch(criteria.query)
+        }
+
+        if (_detectedPathTarget.value != null && PathJumpResolver.looksLikeExplicitPath(criteria.query)) {
+            _uiState.value = SearchUiState.Empty
+            return
         }
 
         searchJob = viewModelScope.launch(ioDispatcher) {

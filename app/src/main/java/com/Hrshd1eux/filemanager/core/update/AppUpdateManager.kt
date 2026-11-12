@@ -86,7 +86,9 @@ object AppUpdateManager {
         try {
             val conn = (URL(LATEST_RELEASE_URL).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
+                useCaches = false
                 setRequestProperty("Accept", "application/vnd.github.v3+json")
+                setRequestProperty("Cache-Control", "no-cache")
                 setRequestProperty("User-Agent", "ARCA-FileManager/$currentVersion")
                 connectTimeout = 12000
                 readTimeout = 12000
@@ -106,7 +108,9 @@ object AppUpdateManager {
         // Fallback to /releases (which includes pre-releases)
         val connList = (URL(ALL_RELEASES_URL).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
+            useCaches = false
             setRequestProperty("Accept", "application/vnd.github.v3+json")
+            setRequestProperty("Cache-Control", "no-cache")
             setRequestProperty("User-Agent", "ARCA-FileManager/$currentVersion")
             connectTimeout = 12000
             readTimeout = 12000
@@ -150,6 +154,22 @@ object AppUpdateManager {
         }
 
         return false
+    }
+
+    /**
+     * Returns true when [release] is strictly newer than [currentVersion] and has not already
+     * been acknowledged/prompted for the same normalized version.
+     */
+    fun shouldPromptForUpdate(
+        currentVersion: String,
+        release: ReleaseInfo?,
+        lastPromptedVersion: String?
+    ): Boolean {
+        if (release == null || !release.isUpdateAvailable) return false
+        if (!isNewerVersion(currentVersion, release.versionName)) return false
+        val normalizedRemote = release.versionName.removePrefix("v").removePrefix("V").trim()
+        val normalizedPrompted = lastPromptedVersion?.removePrefix("v")?.removePrefix("V")?.trim()
+        return normalizedRemote.isNotEmpty() && normalizedRemote != normalizedPrompted
     }
 
     /**

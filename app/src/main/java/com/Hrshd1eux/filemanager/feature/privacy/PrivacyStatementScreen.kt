@@ -269,11 +269,15 @@ private fun PermissionsDisclosureCard(
             )
             DisclosureItem(
                 title = "Foreground Service (DATA_SYNC)",
-                desc = "Prevents the Android operating system from prematurely killing active archive compression, extraction, or file transfer tasks when you navigate away from the app."
+                desc = "Prevents the Android operating system from prematurely killing active archive compression, extraction, file transfer tasks, or user-started Local FTP / ARCA Drop sessions when you navigate away from the app."
+            )
+            DisclosureItem(
+                title = "Wake Lock (WAKE_LOCK)",
+                desc = "Used exclusively while user-initiated Local FTP or ARCA Drop foreground transfer services are running so CPU/Wi-Fi sockets remain responsive during large browser or PC transfers."
             )
             DisclosureItem(
                 title = "Internet Access (INTERNET)",
-                desc = "Declared to permit user-initiated remote storage protocol connections (FTP, FTPS, SFTP, SMB, WebDAV) and optional release update checks against official GitHub releases. Strictly point-to-point with zero telemetry."
+                desc = "Declared to permit user-initiated remote storage protocol connections (FTP, FTPS, SFTP, SMB, WebDAV), user-started local Wi-Fi transfer servers (Local FTP & ARCA Drop), and optional release update checks against official GitHub releases. Strictly point-to-point with zero telemetry."
             )
             DisclosureItem(
                 title = "Explicitly Excluded Permissions",
@@ -316,6 +320,10 @@ private fun NetworkFeaturesDisclosureCard(
             DisclosureItem(
                 title = "Protocol Encryption Standards",
                 desc = "SFTP uses SSHv2 encryption, FTPS uses TLS, and WebDAV can use HTTPS. Cleartext protocols (Plaintext FTP or cleartext HTTP WebDAV) are supported for local LAN environments but carry explicit warnings in the connection dialog."
+            )
+            DisclosureItem(
+                title = "ARCA Drop (Local Wi-Fi Browser Sharing)",
+                desc = "When you manually start ARCA Drop, your device hosts an embedded local HTTP portal over your Wi-Fi or hotspot IP protected by a random 6-digit session PIN, HttpOnly SameSite=Strict session cookie, and strict Host header validation (DNS-rebinding protection). Traffic stays on your local LAN subnet as plaintext HTTP without TLS certificates (use only on trusted local networks), auto-stops after 15 minutes of inactivity, and automatically purges any staged content:// copies from app cache on stop."
             )
             DisclosureItem(
                 title = "App Update Checks",

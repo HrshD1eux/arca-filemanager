@@ -60,6 +60,8 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -80,6 +82,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -93,6 +97,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -146,6 +152,9 @@ fun CategoryScreen(
     val selectedNodes by viewModel.selectedNodes.collectAsStateWithLifecycle()
     val operationProgress by viewModel.operationProgress.collectAsStateWithLifecycle()
     val isOperating by viewModel.isOperating.collectAsStateWithLifecycle()
+    val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchFocusRequester = remember { FocusRequester() }
 
     val audioController = remember { AudioPlaybackController.getInstance(context) }
     val audioPlaybackState by audioController.playbackState.collectAsStateWithLifecycle()
@@ -153,9 +162,12 @@ fun CategoryScreen(
 
     val isSelectionMode = selectedNodes.isNotEmpty()
 
-    // Handle system back navigation: exit selection mode first, or pop back
+    // Handle system back navigation: exit selection mode first, then search, or pop back
     BackHandler(enabled = isSelectionMode) {
         viewModel.clearSelection()
+    }
+    BackHandler(enabled = isSearching && !isSelectionMode) {
+        viewModel.closeSearch()
     }
 
     var showSortSheet by remember { mutableStateOf(false) }
@@ -248,6 +260,57 @@ fun CategoryScreen(
                         actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 )
+            } else if (isSearching) {
+                val searchLabel = if (category == CategoryFilter.APKS) "Apps & APKs" else category.displayName
+                LaunchedEffect(Unit) {
+                    runCatching { searchFocusRequester.requestFocus() }
+                }
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { viewModel.setSearchQuery(it) },
+                            placeholder = {
+                                Text(
+                                    text = "Search ${searchLabel.lowercase()}...",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Clear search"
+                                        )
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(searchFocusRequester)
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.closeSearch() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Exit search"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
             } else {
                 // Standard Category TopAppBar
                 TopAppBar(
@@ -286,6 +349,13 @@ fun CategoryScreen(
                                     tint = categoryColor
                                 )
                             }
+                        }
+                        // Search Action
+                        IconButton(onClick = { viewModel.toggleSearch() }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search"
+                            )
                         }
                         // View Mode Toggle (Grid / List)
                         IconButton(onClick = { viewModel.toggleViewMode() }) {
@@ -390,6 +460,8 @@ fun CategoryScreen(
                             categoryColor = categoryColor,
                             categoryIcon = categoryIcon,
                             emptyMessage = state.message,
+                            isSearchFilterEmpty = state.isSearchFilterEmpty,
+                            onClearSearch = { viewModel.setSearchQuery("") },
                             onRefresh = { viewModel.refresh() }
                         )
                     }
@@ -715,6 +787,8 @@ private fun CategoryEmptyView(
     categoryColor: Color,
     categoryIcon: ImageVector,
     emptyMessage: String,
+    isSearchFilterEmpty: Boolean = false,
+    onClearSearch: () -> Unit = {},
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -736,7 +810,7 @@ private fun CategoryEmptyView(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = categoryIcon,
+                    imageVector = if (isSearchFilterEmpty) Icons.Default.SearchOff else categoryIcon,
                     contentDescription = null,
                     tint = categoryColor,
                     modifier = Modifier.size(40.dp)
@@ -746,7 +820,7 @@ private fun CategoryEmptyView(
             Spacer(modifier = Modifier.height(18.dp))
 
             Text(
-                text = "No ${category.displayName} Found",
+                text = if (isSearchFilterEmpty) "No Matching Results" else "No ${category.displayName} Found",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -764,16 +838,16 @@ private fun CategoryEmptyView(
             Spacer(modifier = Modifier.height(20.dp))
 
             OutlinedButton(
-                onClick = onRefresh,
+                onClick = if (isSearchFilterEmpty) onClearSearch else onRefresh,
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    imageVector = if (isSearchFilterEmpty) Icons.Default.Close else Icons.Default.Refresh,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Refresh")
+                Text(if (isSearchFilterEmpty) "Clear Search" else "Refresh")
             }
         }
     }

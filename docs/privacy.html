@@ -56,16 +56,17 @@
         <p>In order to function as a full-featured Android file manager, ARCA requests standard platform permissions:</p>
         <ul>
           <li><strong>All Files Access (<code>MANAGE_EXTERNAL_STORAGE</code>):</strong> Required to browse, organize, move, copy, rename, extract, and delete files across your device's internal storage and attached SD cards / USB OTG drives. All file processing occurs entirely locally on your device's CPU and storage.</li>
-          <li><strong>Internet Permission (<code>INTERNET</code>):</strong> Used <em>exclusively</em> when you explicitly initiate remote network connections (such as connecting to an SFTP, FTP, SMB, or WebDAV server, hosting the local Wi-Fi Transfer server, or tapping 'Check for Updates'). ARCA never opens sockets or background connections on its own.</li>
+          <li><strong>Internet Permission (<code>INTERNET</code>):</strong> Used <em>exclusively</em> when you explicitly initiate remote network connections (such as connecting to an SFTP, FTP, SMB, or WebDAV server, hosting the local Wi-Fi FTP or ARCA Drop server, or tapping 'Check for Updates'). ARCA never opens sockets or background connections on its own.</li>
           <li><strong>Biometric / Fingerprint (<code>USE_BIOMETRIC</code>):</strong> Used locally on your device to unlock the Encrypted Vault if you choose biometric authentication. Cryptographic keys are managed by Android Keystore and never leave your hardware.</li>
-          <li><strong>Foreground Service (<code>FOREGROUND_SERVICE</code>):</strong> Used to keep long-running user-initiated tasks active without OS interruption (e.g., compressing large archives, transferring large batches of files, or hosting the local FTP server).</li>
+          <li><strong>Foreground Service &amp; Wake Lock (<code>FOREGROUND_SERVICE</code>, <code>WAKE_LOCK</code>):</strong> Used to keep long-running user-initiated tasks active without OS interruption (e.g., compressing large archives, transferring large batches of files, or hosting Local FTP / ARCA Drop transfer sessions).</li>
         </ul>
 
-        <h2>4. Remote Network Storage Isolation</h2>
-        <p>When you use ARCA to connect to remote servers (SFTP, SMB, FTP, WebDAV):</p>
+        <h2>4. Remote Network Storage &amp; Local LAN Sharing Isolation</h2>
+        <p>When you use ARCA to connect to remote servers (SFTP, SMB, FTP, WebDAV) or host ARCA Drop / Local FTP:</p>
         <ul>
-          <li>All network traffic travels directly and exclusively between your Android device and the destination IP address or host you specify.</li>
-          <li>There are no intermediate proxy servers, relay nodes, or third-party gateways.</li>
+          <li>All network traffic travels directly and exclusively between your Android device and the destination IP address, host, or local browser you interact with.</li>
+          <li>There are no intermediate proxy servers, relay nodes, cloud storage buckets, or third-party gateways.</li>
+          <li><strong>ARCA Drop LAN Security:</strong> Browser sharing via ARCA Drop runs on your local Wi-Fi or hotspot IP, requires a per-session 6-digit PIN backed by an <code>HttpOnly; SameSite=Strict</code> cookie, validates the HTTP <code>Host</code> header against DNS-rebinding attacks, auto-stops after 15 minutes of inactivity, and deletes temporary staged <code>content://</code> copies when stopped. Because LAN HTTP uses plaintext without a TLS certificate, use ARCA Drop only on trusted local networks.</li>
           <li>Server credentials (passwords, usernames, private keys) are encrypted locally using Android EncryptedSharedPreferences and are never transmitted to any third party.</li>
         </ul>
 

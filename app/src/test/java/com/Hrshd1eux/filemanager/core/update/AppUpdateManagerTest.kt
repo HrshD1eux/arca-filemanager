@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.core.update
 
+import com.Hrshd1eux.filemanager.core.update.model.ReleaseInfo
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -74,5 +75,31 @@ class AppUpdateManagerTest {
         val futureRemote = "1.6.23"
         val shouldPromptFutureRelease = AppUpdateManager.isNewerVersion(currentVersion, futureRemote) && lastPrompted != futureRemote
         assertTrue(shouldPromptFutureRelease)
+    }
+
+    @Test
+    fun shouldPromptForUpdate_handlesNormalizationAndSinglePromptPerVersion() {
+        val release126 = ReleaseInfo(
+            tagName = "v1.6.26",
+            versionName = "1.6.26",
+            releaseName = "ARCA v1.6.26",
+            releaseNotes = "",
+            publishedAt = "",
+            apkUrl = "https://example.com/arca.apk",
+            apkFileName = "arca.apk",
+            apkSize = 1024L,
+            isUpdateAvailable = true
+        )
+
+        // Newer release not prompted yet -> true
+        assertTrue(AppUpdateManager.shouldPromptForUpdate("1.6.25", release126, null))
+        assertTrue(AppUpdateManager.shouldPromptForUpdate("1.6.25", release126, "1.6.24"))
+
+        // Already prompted for 1.6.26 (even with v prefix stored) -> false
+        assertFalse(AppUpdateManager.shouldPromptForUpdate("1.6.25", release126, "1.6.26"))
+        assertFalse(AppUpdateManager.shouldPromptForUpdate("1.6.25", release126, "v1.6.26"))
+
+        // Already on 1.6.26 -> false
+        assertFalse(AppUpdateManager.shouldPromptForUpdate("1.6.26", release126, null))
     }
 }

@@ -239,4 +239,70 @@ class CategoryViewModelTest {
         assertFalse(viewModel.isSelectionMode)
         assertTrue(viewModel.uiState.value is CategoryUiState.Empty)
     }
+
+    @Test
+    fun search_filtersDocumentsCaseInsensitivelyAndRestoresOnClose() = runTest {
+        File(rootDir, "Annual_Report_2025.pdf").apply { writeBytes(ByteArray(300)) }
+        File(rootDir, "Meeting_Notes.docx").apply { writeBytes(ByteArray(150)) }
+        File(rootDir, "Tax_Invoice.pdf").apply { writeBytes(ByteArray(450)) }
+
+        viewModel.loadCategory("DOCUMENTS", rootDir.absolutePath)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isSearching.value)
+        assertEquals(3, (viewModel.uiState.value as CategoryUiState.Success).fileCount)
+
+        viewModel.toggleSearch()
+        assertTrue(viewModel.isSearching.value)
+
+        viewModel.setSearchQuery("invoice")
+        val filtered = viewModel.uiState.value as CategoryUiState.Success
+        assertEquals(1, filtered.fileCount)
+        assertEquals(450L, filtered.totalSizeBytes)
+        assertEquals("Tax_Invoice.pdf", filtered.items[0].name)
+
+        // Select All selects only the visible filtered result
+        viewModel.selectAll()
+        assertEquals(1, viewModel.selectedNodes.value.size)
+        assertEquals("Tax_Invoice.pdf", viewModel.selectedNodes.value.first().name)
+
+        // Non-matching query transitions to search-specific Empty state
+        viewModel.setSearchQuery("spreadsheet_missing")
+        val emptyState = viewModel.uiState.value as CategoryUiState.Empty
+        assertTrue(emptyState.isSearchFilterEmpty)
+        assertTrue(emptyState.message.contains("spreadsheet_missing"))
+
+        // Closing search clears query and restores all documents
+        viewModel.closeSearch()
+        assertFalse(viewModel.isSearching.value)
+        assertEquals("", viewModel.searchQuery.value)
+        assertEquals(3, (viewModel.uiState.value as CategoryUiState.Success).fileCount)
+    }
+
+    @Test
+    fun search_filtersAudioFilesAndResetsWhenSwitchingCategory() = runTest {
+        File(rootDir, "ambient_rain.mp3").apply { writeBytes(ByteArray(500)) }
+        File(rootDir, "podcast_episode_12.m4a").apply { writeBytes(ByteArray(700)) }
+        File(rootDir, "contract.pdf").apply { writeBytes(ByteArray(200)) }
+
+        viewModel.loadCategory("AUDIO", rootDir.absolutePath)
+        advanceUntilIdle()
+
+        assertEquals(2, (viewModel.uiState.value as CategoryUiState.Success).fileCount)
+
+        viewModel.toggleSearch()
+        viewModel.setSearchQuery("podcast")
+        val filtered = viewModel.uiState.value as CategoryUiState.Success
+        assertEquals(1, filtered.fileCount)
+        assertEquals("podcast_episode_12.m4a", filtered.items[0].name)
+
+        // Switching category resets search mode and query
+        viewModel.loadCategory("DOCUMENTS", rootDir.absolutePath)
+        advanceUntilIdle()
+        assertFalse(viewModel.isSearching.value)
+        assertEquals("", viewModel.searchQuery.value)
+        val docs = viewModel.uiState.value as CategoryUiState.Success
+        assertEquals(1, docs.fileCount)
+        assertEquals("contract.pdf", docs.items[0].name)
+    }
 }

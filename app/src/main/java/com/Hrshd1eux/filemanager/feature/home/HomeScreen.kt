@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -92,6 +93,7 @@ fun HomeScreen(
     onNavigateToAbout: () -> Unit = {},
     onNavigateToTrash: () -> Unit = {},
     onNavigateToFtpServer: () -> Unit = {},
+    onNavigateToArcaDrop: () -> Unit = {},
     onNavigateToPreview: (filePath: String, categoryName: String?, directoryPath: String?) -> Unit = { _, _, _ -> },
     onNavigateToArchiveViewer: (archivePath: String, title: String) -> Unit = { _, _ -> },
     onNavigateToFavorites: () -> Unit = {},
@@ -205,6 +207,16 @@ fun HomeScreen(
                                 onClick = {
                                     showMenu = false
                                     onNavigateToBackup()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("ARCA Drop (Wi-Fi Share)") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onNavigateToArcaDrop()
                                 }
                             )
                             DropdownMenuItem(

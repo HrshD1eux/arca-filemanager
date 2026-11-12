@@ -7,6 +7,7 @@ import com.Hrshd1eux.filemanager.core.search.model.DateFilter
 import com.Hrshd1eux.filemanager.core.search.model.SizeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
+import com.Hrshd1eux.filemanager.core.storage.util.PathJumpTarget
 import com.Hrshd1eux.filemanager.feature.category.CategoryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,6 +19,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -153,5 +155,33 @@ class FileSearchViewModelTest {
 
         viewModel.clearQuery()
         assertEquals("", viewModel.query.value)
+    }
+
+    @Test
+    fun smartPathDetection_detectsExistingFolderAndFileAndClearsOnEmptyQuery() = runTest {
+        val docsDir = File(rootDir, "Docs").apply { mkdirs() }
+        val report = File(docsDir, "report.pdf").apply { writeBytes(ByteArray(128)) }
+
+        viewModel.setRootPath(rootDir.absolutePath)
+        advanceUntilIdle()
+
+        // Plain keyword does not trigger direct path card
+        viewModel.onQueryChange("report.pdf")
+        assertNull(viewModel.detectedPathTarget.value)
+
+        // Existing folder path triggers Directory target immediately
+        viewModel.onQueryChange(docsDir.absolutePath)
+        val dirTarget = viewModel.detectedPathTarget.value as? PathJumpTarget.Directory
+        assertEquals(docsDir.absolutePath, dirTarget?.path)
+
+        // Existing file path triggers DocumentFile target immediately
+        viewModel.onQueryChange(report.absolutePath)
+        val fileTarget = viewModel.detectedPathTarget.value as? PathJumpTarget.DocumentFile
+        assertEquals(report.absolutePath, fileTarget?.filePath)
+        assertEquals(docsDir.absolutePath, fileTarget?.parentPath)
+
+        // Clearing query clears detected target
+        viewModel.clearQuery()
+        assertNull(viewModel.detectedPathTarget.value)
     }
 }

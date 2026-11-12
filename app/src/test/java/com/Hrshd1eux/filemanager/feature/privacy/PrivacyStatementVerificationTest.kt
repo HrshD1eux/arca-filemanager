@@ -81,6 +81,10 @@ class PrivacyStatementVerificationTest {
             manifest.contains("android:allowBackup=\"false\"")
         )
         assertTrue(
+            "AndroidManifest must declare WAKE_LOCK for foreground transfer servers",
+            manifest.contains("<uses-permission android:name=\"android.permission.WAKE_LOCK\" />")
+        )
+        assertTrue(
             "android:usesCleartextTraffic must be false",
             manifest.contains("android:usesCleartextTraffic=\"false\"")
         )
@@ -103,6 +107,7 @@ class PrivacyStatementVerificationTest {
         assertTrue("Must explain All Files Access", content.contains("All Files Access (MANAGE_EXTERNAL_STORAGE)"))
         assertTrue("Must explain Notifications", content.contains("Notifications (POST_NOTIFICATIONS)"))
         assertTrue("Must explain Foreground Service", content.contains("Foreground Service (DATA_SYNC)"))
+        assertTrue("Must explain Wake Lock", content.contains("Wake Lock (WAKE_LOCK)"))
         assertTrue("Must explain Internet Access", content.contains("Internet Access (INTERNET)"))
         assertTrue("Must disclose excluded permissions", content.contains("Explicitly Excluded Permissions"))
 
@@ -111,6 +116,7 @@ class PrivacyStatementVerificationTest {
         assertTrue("Must explain user-initiated only", content.contains("Exclusively User-Initiated"))
         assertTrue("Must explain direct point-to-point", content.contains("Direct Point-to-Point Communication"))
         assertTrue("Must explain protocol encryption", content.contains("Protocol Encryption Standards"))
+        assertTrue("Must disclose ARCA Drop local HTTP behavior", content.contains("ARCA Drop (Local Wi-Fi Browser Sharing)"))
         assertTrue("Must explain App Update Checks", content.contains("App Update Checks"))
 
         // 4. Zero External Transmission

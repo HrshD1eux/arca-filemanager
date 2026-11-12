@@ -151,6 +151,7 @@ fun ArcaNavHost(
                 onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
                 onNavigateToTrash = { navController.navigate(Screen.Trash) },
                 onNavigateToFtpServer = { navController.navigate(Screen.FtpServer) },
+                onNavigateToArcaDrop = { navController.navigate(Screen.ArcaDrop()) },
                 onNavigateToFavorites = { navController.navigate(Screen.Favorites) },
                 onNavigateToRecent = { navController.navigate(Screen.Recent) },
                 onNavigateToNetwork = { navController.navigate(Screen.Network) },
@@ -189,6 +190,9 @@ fun ArcaNavHost(
                     navController.navigate(Screen.Preview(initialPath = filePath, categoryName = categoryName, directoryPath = directoryPath))
                 },
                 onNavigateToPrivacy = { navController.navigate(Screen.PrivacyStatement) },
+                onNavigateToArcaDrop = { receiveDir, autoStart ->
+                    navController.navigate(Screen.ArcaDrop(receiveDir = receiveDir, autoStart = autoStart))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -502,6 +506,23 @@ fun ArcaNavHost(
             )
         }
 
+        composable<Screen.ArcaDrop>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.ArcaDrop>()
+            com.Hrshd1eux.filemanager.feature.drop.ArcaDropScreen(
+                initialReceiveDirectory = route.receiveDir,
+                autoStart = route.autoStart,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDirectory = { path ->
+                    navController.navigate(Screen.Browser(initialPath = path, title = File(path).name.ifEmpty { path }))
+                }
+            )
+        }
+
         composable<Screen.Favorites>(
             enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
             exitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() },
@@ -548,7 +569,8 @@ fun ArcaNavHost(
                     navController.navigate(Screen.NetworkBrowser(connectionId = config.id, title = config.name))
                 },
                 onNavigateToFtpServer = { navController.navigate(Screen.FtpServer) },
-                onNavigateToDiagnostics = { navController.navigate(Screen.NetworkDiagnostics) }
+                onNavigateToDiagnostics = { navController.navigate(Screen.NetworkDiagnostics) },
+                onNavigateToArcaDrop = { navController.navigate(Screen.ArcaDrop()) }
             )
         }
     }
