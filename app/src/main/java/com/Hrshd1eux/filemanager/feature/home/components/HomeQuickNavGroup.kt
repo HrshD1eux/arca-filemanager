@@ -31,8 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.TwoToneIconBadge
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
@@ -65,8 +67,8 @@ fun HomeQuickNavGroup(
             QuickNavItemRow(
                 icon = Icons.Default.Star,
                 iconTint = Color(0xFFFFA000),
-                title = "Favorites",
-                badgeText = if (favoriteCount > 0) "$favoriteCount items" else "None",
+                title = stringResource(R.string.nav_favorites),
+                badgeText = if (favoriteCount > 0) stringResource(R.string.badge_items_count, favoriteCount) else stringResource(R.string.badge_none),
                 onClick = onFavoritesClick
             )
 
@@ -78,8 +80,8 @@ fun HomeQuickNavGroup(
             QuickNavItemRow(
                 icon = Icons.Default.History,
                 iconTint = Color(0xFF1E88E5),
-                title = "Recent",
-                badgeText = if (recentCount > 0) "$recentCount items" else "Empty",
+                title = stringResource(R.string.nav_recent),
+                badgeText = if (recentCount > 0) stringResource(R.string.badge_items_count, recentCount) else stringResource(R.string.badge_empty),
                 onClick = onRecentsClick
             )
 
@@ -92,8 +94,8 @@ fun HomeQuickNavGroup(
                 QuickNavItemRow(
                     icon = Icons.Default.Lock,
                     iconTint = VaultEmerald,
-                    title = "Private Vault",
-                    badgeText = "AES-256 Encrypted",
+                    title = stringResource(R.string.vault_title),
+                    badgeText = stringResource(R.string.badge_vault_encrypted),
                     onClick = onVaultClick
                 )
             }
@@ -106,8 +108,8 @@ fun HomeQuickNavGroup(
             QuickNavItemRow(
                 icon = Icons.Default.Language,
                 iconTint = Color(0xFF00897B),
-                title = "Network",
-                badgeText = "Offline / Local",
+                title = stringResource(R.string.nav_network),
+                badgeText = stringResource(R.string.badge_network_offline),
                 onClick = onNetworkClick
             )
 
@@ -119,8 +121,8 @@ fun HomeQuickNavGroup(
             QuickNavItemRow(
                 icon = Icons.Default.Folder,
                 iconTint = MaterialTheme.colorScheme.primary,
-                title = "Internal Storage",
-                badgeText = "Main storage (/sdcard)",
+                title = stringResource(R.string.nav_internal_storage),
+                badgeText = stringResource(R.string.badge_internal_storage_desc),
                 onClick = onInternalStorageClick
             )
         }

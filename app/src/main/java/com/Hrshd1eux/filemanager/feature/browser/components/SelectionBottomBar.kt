@@ -46,9 +46,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 
@@ -115,7 +117,7 @@ fun SelectionBottomBar(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Move $selectedCount items directly to ${lastMoveDestination.name}",
+                            text = stringResource(R.string.action_fast_move_desc, selectedCount, lastMoveDestination.name),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             maxLines = 1,
@@ -123,7 +125,7 @@ fun SelectionBottomBar(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "FAST MOVE",
+                            text = stringResource(R.string.action_fast_move_badge),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -146,7 +148,7 @@ fun SelectionBottomBar(
             ) {
                 // 1. Move to
                 BottomActionItem(
-                    title = "Move to",
+                    title = stringResource(R.string.action_move_to),
                     icon = Icons.AutoMirrored.Filled.DriveFileMove,
                     onClick = onMove,
                     modifier = Modifier.weight(1f)
@@ -154,7 +156,7 @@ fun SelectionBottomBar(
 
                 // 2. Copy to
                 BottomActionItem(
-                    title = "Copy to",
+                    title = stringResource(R.string.action_copy_to),
                     icon = Icons.Default.ContentCopy,
                     onClick = onCopy,
                     modifier = Modifier.weight(1f)
@@ -162,7 +164,7 @@ fun SelectionBottomBar(
 
                 // 3. Properties (direct access to size & details)
                 BottomActionItem(
-                    title = "Properties",
+                    title = stringResource(R.string.action_properties),
                     icon = Icons.Outlined.Info,
                     onClick = onProperties,
                     modifier = Modifier.weight(1f)
@@ -170,7 +172,7 @@ fun SelectionBottomBar(
 
                 // 4. Delete
                 BottomActionItem(
-                    title = "Delete",
+                    title = stringResource(R.string.action_delete),
                     icon = Icons.Default.Delete,
                     onClick = onDelete,
                     tint = MaterialTheme.colorScheme.error,
@@ -183,7 +185,7 @@ fun SelectionBottomBar(
                     contentAlignment = Alignment.Center
                 ) {
                     BottomActionItem(
-                        title = "More",
+                        title = stringResource(R.string.action_more),
                         icon = Icons.Default.MoreVert,
                         onClick = { showMoreMenu = true },
                         modifier = Modifier.fillMaxWidth()
@@ -195,11 +197,11 @@ fun SelectionBottomBar(
                     ) {
                         // Rename
                         DropdownMenuItem(
-                            text = { Text("Rename") },
+                            text = { Text(stringResource(R.string.action_rename)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.DriveFileRenameOutline,
-                                    contentDescription = "Rename"
+                                    contentDescription = stringResource(R.string.action_rename)
                                 )
                             },
                             onClick = {
@@ -211,11 +213,11 @@ fun SelectionBottomBar(
                         // Open with...
                         if (onOpenWith != null) {
                             DropdownMenuItem(
-                                text = { Text("Open with...") },
+                                text = { Text(stringResource(R.string.action_open_with)) },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                        contentDescription = "Open with"
+                                        contentDescription = stringResource(R.string.action_open_with)
                                     )
                                 },
                                 onClick = {
@@ -228,11 +230,11 @@ fun SelectionBottomBar(
                         // Play
                         if (onPlay != null) {
                             DropdownMenuItem(
-                                text = { Text("Play") },
+                                text = { Text(stringResource(R.string.action_play)) },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Play"
+                                        contentDescription = stringResource(R.string.action_play)
                                     )
                                 },
                                 onClick = {
@@ -244,11 +246,11 @@ fun SelectionBottomBar(
 
                         // Compress
                         DropdownMenuItem(
-                            text = { Text("Compress") },
+                            text = { Text(stringResource(R.string.action_compress)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Archive,
-                                    contentDescription = "Compress"
+                                    contentDescription = stringResource(R.string.action_compress)
                                 )
                             },
                             onClick = {
@@ -259,11 +261,11 @@ fun SelectionBottomBar(
 
                         // Share
                         DropdownMenuItem(
-                            text = { Text("Share") },
+                            text = { Text(stringResource(R.string.action_share)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Share,
-                                    contentDescription = "Share"
+                                    contentDescription = stringResource(R.string.action_share)
                                 )
                             },
                             onClick = {
@@ -275,11 +277,11 @@ fun SelectionBottomBar(
                         // Send via ARCA Drop
                         if (onSendViaArcaDrop != null) {
                             DropdownMenuItem(
-                                text = { Text("Send via ARCA Drop") },
+                                text = { Text(stringResource(R.string.action_send_arca_drop)) },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.Wifi,
-                                        contentDescription = "Send via ARCA Drop",
+                                        contentDescription = stringResource(R.string.action_send_arca_drop),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 },
@@ -294,7 +296,7 @@ fun SelectionBottomBar(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    text = "Encrypt",
+                                    text = stringResource(R.string.action_encrypt),
                                     color = VaultEmerald,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -302,7 +304,7 @@ fun SelectionBottomBar(
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Lock,
-                                    contentDescription = "Encrypt",
+                                    contentDescription = stringResource(R.string.action_encrypt),
                                     tint = VaultEmerald
                                 )
                             },
@@ -315,11 +317,11 @@ fun SelectionBottomBar(
                         // Compare (available when 2 items selected)
                         if (selectedCount == 2 && onCompare != null) {
                             DropdownMenuItem(
-                                text = { Text("Compare Items") },
+                                text = { Text(stringResource(R.string.action_compare_items)) },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.CompareArrows,
-                                        contentDescription = "Compare"
+                                        contentDescription = stringResource(R.string.action_compare_items)
                                     )
                                 },
                                 onClick = {

@@ -26,8 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.TwoToneIconBadge
 import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
 import com.Hrshd1eux.filemanager.core.storage.model.StorageBreakdown
@@ -117,14 +119,14 @@ fun HomeStorageCard(
 
             if (!hasAllFilesAccess) {
                 Text(
-                    text = "Limited Access Mode",
+                    text = stringResource(R.string.home_storage_limited),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Private Vault and Network features are active. Grant storage access to browse device files.",
+                    text = stringResource(R.string.home_storage_grant_needed),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -134,12 +136,12 @@ fun HomeStorageCard(
                         onClick = onGrantPermissionClick,
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("Grant Storage Access")
+                        Text(stringResource(R.string.home_storage_grant_access))
                     }
                 }
             } else {
                 Text(
-                    text = if (breakdown.totalBytes > 0) "$usedFormatted / $totalFormatted" else "Calculating storage...",
+                    text = if (breakdown.totalBytes > 0) stringResource(R.string.home_used_of, usedFormatted, totalFormatted) else "Calculating storage...",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -166,7 +168,7 @@ fun HomeStorageCard(
                 if (breakdown.totalBytes > 0) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "$freeFormatted available",
+                        text = stringResource(R.string.home_free_space, freeFormatted),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

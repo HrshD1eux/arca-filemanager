@@ -58,9 +58,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.storage.apk.ApkInstaller
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.update.AppUpdateManager
@@ -214,12 +216,12 @@ fun AppUpdateDialog(
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = when (step) {
-                        UpdateDialogStep.CHECKING -> "Checking for Updates"
-                        UpdateDialogStep.UP_TO_DATE -> "App is Up to Date"
-                        UpdateDialogStep.UPDATE_AVAILABLE -> "Update Available"
-                        UpdateDialogStep.DOWNLOADING -> "Downloading Update"
-                        UpdateDialogStep.DOWNLOAD_COMPLETED -> "Ready to Install"
-                        UpdateDialogStep.ERROR -> "Update Check Failed"
+                        UpdateDialogStep.CHECKING -> stringResource(R.string.update_checking_title)
+                        UpdateDialogStep.UP_TO_DATE -> stringResource(R.string.update_up_to_date)
+                        UpdateDialogStep.UPDATE_AVAILABLE -> stringResource(R.string.update_available_title)
+                        UpdateDialogStep.DOWNLOADING -> stringResource(R.string.update_downloading, downloadProgress?.progressPercent ?: 0)
+                        UpdateDialogStep.DOWNLOAD_COMPLETED -> stringResource(R.string.update_install_ready)
+                        UpdateDialogStep.ERROR -> stringResource(R.string.update_check_failed)
                     },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
@@ -241,7 +243,7 @@ fun AppUpdateDialog(
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = "Querying GitHub Releases...",
+                                text = stringResource(R.string.update_checking_desc),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -256,7 +258,7 @@ fun AppUpdateDialog(
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = "You are running the latest version of ARCA.",
+                                    text = stringResource(R.string.update_up_to_date_desc, currentVersion),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -525,7 +527,7 @@ fun AppUpdateDialog(
                         ) {
                             Icon(imageVector = Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Update Now", maxLines = 1, softWrap = false, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.update_now), maxLines = 1, softWrap = false, fontWeight = FontWeight.SemiBold)
                         }
 
                         Row(
@@ -558,7 +560,7 @@ fun AppUpdateDialog(
                             ) {
                                 Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Background", maxLines = 1, softWrap = false)
+                                Text(stringResource(R.string.update_download_in_background), maxLines = 1, softWrap = false)
                             }
 
                             TextButton(
@@ -570,7 +572,7 @@ fun AppUpdateDialog(
                                     onDismiss()
                                 }
                             ) {
-                                Text("Later", maxLines = 1, softWrap = false)
+                                Text(stringResource(R.string.update_later), maxLines = 1, softWrap = false)
                             }
                         }
                     }
@@ -589,7 +591,7 @@ fun AppUpdateDialog(
                             step = UpdateDialogStep.UPDATE_AVAILABLE
                         }
                     ) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
 
@@ -614,7 +616,7 @@ fun AppUpdateDialog(
                         ) {
                             Icon(imageVector = Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Install Now")
+                            Text(stringResource(R.string.update_install_now))
                         }
                     } else {
                         Button(onClick = { runUpdateCheck() }) {
@@ -625,7 +627,7 @@ fun AppUpdateDialog(
 
                 UpdateDialogStep.ERROR -> {
                     Button(onClick = { runUpdateCheck() }) {
-                        Text("Retry")
+                        Text(stringResource(R.string.action_retry))
                     }
                 }
             }
@@ -650,12 +652,12 @@ fun AppUpdateDialog(
                     }
                     UpdateDialogStep.DOWNLOAD_COMPLETED -> {
                         OutlinedButton(onClick = onDismiss) {
-                            Text("Close")
+                            Text(stringResource(R.string.action_close))
                         }
                     }
                     UpdateDialogStep.ERROR -> {
                         OutlinedButton(onClick = onDismiss) {
-                            Text("Close")
+                            Text(stringResource(R.string.action_close))
                         }
                     }
                     else -> {}

@@ -179,7 +179,7 @@ fun SettingsScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(2.dp))
-                SettingsCategoryHeader(title = "Appearance")
+                SettingsCategoryHeader(title = stringResource(R.string.settings_category_appearance))
             }
 
             item {
@@ -191,7 +191,7 @@ fun SettingsScreen(
                         }
                     }
                     SettingsRow(
-                        title = "Theme",
+                        title = stringResource(R.string.settings_theme),
                         subtitle = themeSubtitle,
                         icon = Icons.Default.Palette,
                         onClick = { showThemeDialog = true }
@@ -207,13 +207,13 @@ fun SettingsScreen(
             }
 
             item {
-                SettingsCategoryHeader(title = "Files & Storage")
+                SettingsCategoryHeader(title = stringResource(R.string.settings_category_file_management))
             }
 
             item {
                 SettingsCard {
                     SettingsToggleRow(
-                        title = "Show hidden files",
+                        title = stringResource(R.string.settings_show_hidden),
                         subtitle = "Display files starting with a dot (.)",
                         icon = Icons.Default.Visibility,
                         checked = showHiddenFiles,
@@ -221,7 +221,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsToggleRow(
-                        title = "Confirm before deletion",
+                        title = stringResource(R.string.settings_confirm_delete),
                         subtitle = "Ask for confirmation before deleting items",
                         icon = Icons.Default.DeleteOutline,
                         checked = confirmDelete,
@@ -229,7 +229,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsToggleRow(
-                        title = "Haptic feedback",
+                        title = stringResource(R.string.settings_haptic_feedback),
                         subtitle = "Vibrate when selecting files and items",
                         icon = Icons.Default.Vibration,
                         checked = hapticFeedback,
@@ -237,7 +237,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsToggleRow(
-                        title = "Sound feedback",
+                        title = stringResource(R.string.settings_sound_feedback),
                         subtitle = "Play subtle tactile audio click when selecting files",
                         icon = Icons.AutoMirrored.Filled.VolumeUp,
                         checked = soundFeedback,
@@ -273,20 +273,20 @@ fun SettingsScreen(
             }
 
             item {
-                SettingsCategoryHeader(title = "Archives & Security")
+                SettingsCategoryHeader(title = stringResource(R.string.settings_category_archives))
             }
 
             item {
                 SettingsCard {
                     SettingsRow(
-                        title = "Backup Profiles & Sync",
+                        title = stringResource(R.string.backup_title),
                         subtitle = "Safe Copy, Incremental, and Mirror sync policies",
                         icon = Icons.Default.Backup,
                         onClick = onNavigateToBackup
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
-                        title = "Archive Formats",
+                        title = stringResource(R.string.settings_archives),
                         subtitle = "Default: ${defaultArchiveFormat.displayName} • ${enabledArchiveFormats.size} format(s) enabled",
                         icon = Icons.Default.Archive,
                         onClick = { showArchiveDialog = true }
@@ -294,14 +294,14 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
-                        title = "Security Center",
+                        title = stringResource(R.string.settings_security_center),
                         subtitle = "Inspect verified security posture & technical claims",
                         icon = Icons.Default.Shield,
                         onClick = onNavigateToSecurityCenter
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
-                        title = "App Lock & Biometrics",
+                        title = stringResource(R.string.settings_app_lock),
                         subtitle = if (appLockSettings.isConfigured) "${appLockSettings.mode.displayName} active" else "Disabled • Configure PIN to lock app",
                         icon = Icons.Default.Fingerprint,
                         onClick = { showAppLockDialog = true }
@@ -310,27 +310,27 @@ fun SettingsScreen(
             }
 
             item {
-                SettingsCategoryHeader(title = "About & Privacy")
+                SettingsCategoryHeader(title = stringResource(R.string.settings_category_about))
             }
 
             item {
                 SettingsCard {
                     SettingsRow(
-                        title = "About ARCA",
+                        title = stringResource(R.string.about_product_title),
                         subtitle = "Version, open-source licenses, and legal info",
                         icon = Icons.Default.Info,
                         onClick = onNavigateToAbout
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
-                        title = "Privacy Statement",
+                        title = stringResource(R.string.settings_privacy),
                         subtitle = "Zero telemetry, zero ads, local-first",
                         icon = Icons.Default.Security,
                         onClick = onNavigateToPrivacy
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
-                        title = "Check for Updates",
+                        title = stringResource(R.string.settings_check_updates),
                         subtitle = "Current: ${versionInfo.displayVersion} (${versionInfo.displayBuild}) • Check GitHub releases",
                         icon = Icons.Default.SystemUpdate,
                         onClick = { showUpdateDialog = true }

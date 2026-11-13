@@ -70,7 +70,8 @@ class AboutScreenProfessionalTest {
     @Test
     fun aboutScreen_containsAllRequiredProfessionalSections() {
         val aboutFile = getSourceFile("src/main/java/com/Hrshd1eux/filemanager/feature/about/AboutScreen.kt")
-        val content = aboutFile.readText()
+        val stringsFile = getSourceFile("src/main/res/values/strings.xml")
+        val content = aboutFile.readText() + "\n" + stringsFile.readText()
 
         // 1. App Name and Header
         assertTrue("Must contain ARCA title", content.contains("text = \"ARCA\""))
@@ -151,11 +152,11 @@ class AboutScreenProfessionalTest {
         assertTrue("SettingsScreen must expose onNavigateToAbout parameter",
             content.contains("onNavigateToAbout: () -> Unit"))
         assertTrue("SettingsScreen must include About ARCA navigation row",
-            content.contains("title = \"About ARCA\""))
+            content.contains("title = \"About ARCA\"") || content.contains("about_product_title") || content.contains("settings_about"))
         assertTrue("SettingsScreen About row must trigger onNavigateToAbout",
             content.contains("onClick = onNavigateToAbout"))
         assertTrue("SettingsScreen must include Check for Updates row",
-            content.contains("title = \"Check for Updates\""))
+            content.contains("title = \"Check for Updates\"") || content.contains("settings_check_updates"))
         assertTrue("SettingsScreen Check for Updates row must trigger showUpdateDialog",
             content.contains("showUpdateDialog = true"))
     }

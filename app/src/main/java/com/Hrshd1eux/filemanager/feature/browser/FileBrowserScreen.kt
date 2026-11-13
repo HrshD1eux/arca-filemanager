@@ -78,6 +78,8 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.properties.FilePropertiesSheet
 
@@ -642,7 +644,7 @@ fun FileBrowserScreen(
                                 onDismissRequest = { showOverflowMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Go to Path") },
+                                    text = { Text(stringResource(R.string.browser_go_to_path)) },
                                     leadingIcon = {
                                         Icon(
                                             imageVector = Icons.Default.FolderOpen,
@@ -655,7 +657,7 @@ fun FileBrowserScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("ARCA Drop (Share / Receive)") },
+                                    text = { Text(stringResource(R.string.browser_arca_drop_share)) },
                                     leadingIcon = {
                                         Icon(
                                             imageVector = Icons.Default.Wifi,
@@ -992,8 +994,8 @@ fun FileBrowserScreen(
     if (targetToCopy != null) {
         DestinationPickerDialog(
             storageProvider = viewModel.storageProvider,
-            title = "Copy to...",
-            confirmButtonText = "Copy Here",
+            title = stringResource(R.string.action_copy_to_ellipsis),
+            confirmButtonText = stringResource(R.string.action_copy_here),
             excludedPaths = if (targetToCopy.isDirectory) setOf(targetToCopy.path) else emptySet(),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
@@ -1023,8 +1025,8 @@ fun FileBrowserScreen(
     if (targetBulkCopy != null) {
         DestinationPickerDialog(
             storageProvider = viewModel.storageProvider,
-            title = "Copy ${targetBulkCopy.size} Items to...",
-            confirmButtonText = "Copy Here",
+            title = stringResource(R.string.browser_copy_n_items_to, targetBulkCopy.size),
+            confirmButtonText = stringResource(R.string.action_copy_here),
             excludedPaths = targetBulkCopy.filter { it.isDirectory }.map { it.path }.toSet(),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
@@ -1054,8 +1056,8 @@ fun FileBrowserScreen(
     if (targetToMove != null) {
         DestinationPickerDialog(
             storageProvider = viewModel.storageProvider,
-            title = "Move to...",
-            confirmButtonText = "Move Here",
+            title = stringResource(R.string.action_move_to_ellipsis),
+            confirmButtonText = stringResource(R.string.action_move_here),
             excludedPaths = if (targetToMove.isDirectory) setOf(targetToMove.path) else emptySet(),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
@@ -1085,8 +1087,8 @@ fun FileBrowserScreen(
     if (targetBulkMove != null) {
         DestinationPickerDialog(
             storageProvider = viewModel.storageProvider,
-            title = "Move ${targetBulkMove.size} Items to...",
-            confirmButtonText = "Move Here",
+            title = stringResource(R.string.browser_move_n_items_to, targetBulkMove.size),
+            confirmButtonText = stringResource(R.string.action_move_here),
             excludedPaths = targetBulkMove.filter { it.isDirectory }.map { it.path }.toSet(),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
@@ -1358,8 +1360,8 @@ fun FileBrowserScreen(
         val currentExtractTarget = nodeForCustomExtract!!
         DestinationPickerDialog(
             storageProvider = viewModel.storageProvider,
-            title = "Extract to...",
-            confirmButtonText = "Extract Here",
+            title = stringResource(R.string.action_extract_to_ellipsis),
+            confirmButtonText = stringResource(R.string.action_extract_here),
             favoritesRepository = viewModel.favoritesRepository,
             recentsRepository = viewModel.recentsRepository,
             destinationHistoryRepository = viewModel.lastDestinationRepository,
@@ -1588,7 +1590,7 @@ fun FileBrowserScreen(
     // Bulk Encrypt Choice Dialog
     bulkNodesToEncrypt?.let { nodes ->
         EncryptChoiceDialog(
-            title = "Encrypt ${nodes.size} items",
+            title = stringResource(R.string.browser_encrypt_n_items, nodes.size),
             onEncryptToVault = {
                 val files = nodes.map { File(it.path) }
                 bulkNodesToEncrypt = null
@@ -1697,14 +1699,14 @@ private fun EmptyFolderView(
             }
             Spacer(modifier = Modifier.height(14.dp))
             Text(
-                text = "This folder is empty",
+                text = stringResource(R.string.browser_empty_folder),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "No files or subdirectories found.",
+                text = stringResource(R.string.browser_empty_subtext),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1831,7 +1833,7 @@ private fun PermissionDeniedView(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Choose Specific Folder (Scoped Access)")
+                    Text(stringResource(R.string.browser_choose_scoped_folder))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(
@@ -1845,7 +1847,7 @@ private fun PermissionDeniedView(
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Read Privacy Statement", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.first_run_storage_read_privacy), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -1875,7 +1877,7 @@ private fun ErrorView(
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Error Loading Directory",
+                text = stringResource(R.string.browser_error_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1891,7 +1893,7 @@ private fun ErrorView(
                 onClick = onRetry,
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Retry")
+                Text(stringResource(R.string.action_retry))
             }
         }
     }

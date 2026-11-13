@@ -47,9 +47,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.favorites.model.FavoriteItem
@@ -96,14 +98,14 @@ fun FavoritesSheet(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Favorites (${favorites.size})",
+                        text = stringResource(R.string.favorites_title_with_count, favorites.size),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Clear, contentDescription = "Close")
+                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.action_close))
                 }
             }
 
@@ -117,7 +119,7 @@ fun FavoritesSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No favorites added yet.\nLong-press or select files to add them to Favorites.",
+                        text = stringResource(R.string.favorites_empty_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -242,7 +244,7 @@ fun RecentsSheet(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Recent (${recents.size})",
+                        text = stringResource(R.string.recent_title_with_count, recents.size),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -258,11 +260,11 @@ fun RecentsSheet(
                             )
                         }
                         TextButton(onClick = onClearAll) {
-                            Text("Clear All", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.button_clear_all), color = MaterialTheme.colorScheme.error)
                         }
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Clear, contentDescription = "Close")
+                        Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.action_close))
                     }
                 }
             }
@@ -277,7 +279,7 @@ fun RecentsSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No recent files.",
+                        text = stringResource(R.string.recent_empty_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

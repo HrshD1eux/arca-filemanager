@@ -107,6 +107,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -190,6 +192,18 @@ fun CategoryScreen(
 
     val categoryColor = getCategoryColor(category)
     val categoryIcon = getCategoryIcon(category)
+    val localizedCategoryName = when (category) {
+        CategoryFilter.IMAGES -> stringResource(R.string.category_images)
+        CategoryFilter.VIDEOS -> stringResource(R.string.category_videos)
+        CategoryFilter.AUDIO -> stringResource(R.string.category_audio)
+        CategoryFilter.DOCUMENTS -> stringResource(R.string.category_documents)
+        CategoryFilter.DOWNLOADS -> stringResource(R.string.category_downloads)
+        CategoryFilter.ARCHIVES -> stringResource(R.string.category_archives)
+        CategoryFilter.APKS -> stringResource(R.string.category_apks)
+        CategoryFilter.OTHER,
+        CategoryFilter.ALL -> stringResource(R.string.category_all_files)
+        else -> category.displayName
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -199,7 +213,7 @@ fun CategoryScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "${selectedNodes.size} selected",
+                            text = stringResource(R.string.selection_count, selectedNodes.size),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -208,7 +222,7 @@ fun CategoryScreen(
                         IconButton(onClick = { viewModel.clearSelection() }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Close selection"
+                                contentDescription = stringResource(R.string.action_clear_selection)
                             )
                         }
                     },
@@ -223,21 +237,21 @@ fun CategoryScreen(
                         }) {
                             Icon(
                                 imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
-                                contentDescription = if (allSelected) "Deselect all" else "Select all"
+                                contentDescription = if (allSelected) stringResource(R.string.action_deselect_all) else stringResource(R.string.action_select_all)
                             )
                         }
                         // Copy Selected
                         IconButton(onClick = { showCopyDestinationPicker = true }) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy selected"
+                                contentDescription = stringResource(R.string.action_copy_to)
                             )
                         }
                         // Move Selected
                         IconButton(onClick = { showMoveDestinationPicker = true }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
-                                contentDescription = "Move selected"
+                                contentDescription = stringResource(R.string.action_move_to)
                             )
                         }
                         // Share Selected
@@ -246,14 +260,14 @@ fun CategoryScreen(
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Share selected"
+                                contentDescription = stringResource(R.string.action_share)
                             )
                         }
                         // Delete Selected
                         IconButton(onClick = { showBulkDeleteDialog = true }) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete selected",
+                                contentDescription = stringResource(R.string.action_delete),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -266,7 +280,6 @@ fun CategoryScreen(
                     )
                 )
             } else if (isSearching) {
-                val searchLabel = if (category == CategoryFilter.APKS) "Apps & APKs" else category.displayName
                 LaunchedEffect(Unit) {
                     runCatching { searchFocusRequester.requestFocus() }
                 }
@@ -277,7 +290,7 @@ fun CategoryScreen(
                             onValueChange = { viewModel.setSearchQuery(it) },
                             placeholder = {
                                 Text(
-                                    text = "Search ${searchLabel.lowercase()}...",
+                                    text = stringResource(R.string.category_search_hint, localizedCategoryName),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             },
@@ -322,7 +335,7 @@ fun CategoryScreen(
                     title = {
                         Column {
                             Text(
-                                text = if (category == CategoryFilter.APKS) "Apps & APKs" else category.displayName,
+                                text = localizedCategoryName,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -330,7 +343,7 @@ fun CategoryScreen(
                             val successState = uiState as? CategoryUiState.Success
                             if (successState != null) {
                                 Text(
-                                    text = "${successState.fileCount} items • ${FileFormatter.formatFileSize(successState.totalSizeBytes)}",
+                                    text = stringResource(R.string.category_header_summary, successState.fileCount, FileFormatter.formatFileSize(successState.totalSizeBytes)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -1005,8 +1018,17 @@ private fun CategoryDateGroupHeader(
                 )
             }
 
+            val localizedGroupTitle = when (group.type) {
+                DateBucketType.TODAY -> stringResource(R.string.date_group_today)
+                DateBucketType.YESTERDAY -> stringResource(R.string.date_group_yesterday)
+                DateBucketType.THIS_WEEK -> stringResource(R.string.date_group_this_week)
+                DateBucketType.THIS_MONTH -> stringResource(R.string.date_group_this_month)
+                DateBucketType.UNKNOWN -> stringResource(R.string.date_group_unknown)
+                DateBucketType.MONTH_YEAR, DateBucketType.YEAR -> group.title
+            }
+
             Text(
-                text = group.title,
+                text = localizedGroupTitle,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1019,7 +1041,7 @@ private fun CategoryDateGroupHeader(
             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
         ) {
             Text(
-                text = "${group.fileCount} • ${FileFormatter.formatFileSize(group.totalSizeBytes)}",
+                text = stringResource(R.string.date_group_items_count, group.fileCount, FileFormatter.formatFileSize(group.totalSizeBytes)),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -1248,7 +1270,7 @@ private fun CategoryListItemRow(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Open with") },
+                            text = { Text(stringResource(R.string.action_open_with)) },
                             leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -1256,7 +1278,7 @@ private fun CategoryListItemRow(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Copy") },
+                            text = { Text(stringResource(R.string.action_copy)) },
                             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -1264,7 +1286,7 @@ private fun CategoryListItemRow(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Move") },
+                            text = { Text(stringResource(R.string.action_move)) },
                             leadingIcon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -1272,7 +1294,7 @@ private fun CategoryListItemRow(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Share") },
+                            text = { Text(stringResource(R.string.action_share)) },
                             leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -1280,7 +1302,7 @@ private fun CategoryListItemRow(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Show in folder") },
+                            text = { Text(stringResource(R.string.action_show_in_folder)) },
                             leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -1288,7 +1310,7 @@ private fun CategoryListItemRow(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Rename") },
+                            text = { Text(stringResource(R.string.action_rename)) },
                             leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -1296,7 +1318,7 @@ private fun CategoryListItemRow(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = {
                                 showMenu = false
@@ -1304,7 +1326,7 @@ private fun CategoryListItemRow(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Properties") },
+                            text = { Text(stringResource(R.string.action_properties)) },
                             leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -1524,7 +1546,7 @@ private fun CategoryGridItemCard(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Open with") },
+                                text = { Text(stringResource(R.string.action_open_with)) },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -1532,7 +1554,7 @@ private fun CategoryGridItemCard(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Copy") },
+                                text = { Text(stringResource(R.string.action_copy)) },
                                 leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -1540,7 +1562,7 @@ private fun CategoryGridItemCard(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Move") },
+                                text = { Text(stringResource(R.string.action_move)) },
                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -1548,7 +1570,7 @@ private fun CategoryGridItemCard(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Share") },
+                                text = { Text(stringResource(R.string.action_share)) },
                                 leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -1556,7 +1578,7 @@ private fun CategoryGridItemCard(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Show in folder") },
+                                text = { Text(stringResource(R.string.action_show_in_folder)) },
                                 leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -1564,7 +1586,7 @@ private fun CategoryGridItemCard(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Rename") },
+                                text = { Text(stringResource(R.string.action_rename)) },
                                 leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -1572,7 +1594,7 @@ private fun CategoryGridItemCard(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                                 onClick = {
                                     showMenu = false
@@ -1580,7 +1602,7 @@ private fun CategoryGridItemCard(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Properties") },
+                                text = { Text(stringResource(R.string.action_properties)) },
                                 leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
                                 onClick = {
                                     showMenu = false

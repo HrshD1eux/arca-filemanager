@@ -200,7 +200,7 @@ fun HomeScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Backup Profiles") },
+                                text = { Text(stringResource(R.string.menu_backup_profiles)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.Backup, contentDescription = null)
                                 },
@@ -210,7 +210,7 @@ fun HomeScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("ARCA Drop (Wi-Fi Share)") },
+                                text = { Text(stringResource(R.string.menu_arca_drop)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 },
@@ -220,7 +220,7 @@ fun HomeScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Transfer to PC (FTP)") },
+                                text = { Text(stringResource(R.string.menu_transfer_pc)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.Devices, contentDescription = null, tint = VaultEmerald)
                                 },
@@ -261,7 +261,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(2.dp))
                 HomeStorageCard(
                     breakdown = storageBreakdown,
-                    title = if (hasAllFilesAccess) "Storage" else "Storage • Limited Access",
+                    title = if (hasAllFilesAccess) stringResource(R.string.home_storage_title) else stringResource(R.string.home_storage_limited),
                     hasAllFilesAccess = hasAllFilesAccess,
                     onGrantPermissionClick = launchPermissionRequest,
                     onCardClick = onNavigateToStorageAnalyzer
@@ -279,7 +279,7 @@ fun HomeScreen(
                     onVaultClick = onNavigateToVault,
                     onNetworkClick = onNavigateToNetwork,
                     onInternalStorageClick = {
-                        onNavigateToBrowser(android.os.Environment.getExternalStorageDirectory().absolutePath, "Internal Storage")
+                        onNavigateToBrowser(android.os.Environment.getExternalStorageDirectory().absolutePath, context.getString(R.string.nav_internal_storage))
                     }
                 )
             }
@@ -363,7 +363,7 @@ private fun HomeOfflineStatusBanner(
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = "ARCA • Private & Local-First (View Privacy Statement)",
+            text = stringResource(R.string.home_privacy_banner),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )

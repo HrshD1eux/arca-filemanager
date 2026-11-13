@@ -52,8 +52,10 @@ import com.Hrshd1eux.filemanager.core.version.AppVersionInfo
 import com.Hrshd1eux.filemanager.core.version.rememberAppVersionInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 
 /**
@@ -80,7 +82,7 @@ fun PrivacyStatementScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Privacy Statement",
+                        text = stringResource(R.string.privacy_screen_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -89,7 +91,7 @@ fun PrivacyStatementScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.action_cancel)
                         )
                     }
                 },
@@ -169,13 +171,13 @@ private fun PrivacyHeroCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Local-First & Transparent Privacy Guarantee",
+                        text = stringResource(R.string.privacy_hero_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
-                        text = "Last verified: ${versionInfo.displayVersion} • Zero Telemetry",
+                        text = stringResource(R.string.privacy_hero_subtitle, versionInfo.displayVersion),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
@@ -183,7 +185,7 @@ private fun PrivacyHeroCard(
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "ARCA is built upon an unyielding premise: your files, folders, and personal data belong exclusively to you. We do not track user behavior, collect personal information, or operate remote servers to monetize or log your storage.",
+                text = stringResource(R.string.privacy_hero_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
             )
@@ -203,31 +205,31 @@ private fun LocalDataProcessingCard(
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader(
                 icon = Icons.Default.Storage,
-                title = "1. Data Processed Locally on Your Device"
+                title = stringResource(R.string.privacy_section1_title)
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "All core operations performed by ARCA execute entirely on your device hardware without relying on cloud processing:",
+                text = stringResource(R.string.privacy_section1_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(10.dp))
 
             DisclosureItem(
-                title = "File & Storage Metadata",
-                desc = "Filenames, file sizes, MIME types, modification dates, and folder hierarchy are read from local storage strictly to render listings, sort items, search, and identify duplicate files. This metadata is processed in volatile memory (RAM) and local database caches, and is never logged to external diagnostic stores."
+                title = stringResource(R.string.privacy_section1_item1_title),
+                desc = stringResource(R.string.privacy_section1_item1_desc)
             )
             DisclosureItem(
-                title = "Private Vault Content",
-                desc = "Files placed in the Private Vault are encrypted locally using AES-256-GCM cipher with keys derived on-demand from your passphrase. Decrypted content exists only ephemerally in RAM during active viewing and is completely wiped when the vault locks."
+                title = stringResource(R.string.privacy_section1_item2_title),
+                desc = stringResource(R.string.privacy_section1_item2_desc)
             )
             DisclosureItem(
-                title = "User Preferences & Settings",
-                desc = "Theme selection, display modes (grid/list), hidden file visibility, confirm-delete preferences, and auto-lock timeouts are stored in your device's private Android SharedPreferences."
+                title = stringResource(R.string.privacy_section1_item3_title),
+                desc = stringResource(R.string.privacy_section1_item3_desc)
             )
             DisclosureItem(
-                title = "Remote Server Credentials",
-                desc = "Host addresses, ports, usernames, and passwords for user-configured remote servers are stored solely in app-private encrypted storage on your device and are never sent to third-party services."
+                title = stringResource(R.string.privacy_section1_item4_title),
+                desc = stringResource(R.string.privacy_section1_item4_desc)
             )
         }
     }
@@ -245,59 +247,59 @@ private fun PermissionsDisclosureCard(
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader(
                 icon = Icons.Default.Security,
-                title = "2. Permissions Requested & Why"
+                title = stringResource(R.string.privacy_section2_title)
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "ARCA requests only permissions fundamentally essential for local file management, archiving, and foreground tasks:",
+                text = stringResource(R.string.privacy_section2_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(10.dp))
 
             DisclosureItem(
-                title = "All Files Access (MANAGE_EXTERNAL_STORAGE)",
-                desc = "Required on Android 11+ (API 30+) to enable full file management capabilities—browsing, moving, copying, renaming, deleting, compressing, and extracting files across internal shared storage and removable SD cards."
+                title = stringResource(R.string.privacy_section2_item1_title),
+                desc = stringResource(R.string.privacy_section2_item1_desc)
             )
             DisclosureItem(
-                title = "Legacy Storage (READ/WRITE_EXTERNAL_STORAGE)",
-                desc = "Declared with maxSdkVersion to grant file management capabilities on legacy devices running Android 10 (API 29) or older."
+                title = stringResource(R.string.privacy_section2_item2_title),
+                desc = stringResource(R.string.privacy_section2_item2_desc)
             )
             DisclosureItem(
-                title = "Notifications (POST_NOTIFICATIONS)",
-                desc = "Required on Android 13+ (API 33+) exclusively to show user-visible progress indicators during batch file tasks (e.g. compressing a large zip, extracting an archive, bulk copy/move) and vault background lock alerts. Never used for marketing or background notifications."
+                title = stringResource(R.string.privacy_section2_item3_title),
+                desc = stringResource(R.string.privacy_section2_item3_desc)
             )
             DisclosureItem(
-                title = "Installed Apps Visibility (QUERY_ALL_PACKAGES)",
-                desc = "Used locally by the App Analyzer and App Backup tools so you can inspect installed package sizes, permissions, versions, or back up APK files on your own device without sending app lists anywhere."
+                title = stringResource(R.string.privacy_section2_item4_title),
+                desc = stringResource(R.string.privacy_section2_item4_desc)
             )
             DisclosureItem(
-                title = "App Usage Statistics (PACKAGE_USAGE_STATS)",
-                desc = "Optional user-granted special permission used locally by Storage Analyzer to display accurate app storage/cache breakdowns when you open the App Manager."
+                title = stringResource(R.string.privacy_section2_item5_title),
+                desc = stringResource(R.string.privacy_section2_item5_desc)
             )
             DisclosureItem(
-                title = "Package Installation Requests (REQUEST_INSTALL_PACKAGES)",
-                desc = "Used exclusively when you explicitly tap an APK file to install it via Android's PackageInstaller or choose to install a user-approved GitHub release update."
+                title = stringResource(R.string.privacy_section2_item6_title),
+                desc = stringResource(R.string.privacy_section2_item6_desc)
             )
             DisclosureItem(
-                title = "Haptic Feedback (VIBRATE)",
-                desc = "Used optionally for subtle tactile feedback on gestures and interactions when haptics are enabled in Settings."
+                title = stringResource(R.string.privacy_section2_item7_title),
+                desc = stringResource(R.string.privacy_section2_item7_desc)
             )
             DisclosureItem(
-                title = "Foreground Service (DATA_SYNC)",
-                desc = "Prevents the Android operating system from prematurely killing active archive compression, extraction, file transfer tasks, or user-started Local FTP / ARCA Drop sessions when you navigate away from the app."
+                title = stringResource(R.string.privacy_section2_item8_title),
+                desc = stringResource(R.string.privacy_section2_item8_desc)
             )
             DisclosureItem(
-                title = "Wake Lock (WAKE_LOCK)",
-                desc = "Used exclusively while user-initiated Local FTP or ARCA Drop foreground transfer services are running so CPU/Wi-Fi sockets remain responsive during large browser or PC transfers."
+                title = stringResource(R.string.privacy_section2_item9_title),
+                desc = stringResource(R.string.privacy_section2_item9_desc)
             )
             DisclosureItem(
-                title = "Internet Access (INTERNET)",
-                desc = "Declared to permit user-initiated remote storage protocol connections (FTP, FTPS, SFTP, SMB, WebDAV), user-started local Wi-Fi transfer servers (Local FTP & ARCA Drop), and optional release update checks against official GitHub releases. Strictly point-to-point with zero telemetry."
+                title = stringResource(R.string.privacy_section2_item10_title),
+                desc = stringResource(R.string.privacy_section2_item10_desc)
             )
             DisclosureItem(
-                title = "Explicitly Excluded Permissions",
-                desc = "ACCESS_NETWORK_STATE is stripped via manifest rules. ARCA requests ZERO location, camera, microphone, contacts, calendar, or device telephony/IMEI permissions."
+                title = stringResource(R.string.privacy_section2_item11_title),
+                desc = stringResource(R.string.privacy_section2_item11_desc)
             )
         }
     }
@@ -315,39 +317,39 @@ private fun NetworkFeaturesDisclosureCard(
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader(
                 icon = Icons.Default.Lan,
-                title = "3. What Happens When You Use Network Features"
+                title = stringResource(R.string.privacy_section3_title)
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "ARCA supports user-initiated remote storage connections (FTP, FTPS, SFTP, SMB, and WebDAV). Here is exactly how network communication operates:",
+                text = stringResource(R.string.privacy_section3_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(10.dp))
 
             DisclosureItem(
-                title = "Exclusively User-Initiated",
-                desc = "ARCA never opens network sockets or transmits packets on its own. Network activity occurs exclusively when you configure and connect to a server."
+                title = stringResource(R.string.privacy_section3_item1_title),
+                desc = stringResource(R.string.privacy_section3_item1_desc)
             )
             DisclosureItem(
-                title = "Direct Point-to-Point Communication",
-                desc = "All file transfers and directory queries travel directly between your Android device and the target IP address or hostname you entered. There are no intermediate relay servers, cloud gateways, or proxy nodes."
+                title = stringResource(R.string.privacy_section3_item2_title),
+                desc = stringResource(R.string.privacy_section3_item2_desc)
             )
             DisclosureItem(
-                title = "Protocol Encryption Standards",
-                desc = "SFTP uses SSHv2 encryption, FTPS uses TLS, and WebDAV can use HTTPS. Cleartext protocols (Plaintext FTP or cleartext HTTP WebDAV) are supported for local LAN environments but carry explicit warnings in the connection dialog."
+                title = stringResource(R.string.privacy_section3_item3_title),
+                desc = stringResource(R.string.privacy_section3_item3_desc)
             )
             DisclosureItem(
-                title = "ARCA Drop (Local Wi-Fi Browser Sharing)",
-                desc = "When you manually start ARCA Drop, your device hosts an embedded local HTTP portal over your Wi-Fi or hotspot IP protected by a random 6-digit session PIN, HttpOnly SameSite=Strict session cookie, and strict Host header validation (DNS-rebinding protection). Traffic stays on your local LAN subnet as plaintext HTTP without TLS certificates (use only on trusted local networks), auto-stops after 15 minutes of inactivity, and automatically purges any staged content:// copies from app cache on stop."
+                title = stringResource(R.string.privacy_section3_item4_title),
+                desc = stringResource(R.string.privacy_section3_item4_desc)
             )
             DisclosureItem(
-                title = "App Update Checks",
-                desc = "When you explicitly tap 'Check for Updates' in About or Settings, ARCA queries the public GitHub Releases API to compare the current version tag. No device identifiers, user accounts, or telemetry data are included in this query."
+                title = stringResource(R.string.privacy_section3_item5_title),
+                desc = stringResource(R.string.privacy_section3_item5_desc)
             )
             DisclosureItem(
-                title = "Zero Passive Background Connections",
-                desc = "Remote connections are disconnected when not in use. ARCA does not maintain persistent background connections or sync daemons."
+                title = stringResource(R.string.privacy_section3_item6_title),
+                desc = stringResource(R.string.privacy_section3_item6_desc)
             )
         }
     }
@@ -365,21 +367,21 @@ private fun ExternalTransmissionCard(
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader(
                 icon = Icons.Default.SyncDisabled,
-                title = "4. Zero External Services & No Data Transmission"
+                title = stringResource(R.string.privacy_section4_title)
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             DisclosureItem(
-                title = "No Transmission to External Services",
-                desc = "ARCA transmits zero data to the app developers, advertising networks, commercial partners, or cloud platforms. There are no remote telemetry servers or backend tracking APIs."
+                title = stringResource(R.string.privacy_section4_item1_title),
+                desc = stringResource(R.string.privacy_section4_item1_desc)
             )
             DisclosureItem(
-                title = "No Advertising or Fingerprinting",
-                desc = "ARCA contains zero advertising SDKs. It does not read or transmit your Android Advertising ID (GAID), hardware serial numbers, or unique device fingerprints."
+                title = stringResource(R.string.privacy_section4_item2_title),
+                desc = stringResource(R.string.privacy_section4_item2_desc)
             )
             DisclosureItem(
-                title = "Cloud Backup Leakage Prevention",
-                desc = "ARCA sets android:allowBackup=\"false\" in its manifest, preventing your sensitive settings, vault files, or remote credentials from being automatically extracted into Google Drive or third-party cloud backups."
+                title = stringResource(R.string.privacy_section4_item3_title),
+                desc = stringResource(R.string.privacy_section4_item3_desc)
             )
         }
     }
@@ -397,25 +399,25 @@ private fun CrashReportingAndAnalyticsCard(
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader(
                 icon = Icons.Default.Analytics,
-                title = "5. Crash Reporting & Analytics Disclosure"
+                title = stringResource(R.string.privacy_section5_title)
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             DisclosureItem(
-                title = "Zero Analytics SDKs",
-                desc = "ARCA contains no analytics frameworks whatsoever. We do not use Firebase Analytics, Google Analytics, Mixpanel, Segment, Flurry, Amplitude, or any behavior-tracking libraries."
+                title = stringResource(R.string.privacy_section5_item1_title),
+                desc = stringResource(R.string.privacy_section5_item1_desc)
             )
             DisclosureItem(
-                title = "Zero Automated Crash Reporting",
-                desc = "ARCA does not include automated crash-reporting SDKs such as Firebase Crashlytics, Sentry, or Bugsnag. When a crash occurs, no diagnostic payload is sent over the network."
+                title = stringResource(R.string.privacy_section5_item2_title),
+                desc = stringResource(R.string.privacy_section5_item2_desc)
             )
             DisclosureItem(
-                title = "Local System Logs Only",
-                desc = "If an unexpected application error occurs, Android records the stack trace strictly to the local operating system log (logcat) on your device. This log never leaves your phone unless you manually export it."
+                title = stringResource(R.string.privacy_section5_item3_title),
+                desc = stringResource(R.string.privacy_section5_item3_desc)
             )
             DisclosureItem(
-                title = "Voluntary User Reporting",
-                desc = "If you encounter a problem and choose to file a bug report on our GitHub issue tracker or via email, you have full control over what details and screenshots you share."
+                title = stringResource(R.string.privacy_section5_item4_title),
+                desc = stringResource(R.string.privacy_section5_item4_desc)
             )
         }
     }
@@ -433,11 +435,11 @@ private fun ThirdPartyLibrariesDisclosureCard(
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader(
                 icon = Icons.Default.Code,
-                title = "6. Third-Party Library Disclosures"
+                title = stringResource(R.string.privacy_section6_title)
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "ARCA incorporates vetted, open-source libraries for local archive compression and user interface rendering. None of these libraries contain network beacons or telemetry trackers:",
+                text = stringResource(R.string.privacy_section6_intro),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -486,11 +488,11 @@ private fun PrivacyContactCard(
         Column(modifier = Modifier.padding(16.dp)) {
             SectionHeader(
                 icon = Icons.Default.Email,
-                title = "7. Contact & Privacy Inquiries"
+                title = stringResource(R.string.privacy_section7_title)
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "If you have questions, concerns, or technical inquiries regarding ARCA's privacy practices or security implementation, you can contact the project maintainers directly:",
+                text = stringResource(R.string.privacy_section7_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

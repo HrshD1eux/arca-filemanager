@@ -77,7 +77,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
@@ -133,12 +135,12 @@ fun ArcaDropScreen(
                 title = {
                     Column {
                         Text(
-                            text = "ARCA Drop",
+                            text = stringResource(R.string.drop_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (state.isRunning) "Wi-Fi Browser Portal Active" else "Local Wi-Fi Browser Transfer",
+                            text = if (state.isRunning) stringResource(R.string.drop_subtitle_active) else stringResource(R.string.drop_subtitle_inactive),
                             style = MaterialTheme.typography.labelSmall,
                             color = if (state.isRunning) VaultEmerald else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -148,7 +150,7 @@ fun ArcaDropScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.action_cancel)
                         )
                     }
                 },
@@ -156,7 +158,7 @@ fun ArcaDropScreen(
                     IconButton(onClick = { viewModel.refreshLanIp() }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh network address"
+                            contentDescription = stringResource(R.string.action_refresh)
                         )
                     }
                 },
@@ -213,15 +215,15 @@ fun ArcaDropScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (state.isRunning) "Transfer Portal Running" else "Ready to Start ARCA Drop",
+                                    text = if (state.isRunning) stringResource(R.string.drop_portal_running) else stringResource(R.string.drop_ready_to_start),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = if (state.isRunning) {
-                                        "${state.activeConnections} active • Sent ${FileFormatter.formatFileSize(state.bytesSent)} • Received ${FileFormatter.formatFileSize(state.bytesReceived)}"
+                                        stringResource(R.string.drop_status_summary, state.activeConnections, FileFormatter.formatFileSize(state.bytesSent), FileFormatter.formatFileSize(state.bytesReceived))
                                     } else {
-                                        "Send & receive files, folders, and text with any PC/phone browser over Wi-Fi."
+                                        stringResource(R.string.drop_intro_desc)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -344,11 +346,11 @@ fun ArcaDropScreen(
                                 contentDescription = null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (state.isRunning) "Stop Sharing" else "Start ARCA Drop")
+                            Text(if (state.isRunning) stringResource(R.string.drop_stop_service) else stringResource(R.string.drop_start_button))
                         }
 
                         Text(
-                            text = "Note: Local browser links use plaintext HTTP inside your LAN protected by your 6-digit PIN. Use home Wi-Fi or your Mobile Hotspot rather than untrusted public networks.",
+                            text = stringResource(R.string.drop_lan_notice),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -382,7 +384,7 @@ fun ArcaDropScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Save Received Files To",
+                                text = stringResource(R.string.drop_destination_title),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -395,7 +397,7 @@ fun ArcaDropScreen(
                             )
                         }
                         IconButton(onClick = { showReceivePicker = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Change save folder")
+                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.drop_change_folder))
                         }
                     }
                 }
@@ -420,19 +422,19 @@ fun ArcaDropScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Shared to Browser (${state.sharedItems.size})",
+                                    text = stringResource(R.string.drop_shared_to_browser, state.sharedItems.size),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Add files or text anytime — live browser reloads pick them up",
+                                    text = stringResource(R.string.drop_shared_queue_desc),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             if (state.sharedItems.isNotEmpty() || !state.sharedText.isNullOrBlank()) {
                                 IconButton(onClick = { viewModel.clearSharedQueue() }) {
-                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Clear shared queue")
+                                    Icon(Icons.Default.DeleteOutline, contentDescription = stringResource(R.string.drop_clear_queue))
                                 }
                             }
                         }
@@ -448,7 +450,7 @@ fun ArcaDropScreen(
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Add Files", maxLines = 1)
+                                Text(stringResource(R.string.drop_add_files), maxLines = 1)
                             }
                             OutlinedButton(
                                 onClick = { showShareTextDialog = true },
@@ -457,7 +459,7 @@ fun ArcaDropScreen(
                             ) {
                                 Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(if (state.sharedText.isNullOrBlank()) "Share Text" else "Edit Text", maxLines = 1)
+                                Text(if (state.sharedText.isNullOrBlank()) stringResource(R.string.drop_btn_share_text) else stringResource(R.string.drop_btn_edit_text), maxLines = 1)
                             }
                         }
 
@@ -467,7 +469,7 @@ fun ArcaDropScreen(
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                             ) {
                                 Text(
-                                    text = "Shared snippet: ${state.sharedText}",
+                                    text = stringResource(R.string.drop_shared_snippet, state.sharedText.orEmpty()),
                                     style = MaterialTheme.typography.bodySmall,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
@@ -503,7 +505,7 @@ fun ArcaDropScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Clear,
-                                        contentDescription = "Remove item",
+                                        contentDescription = stringResource(R.string.button_remove),
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -511,7 +513,7 @@ fun ArcaDropScreen(
                         }
                         if (state.sharedItems.size > 25) {
                             Text(
-                                text = "+ ${state.sharedItems.size - 25} more queued items",
+                                text = stringResource(R.string.drop_more_queued_items, state.sharedItems.size - 25),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -540,12 +542,12 @@ fun ArcaDropScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "Received on Phone",
+                                    text = stringResource(R.string.drop_received_on_phone),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold
                                 )
                                 TextButton(onClick = { onNavigateToDirectory(state.receiveDirectoryPath) }) {
-                                    Text("Open Folder")
+                                    Text(stringResource(R.string.drop_open_folder))
                                 }
                             }
 
@@ -570,7 +572,7 @@ fun ArcaDropScreen(
                                         IconButton(onClick = {
                                             copyToClipboard(context, "Received Text", snippet.text)
                                         }) {
-                                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy received text")
+                                            Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.drop_copy_received_text))
                                         }
                                     }
                                 }
@@ -604,7 +606,7 @@ fun ArcaDropScreen(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "Transfer Log",
+                                text = stringResource(R.string.drop_transfer_log_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
@@ -625,8 +627,8 @@ fun ArcaDropScreen(
     if (showReceivePicker) {
         DestinationPickerDialog(
             storageProvider = remember { LocalFileSystemProvider() },
-            title = "Select Receive Folder",
-            confirmButtonText = "Save Here",
+            title = stringResource(R.string.drop_select_receive_folder),
+            confirmButtonText = stringResource(R.string.drop_save_here),
             onDestinationSelected = { node, _ ->
                 showReceivePicker = false
                 viewModel.setReceiveDirectory(node.path)
@@ -639,12 +641,12 @@ fun ArcaDropScreen(
         var textInput by remember { mutableStateOf(state.sharedText.orEmpty()) }
         AlertDialog(
             onDismissRequest = { showShareTextDialog = false },
-            title = { Text("Share Text or URL", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.drop_share_text), fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = textInput,
                     onValueChange = { textInput = it },
-                    label = { Text("Text snippet for connected browser") },
+                    label = { Text(stringResource(R.string.drop_text_snippet_label)) },
                     minLines = 3,
                     maxLines = 6,
                     modifier = Modifier.fillMaxWidth()
@@ -655,12 +657,12 @@ fun ArcaDropScreen(
                     viewModel.setSharedText(textInput)
                     showShareTextDialog = false
                 }) {
-                    Text("Save")
+                    Text(stringResource(R.string.action_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showShareTextDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -699,19 +701,19 @@ private fun ArcaDropTroubleshootingCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Having trouble connecting on Wi-Fi?",
+                        text = stringResource(R.string.drop_trouble_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = if (expanded) "Tap to collapse tips" else "Tap for Wi-Fi AP isolation & hotspot fix",
+                        text = if (expanded) stringResource(R.string.drop_trouble_subtitle_open) else stringResource(R.string.drop_trouble_subtitle_closed),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    contentDescription = if (expanded) stringResource(R.string.action_collapse) else stringResource(R.string.action_expand),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -724,17 +726,16 @@ private fun ArcaDropTroubleshootingCard(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     TroubleshootingItem(
-                        title = "1. Router AP Client Isolation (Most Common)",
-                        description = "Campus, hotel, office, and some home Wi-Fi routers block devices from communicating with each other for guest security." +
-                            "\n\n💡 1-Tap Solution: Turn on Android's Mobile Hotspot on this phone and connect your computer/tablet directly to it. Transfers will be direct and fast, consuming ZERO cellular data."
+                        title = stringResource(R.string.drop_trouble_ap_title),
+                        description = stringResource(R.string.drop_trouble_ap_desc)
                     )
                     TroubleshootingItem(
-                        title = "2. Check Browser URL (HTTP vs HTTPS)",
-                        description = "Make sure the browser URL begins with http:// and NOT https://. Modern browsers often autofill https://, which causes connection refused errors on local LAN IPs."
+                        title = stringResource(R.string.drop_trouble_http_title),
+                        description = stringResource(R.string.drop_trouble_http_desc)
                     )
                     TroubleshootingItem(
-                        title = "3. Wi-Fi Band & VPN",
-                        description = "Ensure both devices are on the same Wi-Fi SSID/frequency (2.4 GHz vs 5 GHz). If a VPN is active on either phone or computer, temporarily pause it to allow direct LAN traffic."
+                        title = stringResource(R.string.drop_trouble_band_title),
+                        description = stringResource(R.string.drop_trouble_band_desc)
                     )
                 }
             }
@@ -794,7 +795,7 @@ private fun HotspotGuidanceBanner() {
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "No local Wi-Fi or Hotspot IP detected. Connect to the same Wi-Fi router as your computer, or turn on Mobile Hotspot and connect your computer to it — ARCA Drop updates automatically.",
+                text = stringResource(R.string.drop_no_ip_warning),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface
             )

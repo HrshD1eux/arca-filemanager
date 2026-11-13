@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager
 import com.Hrshd1eux.filemanager.core.settings.locale.SupportedLanguage
 
@@ -39,7 +41,7 @@ fun LanguageSelectionDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Choose Language",
+                text = stringResource(id = R.string.dialog_choose_language),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -65,7 +67,7 @@ fun LanguageSelectionDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(id = R.string.action_cancel))
             }
         },
         shape = RoundedCornerShape(16.dp)

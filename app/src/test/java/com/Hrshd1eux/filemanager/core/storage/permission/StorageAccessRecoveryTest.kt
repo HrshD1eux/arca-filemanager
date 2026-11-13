@@ -155,7 +155,7 @@ class StorageAccessRecoveryTest {
         val code = browserFile.readText()
 
         // Verifies Scoped Folder option
-        assertTrue("Must contain Choose Specific Folder action", code.contains("Choose Specific Folder (Scoped Access)"))
+        assertTrue("Must contain Choose Specific Folder action", code.contains("Choose Specific Folder (Scoped Access)") || code.contains("browser_choose_scoped_folder"))
         assertTrue("Must support onSelectScopedFolder", code.contains("onSelectScopedFolder"))
 
         // Verifies Revocation title detection

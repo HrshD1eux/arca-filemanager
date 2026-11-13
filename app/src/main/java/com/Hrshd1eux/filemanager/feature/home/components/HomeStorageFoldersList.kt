@@ -46,9 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.TwoToneIconBadge
 import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
@@ -84,7 +86,7 @@ fun HomeStorageFoldersList(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Storage",
+                text = stringResource(R.string.section_storage_folders),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -98,7 +100,7 @@ fun HomeStorageFoldersList(
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Storage options",
+                            contentDescription = stringResource(R.string.action_more),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -108,7 +110,7 @@ fun HomeStorageFoldersList(
                         onDismissRequest = { showOptionsMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Reset to Defaults") },
+                            text = { Text(stringResource(R.string.storage_folders_reset_defaults)) },
                             leadingIcon = {
                                 Icon(Icons.Default.RestartAlt, contentDescription = null)
                             },
@@ -142,13 +144,13 @@ fun HomeStorageFoldersList(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "No folder shortcuts configured",
+                                text = stringResource(R.string.storage_folders_empty),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             TextButton(onClick = onResetDefaults) {
-                                Text("Restore Defaults")
+                                Text(stringResource(R.string.storage_folders_restore))
                             }
                         }
                     }
@@ -193,7 +195,7 @@ fun HomeStorageFoldersList(
                     Spacer(modifier = Modifier.width(14.dp))
 
                     Text(
-                        text = "Add custom folder...",
+                        text = stringResource(R.string.storage_folders_add_custom),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary

@@ -258,7 +258,7 @@ private fun AppHeader(
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "Private & Local-First File Manager",
+            text = stringResource(R.string.about_app_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.primary
@@ -276,7 +276,7 @@ private fun AppHeader(
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Text(
-                    text = "Build ID: ${versionInfo.buildIdentifier}",
+                    text = stringResource(R.string.about_build_id, versionInfo.buildIdentifier),
                     style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -286,7 +286,7 @@ private fun AppHeader(
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Application ID: ${versionInfo.applicationId}",
+            text = stringResource(R.string.about_app_id, versionInfo.applicationId),
             style = MaterialTheme.typography.labelSmall,
             fontFamily = FontFamily.Monospace,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
@@ -319,7 +319,7 @@ private fun ProductDescriptionCard(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "About ARCA",
+                    text = stringResource(R.string.about_product_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -327,7 +327,7 @@ private fun ProductDescriptionCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "ARCA is an offline-first file management and archive utility built for privacy, transparency, and reliable performance. All file operations, archive compressions, and cryptographic functions execute strictly on your device without user tracking, analytics SDKs, or cloud accounts. ARCA empowers you with total control over your local and network storage.",
+                text = stringResource(R.string.about_product_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -365,7 +365,7 @@ private fun AppUpdatesDisclosureCard(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "App Updates & Internet Disclosure",
+                    text = stringResource(R.string.about_updates_disclosure_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -373,13 +373,13 @@ private fun AppUpdatesDisclosureCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "ARCA requires Internet permission solely for user-initiated remote storage protocols (SFTP, FTP, SMB, WebDAV) and checking for official app releases. All local file management, compression, and encryption engines are strictly offline and isolated from network connections.",
+                text = stringResource(R.string.about_updates_disclosure_body1),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Official release packages, changelogs, and SHA-256 checksums are published on GitHub Releases.",
+                text = stringResource(R.string.about_updates_disclosure_body2),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
             )
@@ -401,7 +401,7 @@ private fun AppUpdatesDisclosureCard(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "View Releases on GitHub")
+                Text(text = stringResource(R.string.about_view_github))
             }
         }
     }
@@ -432,7 +432,7 @@ private fun PrivacyStatementCard(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "Privacy Statement",
+                    text = stringResource(R.string.about_privacy_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -441,20 +441,20 @@ private fun PrivacyStatementCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             PrivacyPrincipleItem(
-                title = "Zero Telemetry",
-                desc = "No analytics, advertising SDKs, crash loggers, or behavioral tracking."
+                title = stringResource(R.string.about_principle_telemetry_title),
+                desc = stringResource(R.string.about_principle_telemetry_desc)
             )
             PrivacyPrincipleItem(
-                title = "No Accounts Required",
-                desc = "No registration, profile creation, or external cloud accounts."
+                title = stringResource(R.string.about_principle_accounts_title),
+                desc = stringResource(R.string.about_principle_accounts_desc)
             )
             PrivacyPrincipleItem(
-                title = "Local Execution & Isolated Networking",
-                desc = "Files and encryption keys reside solely on your physical device. Remote networking is strictly isolated from local engines."
+                title = stringResource(R.string.about_principle_local_title),
+                desc = stringResource(R.string.about_principle_local_desc)
             )
             PrivacyPrincipleItem(
-                title = "User-Initiated Network Only",
-                desc = "Network access is strictly used for remote storage protocols you configure and user-initiated app release checks via GitHub. Zero telemetry or user data is ever transmitted."
+                title = stringResource(R.string.about_principle_network_title),
+                desc = stringResource(R.string.about_principle_network_desc)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -463,7 +463,7 @@ private fun PrivacyStatementCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text(text = "Read Detailed Privacy Statement")
+                Text(text = stringResource(R.string.about_read_privacy_button))
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
@@ -544,13 +544,13 @@ private fun OpenSourceLicensesCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Open-Source Licenses",
+                        text = stringResource(R.string.about_licenses_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Third-party libraries & acknowledgements (${libraries.size})",
+                        text = stringResource(R.string.about_licenses_subtitle, libraries.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -568,7 +568,7 @@ private fun OpenSourceLicensesCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "ARCA is open-source and builds upon the following community projects:",
+                        text = stringResource(R.string.about_licenses_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -633,7 +633,7 @@ private fun LeadDeveloperCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Lead Developer & Maintainer",
+                text = stringResource(R.string.about_developer_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -692,7 +692,7 @@ private fun LeadDeveloperCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Email",
+                        text = stringResource(R.string.about_email_button),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -729,13 +729,13 @@ private fun LeadDeveloperCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Developer Portfolio",
+                        text = stringResource(R.string.about_portfolio_title),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Personal profile, showcase & projects",
+                        text = stringResource(R.string.about_portfolio_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -772,13 +772,13 @@ private fun LeadDeveloperCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Source Code (GitHub)",
+                        text = stringResource(R.string.about_github_title),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "github.com/HrshD1eux/arca-filemanager",
+                        text = stringResource(R.string.about_github_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -815,13 +815,13 @@ private fun LeadDeveloperCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Report Issues & Requests",
+                        text = stringResource(R.string.about_issues_title),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Submit bug reports & feature requests",
+                        text = stringResource(R.string.about_issues_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -862,7 +862,7 @@ private fun LegalInformationCard(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "Legal Information",
+                    text = stringResource(R.string.about_legal_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -870,20 +870,20 @@ private fun LegalInformationCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Copyright © 2026 ARCA Contributors & hrshd1eux Studio. All rights reserved under the GNU General Public License v3.0 (GPLv3).",
+                text = stringResource(R.string.about_legal_copyright),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Licensed under the GNU General Public License v3.0 (GPLv3). You may obtain a copy of the License at https://www.gnu.org/licenses/gpl-3.0.html.",
+                text = stringResource(R.string.about_legal_license),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Disclaimer: ARCA is provided 'as is' without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability arising from the software or the use thereof.",
+                text = stringResource(R.string.about_legal_disclaimer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
             )

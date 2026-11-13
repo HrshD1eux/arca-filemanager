@@ -57,6 +57,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.res.stringResource
+import com.Hrshd1eux.filemanager.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -109,7 +111,7 @@ fun BackupScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Backup Profiles & Sync",
+                        text = stringResource(R.string.backup_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -118,7 +120,7 @@ fun BackupScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.action_back)
                         )
                     }
                 },
@@ -126,7 +128,7 @@ fun BackupScreen(
                     IconButton(onClick = { isCreatingNew = true }) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "New Backup Profile"
+                            contentDescription = stringResource(R.string.backup_new_profile)
                         )
                     }
                 },
@@ -251,11 +253,11 @@ fun BackupScreen(
     if (errorMessage != null) {
         AlertDialog(
             onDismissRequest = { viewModel.clearError() },
-            title = { Text("Backup Notice") },
+            title = { Text(stringResource(R.string.first_run_storage_title)) },
             text = { Text(errorMessage!!) },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearError() }) {
-                    Text("OK")
+                    Text(stringResource(R.string.button_ok))
                 }
             }
         )
@@ -286,14 +288,14 @@ private fun BackupReliabilityNoticeCard(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(
-                    text = "Reliability-First Backup Pipeline",
+                    text = stringResource(R.string.backup_pipeline_title),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "ARCA executes backups in strict order: Compare → Preview → Copy → Verify → Mirror. Safe Copy mode never modifies destination files. Mirror mode prunes destination files only after copy and SHA-256 verification succeed.",
+                    text = stringResource(R.string.backup_pipeline_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -372,10 +374,10 @@ private fun BackupProfileCard(
 
                 Row {
                     IconButton(onClick = onEdit, enabled = !isBusy) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Profile", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.backup_edit_profile), modifier = Modifier.size(18.dp))
                     }
                     IconButton(onClick = onDelete, enabled = !isBusy) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete Profile", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.backup_delete_profile), modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -391,7 +393,7 @@ private fun BackupProfileCard(
                     .padding(10.dp)
             ) {
                 Text(
-                    text = "Source: ${profile.sourcePaths.joinToString()}",
+                    text = stringResource(R.string.backup_source_label, profile.sourcePaths.joinToString()),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -399,7 +401,7 @@ private fun BackupProfileCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Destination: ${profile.destinationPath}",
+                    text = stringResource(R.string.backup_destination_label, profile.destinationPath),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -410,7 +412,7 @@ private fun BackupProfileCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null, tint = VaultEmerald, modifier = Modifier.size(12.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("SHA-256 Content Verification Enabled", style = MaterialTheme.typography.labelSmall, color = VaultEmerald)
+                        Text(stringResource(R.string.backup_sha256_enabled), style = MaterialTheme.typography.labelSmall, color = VaultEmerald)
                     }
                 }
             }
@@ -425,7 +427,7 @@ private fun BackupProfileCard(
                     else -> MaterialTheme.colorScheme.outline
                 }
                 Text(
-                    text = "Last Run: ${dateFormat.format(Date(profile.lastRunTimestamp))} (${profile.lastRunStatus?.name ?: "IDLE"})",
+                    text = stringResource(R.string.backup_last_run_label, dateFormat.format(Date(profile.lastRunTimestamp)), profile.lastRunStatus?.name ?: "-"),
                     style = MaterialTheme.typography.labelSmall,
                     color = statusColor,
                     fontWeight = FontWeight.SemiBold
@@ -456,7 +458,7 @@ private fun BackupProfileCard(
                 ) {
                     Icon(Icons.Default.Preview, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Preview")
+                    Text(stringResource(R.string.backup_btn_preview))
                 }
 
                 Button(
@@ -467,7 +469,7 @@ private fun BackupProfileCard(
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Run Backup")
+                    Text(stringResource(R.string.backup_btn_run))
                 }
             }
         }
@@ -495,13 +497,13 @@ private fun EmptyProfilesCard(onCreateClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "No Backup Profiles Configured",
+                text = stringResource(R.string.backup_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Create local backup profiles to back up Photos, Documents, or files to an SD card or local storage.",
+                text = stringResource(R.string.backup_empty_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -509,7 +511,7 @@ private fun EmptyProfilesCard(onCreateClick: () -> Unit) {
             Button(onClick = onCreateClick) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Create Backup Profile")
+                Text(stringResource(R.string.backup_new_profile))
             }
         }
     }
@@ -532,7 +534,7 @@ private fun ProfileEditDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (profile.id.isNotBlank()) "Configure Backup Profile" else "New Backup Profile",
+                text = if (profile.id.isNotBlank()) stringResource(R.string.backup_configure_profile) else stringResource(R.string.backup_new_profile),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -547,26 +549,26 @@ private fun ProfileEditDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Profile Name") },
+                    label = { Text(stringResource(R.string.backup_profile_name)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
                     value = sourcePath,
                     onValueChange = { sourcePath = it },
-                    label = { Text("Source Directory") },
+                    label = { Text(stringResource(R.string.backup_source_directory)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
                     value = destinationPath,
                     onValueChange = { destinationPath = it },
-                    label = { Text("Destination Directory (SD Card / Storage)") },
+                    label = { Text(stringResource(R.string.backup_destination_directory)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Text(
-                    text = "Backup Mode Policy",
+                    text = stringResource(R.string.backup_mode_policy),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -582,8 +584,8 @@ private fun ProfileEditDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Safe Copy (Recommended)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Never deletes destination files.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.backup_mode_safe_copy), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.backup_mode_safe_copy_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -597,8 +599,8 @@ private fun ProfileEditDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Incremental Copy", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Copies only new and modified files.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.backup_mode_incremental), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.backup_mode_incremental_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -612,8 +614,8 @@ private fun ProfileEditDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Mirror Sync (Caution)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFFD97706))
-                            Text("Deletes destination files missing from source.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.backup_mode_mirror_sync), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFFD97706))
+                            Text(stringResource(R.string.backup_mode_mirror_sync_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -626,8 +628,8 @@ private fun ProfileEditDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Verify Content Integrity", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                        Text("Streams SHA-256 hash checks on all copies", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.backup_verify_integrity), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.backup_verify_integrity_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(
                         checked = verifyIntegrity,
@@ -638,7 +640,7 @@ private fun ProfileEditDialog(
                 OutlinedTextField(
                     value = exclusions,
                     onValueChange = { exclusions = it },
-                    label = { Text("Exclusion Patterns (comma-separated)") },
+                    label = { Text(stringResource(R.string.backup_exclusion_patterns)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -660,12 +662,12 @@ private fun ProfileEditDialog(
                 },
                 enabled = sourcePath.isNotBlank() && destinationPath.isNotBlank()
             ) {
-                Text("Save Profile")
+                Text(stringResource(R.string.backup_save_profile))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -681,7 +683,7 @@ private fun BackupPreviewDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("Backup Preview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.backup_preview_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(report.profileName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
@@ -693,21 +695,21 @@ private fun BackupPreviewDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 PreviewStatCard(
-                    title = "Files to Copy",
+                    title = stringResource(R.string.backup_files_to_copy),
                     count = report.filesToCopy.size,
                     bytes = report.filesToCopy.sumOf { it.sizeBytes },
                     color = VaultEmerald
                 )
 
                 PreviewStatCard(
-                    title = "Files to Update",
+                    title = stringResource(R.string.backup_files_to_update),
                     count = report.filesToUpdate.size,
                     bytes = report.filesToUpdate.sumOf { it.sizeBytes },
                     color = Color(0xFF3B82F6)
                 )
 
                 PreviewStatCard(
-                    title = "Files Already Matching",
+                    title = stringResource(R.string.backup_files_already_matching),
                     count = report.filesAlreadyMatching.size,
                     bytes = report.filesAlreadyMatching.sumOf { it.sizeBytes },
                     color = Color.Gray
@@ -715,7 +717,7 @@ private fun BackupPreviewDialog(
 
                 if (report.filesToDeleteInMirror.isNotEmpty()) {
                     PreviewStatCard(
-                        title = "Files to Delete in Mirror",
+                        title = stringResource(R.string.backup_files_to_delete_mirror),
                         count = report.filesToDeleteInMirror.size,
                         bytes = report.totalBytesToDelete,
                         color = MaterialTheme.colorScheme.error,
@@ -725,7 +727,7 @@ private fun BackupPreviewDialog(
 
                 if (report.inaccessibleItems.isNotEmpty()) {
                     PreviewStatCard(
-                        title = "Inaccessible Items (Permission Denied)",
+                        title = stringResource(R.string.backup_inaccessible_items),
                         count = report.inaccessibleItems.size,
                         bytes = 0L,
                         color = Color(0xFFF59E0B)
@@ -734,7 +736,7 @@ private fun BackupPreviewDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Total to transfer: ${FileFormatter.formatFileSize(report.totalBytesToCopy)}",
+                    text = stringResource(R.string.backup_total_transfer, FileFormatter.formatFileSize(report.totalBytesToCopy)),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -742,12 +744,12 @@ private fun BackupPreviewDialog(
         },
         confirmButton = {
             Button(onClick = onExecute) {
-                Text("Start Backup")
+                Text(stringResource(R.string.backup_start_button))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(R.string.action_close))
             }
         }
     )
@@ -780,7 +782,7 @@ private fun PreviewStatCard(
                 )
                 if (isWarning) {
                     Text(
-                        text = "Caution: Destination files will be deleted",
+                        text = stringResource(R.string.backup_caution_mirror_deletions),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -808,25 +810,22 @@ private fun MirrorModeConfirmationDialog(
             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(32.dp))
         },
         title = {
-            Text("Confirm Mirror Mode Deletions", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.backup_confirm_mirror_title), fontWeight = FontWeight.Bold)
         },
         text = {
-            Text(
-                "Mirror mode deletes all files in the destination directory that do not exist in the source directory.\n\n" +
-                "Deletions will only occur AFTER all source files are successfully copied and verified. Are you sure you want to proceed?"
-            )
+            Text(stringResource(R.string.backup_confirm_mirror_desc))
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Text("Delete & Mirror")
+                Text(stringResource(R.string.backup_btn_delete_and_mirror))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -840,7 +839,7 @@ private fun BackupProgressDialog(
     AlertDialog(
         onDismissRequest = {},
         title = {
-            Text("Backing Up Files...", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.backup_progress_heading), fontWeight = FontWeight.Bold)
         },
         text = {
             Column(
@@ -857,7 +856,7 @@ private fun BackupProgressDialog(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "${progress.filesProcessed} / ${progress.totalFiles} files",
+                        text = stringResource(R.string.backup_progress_files, progress.filesProcessed, progress.totalFiles),
                         style = MaterialTheme.typography.bodySmall
                     )
                     Text(
@@ -869,7 +868,7 @@ private fun BackupProgressDialog(
 
                 if (progress.currentFileName.isNotBlank()) {
                     Text(
-                        text = "Current: ${progress.currentFileName}",
+                        text = stringResource(R.string.backup_progress_current, progress.currentFileName),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -879,7 +878,7 @@ private fun BackupProgressDialog(
 
                 if (progress.speedBytesPerSec > 0) {
                     Text(
-                        text = "Speed: ${FileFormatter.formatFileSize(progress.speedBytesPerSec)}/s",
+                        text = stringResource(R.string.backup_progress_speed, FileFormatter.formatFileSize(progress.speedBytesPerSec)),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -888,7 +887,7 @@ private fun BackupProgressDialog(
         },
         confirmButton = {
             OutlinedButton(onClick = onCancel) {
-                Text("Cancel Backup")
+                Text(stringResource(R.string.backup_cancel_button))
             }
         }
     )
@@ -912,7 +911,7 @@ private fun BackupReportDialog(
             Icon(imageVector = statusIcon, contentDescription = null, tint = statusColor, modifier = Modifier.size(32.dp))
         },
         title = {
-            Text("Backup Completed: ${report.status.name}", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.backup_completed_status, report.status.name), fontWeight = FontWeight.Bold)
         },
         text = {
             Column(
@@ -925,17 +924,17 @@ private fun BackupReportDialog(
 
                 HorizontalDivider()
 
-                Text("Transferred: ${FileFormatter.formatFileSize(report.bytesTransferred)}", style = MaterialTheme.typography.bodySmall)
-                Text("Copied: ${report.filesCopied} files", style = MaterialTheme.typography.bodySmall)
-                Text("Skipped: ${report.filesSkipped} files", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.backup_report_transferred, FileFormatter.formatFileSize(report.bytesTransferred)), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.backup_report_copied, report.filesCopied), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.backup_report_skipped, report.filesSkipped), style = MaterialTheme.typography.bodySmall)
 
                 if (report.deletedInMirrorCount > 0) {
-                    Text("Mirror Pruned: ${report.deletedInMirrorCount} files", style = MaterialTheme.typography.bodySmall, color = Color(0xFFD97706))
+                    Text(stringResource(R.string.backup_report_pruned, report.deletedInMirrorCount), style = MaterialTheme.typography.bodySmall, color = Color(0xFFD97706))
                 }
 
                 if (report.verifiedCount > 0 || report.failedVerificationCount > 0) {
                     Text(
-                        "Integrity: ${report.verifiedCount} SHA-256 verified (${report.failedVerificationCount} failed)",
+                        stringResource(R.string.backup_report_integrity, report.verifiedCount, report.failedVerificationCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (report.failedVerificationCount > 0) MaterialTheme.colorScheme.error else VaultEmerald
                     )
@@ -943,7 +942,7 @@ private fun BackupReportDialog(
 
                 if (report.errors.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Errors (${report.errors.size}):", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.backup_report_errors, report.errors.size), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                     for (err in report.errors.take(5)) {
                         Text("• ${err.filePath}: ${err.errorMessage}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                     }
@@ -952,7 +951,7 @@ private fun BackupReportDialog(
         },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(R.string.action_done))
             }
         }
     )

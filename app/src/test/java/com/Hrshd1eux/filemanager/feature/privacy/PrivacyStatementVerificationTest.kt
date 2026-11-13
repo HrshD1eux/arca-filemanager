@@ -93,7 +93,8 @@ class PrivacyStatementVerificationTest {
     @Test
     fun privacyStatementScreen_containsAllRequiredDisclosures() {
         val privacyFile = getSourceFile("src/main/java/com/Hrshd1eux/filemanager/feature/privacy/PrivacyStatementScreen.kt")
-        val content = privacyFile.readText()
+        val stringsFile = getSourceFile("src/main/res/values/strings.xml")
+        val content = (privacyFile.readText() + "\n" + stringsFile.readText()).replace("&amp;", "&")
 
         // 1. Local Data Processing
         assertTrue("Must disclose local data processing", content.contains("Data Processed Locally on Your Device"))
@@ -154,14 +155,14 @@ class PrivacyStatementVerificationTest {
         // AboutScreen
         val aboutContent = getSourceFile("src/main/java/com/Hrshd1eux/filemanager/feature/about/AboutScreen.kt").readText()
         assertTrue("AboutScreen must contain button to read privacy statement",
-            aboutContent.contains("Read Detailed Privacy Statement"))
+            aboutContent.contains("Read Detailed Privacy Statement") || aboutContent.contains("about_read_privacy_button") || aboutContent.contains("about_privacy_read_statement"))
         assertTrue("AboutScreen must trigger onViewPrivacyStatement",
             aboutContent.contains("onClick = onViewPrivacyStatement"))
 
         // SettingsScreen
         val settingsContent = getSourceFile("src/main/java/com/Hrshd1eux/filemanager/feature/settings/SettingsScreen.kt").readText()
         assertTrue("SettingsScreen must contain Privacy Statement row",
-            settingsContent.contains("title = \"Privacy Statement\""))
+            settingsContent.contains("title = \"Privacy Statement\"") || settingsContent.contains("settings_privacy") || settingsContent.contains("settings_privacy_statement"))
         assertTrue("SettingsScreen Privacy row must trigger onNavigateToPrivacy",
             settingsContent.contains("onClick = onNavigateToPrivacy"))
 
@@ -173,7 +174,7 @@ class PrivacyStatementVerificationTest {
         // FileBrowserScreen (First-run permission prompt)
         val browserContent = getSourceFile("src/main/java/com/Hrshd1eux/filemanager/feature/browser/FileBrowserScreen.kt").readText()
         assertTrue("FileBrowserScreen permission view must contain Read Privacy Statement button",
-            browserContent.contains("Text(\"Read Privacy Statement\""))
+            browserContent.contains("Text(\"Read Privacy Statement\"") || browserContent.contains("first_run_storage_read_privacy"))
 
         // ArcaNavHost
         val navContent = getSourceFile("src/main/java/com/Hrshd1eux/filemanager/core/navigation/ArcaNavHost.kt").readText()

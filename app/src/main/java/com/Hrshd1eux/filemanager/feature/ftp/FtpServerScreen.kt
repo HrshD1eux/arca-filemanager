@@ -75,6 +75,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.res.stringResource
+import com.Hrshd1eux.filemanager.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -146,22 +148,22 @@ fun FtpServerScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Transfer to PC / FTP",
+                        text = stringResource(R.string.ftp_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.refreshNetwork(context) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Network")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
                     }
                     IconButton(onClick = { showHelpDialog = true }) {
-                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Connection Guide")
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = stringResource(R.string.ftp_guide_title))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -206,15 +208,15 @@ fun FtpServerScreen(
                         val clip = ClipData.newPlainText("FTP URL", state.ftpUrl)
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "FTP Address copied to clipboard", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.ftp_address_copied_toast), Toast.LENGTH_SHORT).show()
                     },
                     onShareUrl = {
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "ARCA FTP Server Address")
-                            putExtra(Intent.EXTRA_TEXT, "Connect to ARCA FTP Server: ${state.ftpUrl}")
+                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.ftp_share_intent_title))
+                            putExtra(Intent.EXTRA_TEXT, context.getString(R.string.ftp_share_intent_text, state.ftpUrl))
                         }
-                        context.startActivity(Intent.createChooser(intent, "Share FTP Address"))
+                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.ftp_share_address)))
                     }
                 )
             }
@@ -252,7 +254,7 @@ fun FtpServerScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("Try Port ${state.port + 1}")
+                                    Text(stringResource(R.string.ftp_try_port_btn, state.port + 1))
                                 }
                             }
                         }
@@ -285,13 +287,13 @@ fun FtpServerScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Storage Permission Limited",
+                                    text = stringResource(R.string.ftp_storage_limited_title),
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                                 Text(
-                                    text = "Grant All-Files Access to allow your computer to copy and read all photos, media, and documents from this phone.",
+                                    text = stringResource(R.string.ftp_storage_limited_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
                                 )
@@ -306,7 +308,7 @@ fun FtpServerScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                             ) {
-                                Text("Grant", style = MaterialTheme.typography.labelMedium)
+                                Text(stringResource(R.string.ftp_grant_button), style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
@@ -338,7 +340,7 @@ fun FtpServerScreen(
             if (state.activityLogs.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Recent Server Activity",
+                        text = stringResource(R.string.ftp_recent_activity),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -360,8 +362,8 @@ fun FtpServerScreen(
     if (showFolderPicker) {
         DestinationPickerDialog(
             storageProvider = remember { LocalFileSystemProvider() },
-            title = "Select Accessible Folder",
-            confirmButtonText = "Share This Folder",
+            title = stringResource(R.string.ftp_select_accessible_folder),
+            confirmButtonText = stringResource(R.string.ftp_share_this_folder),
             onDestinationSelected = { destination, _ ->
                 viewModel.updateRootDirectory(destination.path)
                 showFolderPicker = false
@@ -384,14 +386,14 @@ fun FtpServerScreen(
             },
             title = {
                 Text(
-                    text = "All-Files Access Required",
+                    text = stringResource(R.string.ftp_all_files_required_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    text = "To allow your computer to browse, read, and copy photos, documents, and downloads from this phone via FTP, Android requires 'All Files Access' permission.\n\nWithout this permission, Android strictly blocks reading files created by other apps.",
+                    text = stringResource(R.string.ftp_all_files_required_desc),
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -404,12 +406,12 @@ fun FtpServerScreen(
                         }
                     }
                 ) {
-                    Text("Grant Permission")
+                    Text(stringResource(R.string.action_grant_permission))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showStoragePermissionDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -423,12 +425,12 @@ fun FtpServerScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text("Connect to Same Network")
+                    Text(stringResource(R.string.ftp_same_network_title))
                 }
             },
             text = {
                 Text(
-                    text = "Ensure both this Android device and your PC or receiving device are connected to the same Wi-Fi network or mobile hotspot so they can communicate.",
+                    text = stringResource(R.string.ftp_same_network_desc),
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -440,12 +442,12 @@ fun FtpServerScreen(
                         viewModel.startServer(context)
                     }
                 ) {
-                    Text("Start Server")
+                    Text(stringResource(R.string.ftp_start_server))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSameNetworkDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -525,7 +527,7 @@ private fun FtpServerStatusCard(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = if (isRunning) "Server Active" else "Server Stopped",
+                        text = if (isRunning) stringResource(R.string.ftp_status_active) else stringResource(R.string.ftp_status_stopped),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (isRunning) VaultEmerald else MaterialTheme.colorScheme.onSurface
@@ -548,7 +550,7 @@ private fun FtpServerStatusCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (isNetworkAvailable) "Wi-Fi / Hotspot" else "No Network",
+                            text = if (isNetworkAvailable) stringResource(R.string.ftp_network_wifi) else stringResource(R.string.ftp_network_none),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = if (isNetworkAvailable) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
@@ -569,7 +571,7 @@ private fun FtpServerStatusCard(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "FTP ADDRESS",
+                        text = stringResource(R.string.ftp_address_label),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
@@ -597,7 +599,7 @@ private fun FtpServerStatusCard(
                     ) {
                         Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Copy Address")
+                        Text(stringResource(R.string.ftp_copy_address))
                     }
 
                     OutlinedButton(
@@ -607,7 +609,7 @@ private fun FtpServerStatusCard(
                     ) {
                         Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Share")
+                        Text(stringResource(R.string.action_share))
                     }
                 }
 
@@ -624,7 +626,7 @@ private fun FtpServerStatusCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Connected Clients",
+                            text = stringResource(R.string.ftp_connected_clients),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -638,7 +640,7 @@ private fun FtpServerStatusCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Data Sent",
+                            text = stringResource(R.string.ftp_data_sent),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -652,7 +654,7 @@ private fun FtpServerStatusCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Data Received",
+                            text = stringResource(R.string.ftp_data_received),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -668,12 +670,12 @@ private fun FtpServerStatusCard(
                 ) {
                     Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Stop Server", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.ftp_stop_server), fontWeight = FontWeight.Bold)
                 }
             } else {
                 // Not running explanation
                 Text(
-                    text = "Transfer files, photos, videos, and APKs between this phone and your computer (Windows, Mac, Linux) or another mobile device over local Wi-Fi without internet.",
+                    text = stringResource(R.string.ftp_intro_card_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -695,7 +697,7 @@ private fun FtpServerStatusCard(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "Please connect to Wi-Fi or turn on Mobile Hotspot to host the FTP server.",
+                                text = stringResource(R.string.ftp_connect_prompt),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -718,11 +720,11 @@ private fun FtpServerStatusCard(
                             strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Starting Server…", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.ftp_starting_server), fontWeight = FontWeight.Bold)
                     } else {
                         Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Start FTP Server", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.ftp_start_server), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -760,7 +762,7 @@ private fun FtpServerSettingsCard(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Server Configuration",
+                text = stringResource(R.string.ftp_config_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -769,7 +771,7 @@ private fun FtpServerSettingsCard(
             // Section 1: Folder Access & Permissions
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "ACCESSIBLE FOLDER",
+                    text = stringResource(R.string.ftp_accessible_folder_header),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -830,7 +832,7 @@ private fun FtpServerSettingsCard(
                                     modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Text("Internal Storage", fontSize = 12.sp)
+                                    Text(stringResource(R.string.ftp_internal_storage), fontSize = 12.sp)
                                 }
 
                                 OutlinedButton(
@@ -840,7 +842,7 @@ private fun FtpServerSettingsCard(
                                 ) {
                                     Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Choose Folder", fontSize = 12.sp)
+                                    Text(stringResource(R.string.ftp_choose_folder), fontSize = 12.sp)
                                 }
                             }
                         }
@@ -863,13 +865,13 @@ private fun FtpServerSettingsCard(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "Full Read & Write Access",
+                            text = stringResource(R.string.ftp_full_access_title),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Connected devices can freely upload, download, modify, rename, cut, paste, and delete files.",
+                            text = stringResource(R.string.ftp_full_access_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -882,7 +884,7 @@ private fun FtpServerSettingsCard(
             // Section 2: Authentication
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "AUTHENTICATION",
+                    text = stringResource(R.string.ftp_auth_header),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -895,13 +897,13 @@ private fun FtpServerSettingsCard(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Anonymous Login",
+                            text = stringResource(R.string.ftp_anonymous_login),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Connect without entering username or password",
+                            text = stringResource(R.string.ftp_anonymous_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -918,7 +920,7 @@ private fun FtpServerSettingsCard(
                     OutlinedTextField(
                         value = config.username,
                         onValueChange = onUpdateUsername,
-                        label = { Text("Username") },
+                        label = { Text(stringResource(R.string.ftp_username)) },
                         leadingIcon = { Icon(Icons.Default.Security, contentDescription = null) },
                         enabled = !isServerRunning,
                         singleLine = true,
@@ -929,13 +931,13 @@ private fun FtpServerSettingsCard(
                     OutlinedTextField(
                         value = config.password,
                         onValueChange = onUpdatePassword,
-                        label = { Text("Password") },
+                        label = { Text(stringResource(R.string.ftp_password)) },
                         leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
                                     imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                    contentDescription = if (passwordVisible) stringResource(R.string.action_hide_password) else stringResource(R.string.action_show_password)
                                 )
                             }
                         },
@@ -953,7 +955,7 @@ private fun FtpServerSettingsCard(
             // Section 3: Port
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "NETWORK PORT",
+                    text = stringResource(R.string.ftp_port_header),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -965,8 +967,8 @@ private fun FtpServerSettingsCard(
                         val p = str.filter { it.isDigit() }.toIntOrNull()
                         if (p != null) onUpdatePort(p)
                     },
-                    label = { Text("Port Number") },
-                    supportingText = { Text("Default: 2121 (Standard non-root port)") },
+                    label = { Text(stringResource(R.string.ftp_port_number)) },
+                    supportingText = { Text(stringResource(R.string.ftp_port_default_desc)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = !isServerRunning,
                     singleLine = true,
@@ -980,7 +982,7 @@ private fun FtpServerSettingsCard(
             // Section 4: APK Sharing Integration
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "APK SHARING",
+                    text = stringResource(R.string.ftp_apk_header),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -1004,13 +1006,13 @@ private fun FtpServerSettingsCard(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Expose /APKs Folder",
+                                text = stringResource(R.string.ftp_expose_apks_title),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Provides ARCA and shared app APKs for direct download to PC or mobile",
+                                text = stringResource(R.string.ftp_expose_apks_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1064,7 +1066,7 @@ private fun FtpConnectionGuideCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "How to connect from PC / Other Device",
+                        text = stringResource(R.string.ftp_guide_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1072,7 +1074,7 @@ private fun FtpConnectionGuideCard(
                 }
 
                 Text(
-                    text = if (expanded) "Hide" else "Show",
+                    text = if (expanded) stringResource(R.string.action_collapse) else stringResource(R.string.action_expand),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -1087,7 +1089,7 @@ private fun FtpConnectionGuideCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Make sure your computer or other mobile is connected to the same Wi-Fi or phone hotspot.",
+                        text = stringResource(R.string.ftp_guide_wifi_req),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1102,12 +1104,12 @@ private fun FtpConnectionGuideCard(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "💻 Windows (File Explorer):",
+                                text = stringResource(R.string.ftp_guide_windows_title),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "1. Open 'This PC' or any File Explorer window.\n2. Click the top address bar and paste:\n   $ftpUrl\n3. Press Enter to view and copy files directly!",
+                                text = stringResource(R.string.ftp_guide_windows_steps, ftpUrl),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1124,12 +1126,12 @@ private fun FtpConnectionGuideCard(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "🍏 Mac (Finder):",
+                                text = stringResource(R.string.ftp_guide_mac_title),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "1. Open Finder.\n2. Click 'Go' in the top menu -> 'Connect to Server...' (Cmd + K).\n3. Enter $ftpUrl and click Connect.",
+                                text = stringResource(R.string.ftp_guide_mac_steps, ftpUrl),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1146,12 +1148,12 @@ private fun FtpConnectionGuideCard(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "📱 Mobile / Browser / FileZilla:",
+                                text = stringResource(R.string.ftp_guide_mobile_title),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Type $ftpUrl into any browser or FTP client (WinSCP, FileZilla, Cyberduck).",
+                                text = stringResource(R.string.ftp_guide_mobile_steps, ftpUrl),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1205,12 +1207,12 @@ private fun FtpConnectionHelpDialog(
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("How to Connect via FTP", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.ftp_how_to_connect), fontWeight = FontWeight.Bold)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Connect your computer or another phone to the same Wi-Fi network (or turn on your phone's Hotspot).",
+                    text = stringResource(R.string.ftp_guide_wifi_req),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
@@ -1227,7 +1229,7 @@ private fun FtpConnectionHelpDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Got it")
+                Text(stringResource(R.string.button_got_it))
             }
         }
     )

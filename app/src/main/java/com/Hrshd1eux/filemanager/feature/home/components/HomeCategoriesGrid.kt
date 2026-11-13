@@ -34,11 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.CategoryAmber
 import com.Hrshd1eux.filemanager.core.designsystem.CategoryBlue
 import com.Hrshd1eux.filemanager.core.designsystem.CategoryCoral
@@ -68,7 +70,7 @@ fun HomeCategoriesGrid(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = "Categories",
+            text = stringResource(R.string.section_categories),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground
@@ -81,7 +83,7 @@ fun HomeCategoriesGrid(
         ) {
             CategoryGridItem(
                 icon = Icons.Default.Image,
-                label = "Images",
+                label = stringResource(R.string.category_images),
                 iconTint = CategoryCyan,
                 onClick = { onCategoryClick(CategoryFilter.IMAGES) },
                 modifier = Modifier.weight(1f)
@@ -89,7 +91,7 @@ fun HomeCategoriesGrid(
 
             CategoryGridItem(
                 icon = Icons.Default.VideoLibrary,
-                label = "Videos",
+                label = stringResource(R.string.category_videos),
                 iconTint = CategoryPurple,
                 onClick = { onCategoryClick(CategoryFilter.VIDEOS) },
                 modifier = Modifier.weight(1f)
@@ -97,7 +99,7 @@ fun HomeCategoriesGrid(
 
             CategoryGridItem(
                 icon = Icons.Default.Audiotrack,
-                label = "Audio",
+                label = stringResource(R.string.category_audio),
                 iconTint = CategoryCoral,
                 onClick = { onCategoryClick(CategoryFilter.AUDIO) },
                 modifier = Modifier.weight(1f)
@@ -105,7 +107,7 @@ fun HomeCategoriesGrid(
 
             CategoryGridItem(
                 icon = Icons.Default.Description,
-                label = "Documents",
+                label = stringResource(R.string.category_documents),
                 iconTint = CategoryBlue,
                 onClick = { onCategoryClick(CategoryFilter.DOCUMENTS) },
                 modifier = Modifier.weight(1f)
@@ -119,7 +121,7 @@ fun HomeCategoriesGrid(
         ) {
             CategoryGridItem(
                 icon = Icons.Default.Download,
-                label = "Downloads",
+                label = stringResource(R.string.category_downloads),
                 iconTint = CategoryRed,
                 onClick = {
                     if (onDownloadsClick != null) {
@@ -133,7 +135,7 @@ fun HomeCategoriesGrid(
 
             CategoryGridItem(
                 icon = Icons.Default.FolderZip,
-                label = "Archives",
+                label = stringResource(R.string.category_archives),
                 iconTint = CategoryAmber,
                 onClick = { onCategoryClick(CategoryFilter.ARCHIVES) },
                 modifier = Modifier.weight(1f)
@@ -141,7 +143,7 @@ fun HomeCategoriesGrid(
 
             CategoryGridItem(
                 icon = Icons.Default.Android,
-                label = "Apps & APKs",
+                label = stringResource(R.string.category_apks),
                 iconTint = CategoryGreen,
                 onClick = {
                     if (onAppsClick != null) {
@@ -155,7 +157,7 @@ fun HomeCategoriesGrid(
 
             CategoryGridItem(
                 icon = Icons.Default.DeleteSweep,
-                label = "Trash",
+                label = stringResource(R.string.category_trash),
                 iconTint = CategoryRed,
                 onClick = {
                     if (onTrashClick != null) {
