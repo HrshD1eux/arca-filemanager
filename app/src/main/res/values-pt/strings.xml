@@ -1,0 +1,159 @@
+<resources>
+    <!-- App Identity -->
+    <string name="app_name">ARCA</string>
+    <string name="app_tagline">Gestor de ficheiros privado e local</string>
+
+    <!-- Navigation & Titles -->
+    <string name="home_title">Os meus ficheiros</string>
+    <string name="settings_title">Definições</string>
+    <string name="about_title">Sobre</string>
+    <string name="nav_home">Início</string>
+    <string name="nav_browse">Navegar</string>
+    <string name="nav_favorites">Favoritos</string>
+    <string name="nav_recent">Recentes</string>
+    <string name="nav_trash">Lixo</string>
+    <string name="nav_vault">Cofre</string>
+    <string name="nav_cleaner">Limpeza</string>
+    <string name="nav_network">Rede</string>
+
+    <!-- General Common Actions -->
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_confirm">Confirmar</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_done">Concluído</string>
+    <string name="action_close">Fechar</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="action_copy">Copiar</string>
+    <string name="action_move">Mover</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_rename">Mudar o nome</string>
+    <string name="action_share">Partilhar</string>
+    <string name="action_select_all">Selecionar tudo</string>
+    <string name="action_deselect_all">Desmarcar tudo</string>
+    <string name="action_search">Pesquisar</string>
+    <string name="action_refresh">Atualizar</string>
+    <string name="action_open_with">Abrir com</string>
+    <string name="action_properties">Propriedades</string>
+    <string name="action_details">Detalhes</string>
+    <string name="action_install">Instalar</string>
+    <string name="action_extract">Extrair</string>
+    <string name="action_compress">Comprimir</string>
+    <string name="action_send_to">Enviar para</string>
+    <string name="action_show_in_folder">Mostrar na pasta</string>
+
+    <!-- Categories & File Filters -->
+    <string name="category_images">Imagens</string>
+    <string name="category_videos">Vídeos</string>
+    <string name="category_audio">Áudio</string>
+    <string name="category_documents">Documentos</string>
+    <string name="category_downloads">Transferências</string>
+    <string name="category_apks">Aplicações e APKs</string>
+    <string name="category_archives">Ficheiros comprimidos</string>
+    <string name="category_all_files">Todos os ficheiros</string>
+    <string name="category_group_by_date">Agrupar por data</string>
+    <string name="category_sorted_by">Ordenado por </string>
+    <string name="category_ascending">Ascendente</string>
+    <string name="category_descending">Descendente</string>
+
+    <!-- Chronological Date Grouping -->
+    <string name="date_group_today">Hoje</string>
+    <string name="date_group_yesterday">Ontem</string>
+    <string name="date_group_this_week">Esta semana</string>
+    <string name="date_group_this_month">Este mês</string>
+    <string name="date_group_older">Mais antigos</string>
+    <string name="date_group_unknown">Data desconhecida</string>
+    <string name="date_group_items_count">%1$d itens • %2$s</string>
+    <string name="date_group_select_all">Selecionar secção</string>
+    <string name="date_group_deselect_all">Desmarcar secção</string>
+
+    <!-- Home & Dashboard -->
+    <string name="home_internal_storage">Armazenamento interno</string>
+    <string name="home_sd_card">Cartão SD</string>
+    <string name="home_usb_storage">Armazenamento USB</string>
+    <string name="home_used_of">%1$s utilizados de %2$s</string>
+    <string name="home_free_space">%1$s livres</string>
+    <string name="home_quick_access">Acesso rápido</string>
+    <string name="home_recent_files">Ficheiros recentes</string>
+    <string name="home_storage_analysis">Análise de armazenamento</string>
+
+    <!-- File Browser & Storage Operations -->
+    <string name="browser_empty_folder">Esta pasta está vazia</string>
+    <string name="browser_no_files_found">Nenhum ficheiro correspondente</string>
+    <string name="browser_items_count">%1$d itens</string>
+    <string name="browser_selected_count">%1$d selecionados</string>
+    <string name="browser_file_copied">Copiado %1$s</string>
+    <string name="browser_file_moved">Movido %1$s</string>
+    <string name="browser_file_deleted">Eliminado %1$s</string>
+    <string name="browser_file_renamed">Nome alterado para %1$s</string>
+    <string name="browser_confirm_delete">Eliminar ficheiros?</string>
+    <string name="browser_delete_warning">Tem a certeza de que deseja eliminar os %1$d itens selecionados?</string>
+    <string name="browser_permanent_delete">Eliminar permanentemente</string>
+    <string name="browser_move_to_trash">Mover para o lixo</string>
+    <string name="browser_create_folder">Nova pasta</string>
+    <string name="browser_folder_name">Nome da pasta</string>
+
+    <!-- ARCA Drop & Wi-Fi Direct Transfer -->
+    <string name="drop_title">ARCA Drop</string>
+    <string name="drop_tagline">Transferência Wi-Fi local sem nuvem</string>
+    <string name="drop_pin_label">PIN da sessão</string>
+    <string name="drop_waiting_connections">A aguardar ligações…</string>
+    <string name="drop_server_running">Servidor de partilha ativo</string>
+    <string name="drop_stop_service">Parar partilha</string>
+    <string name="drop_scan_qr_prompt">Leia o código QR ou introduza este URL em qualquer dispositivo ligado ao mesmo Wi-Fi</string>
+    <string name="drop_copy_link">Copiar ligação</string>
+    <string name="drop_link_copied">Ligação copiada para a área de transferência</string>
+    <string name="drop_files_shared">%1$d ficheiros partilhados</string>
+    <string name="drop_files_received">%1$d ficheiros recebidos</string>
+
+    <!-- FTP Server -->
+    <string name="ftp_title">Servidor FTP</string>
+    <string name="ftp_server_running">Servidor FTP ativo</string>
+    <string name="ftp_server_stopped">Servidor FTP parado</string>
+    <string name="ftp_start_server">Iniciar servidor</string>
+    <string name="ftp_stop_server">Parar servidor</string>
+    <string name="ftp_server_url">URL do FTP</string>
+    <string name="ftp_port">Porta</string>
+    <string name="ftp_anonymous_login">Sessão anónima</string>
+    <string name="ftp_username">Nome de utilizador</string>
+    <string name="ftp_password">Palavra-passe</string>
+
+    <!-- App Update Dialog -->
+    <string name="update_available_title">Atualização disponível</string>
+    <string name="update_available_msg">Está disponível uma versão mais recente do ARCA (%1$s). Deseja atualizar agora?</string>
+    <string name="update_now">Atualizar agora</string>
+    <string name="update_download_in_background">Segundo plano</string>
+    <string name="update_later">Mais tarde</string>
+    <string name="update_downloading">A transferir atualização… (%1$d%%)</string>
+    <string name="update_install_ready">Atualização pronta a instalar</string>
+    <string name="update_up_to_date">O ARCA está atualizado</string>
+    <string name="update_check_failed">Não foi possível procurar atualizações</string>
+
+    <!-- Security, App Lock & Vault -->
+    <string name="lock_title">Bloqueio de segurança</string>
+    <string name="lock_enter_pin">Introduza o PIN de 4 dígitos</string>
+    <string name="lock_wrong_pin">PIN incorreto. Tente novamente.</string>
+    <string name="lock_biometric_prompt">Desbloquear ARCA</string>
+    <string name="lock_biometric_desc">Confirme a sua identidade com biometria</string>
+    <string name="vault_title">Cofre encriptado</string>
+    <string name="vault_locked">O cofre está bloqueado</string>
+    <string name="vault_unlock">Desbloquear cofre</string>
+    <string name="vault_empty">O seu cofre está vazio</string>
+    <string name="vault_add_files">Adicionar ficheiros ao cofre</string>
+
+    <!-- Settings & Preferences -->
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Padrão do sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Escuro</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_privacy">Declaração de privacidade</string>
+    <string name="settings_security">Centro de segurança</string>
+    <string name="settings_version">Versão</string>
+    <string name="settings_licenses">Licenças de código aberto</string>
+    <string name="settings_show_hidden">Mostrar ficheiros ocultos</string>
+
+    <!-- About & Legal -->
+    <string name="about_description">O ARCA é um gestor de ficheiros Android focado na privacidade e de execução estritamente local, sem telemetria de terceiros, com segurança ponto a ponto e alto desempenho.</string>
+    <string name="about_developer">Programador</string>
+    <string name="about_source_code">Código-fonte</string>
+</resources>

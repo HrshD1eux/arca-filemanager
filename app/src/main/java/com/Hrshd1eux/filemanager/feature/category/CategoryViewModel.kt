@@ -39,6 +39,9 @@ class CategoryViewModel @JvmOverloads constructor(
     private val _viewMode = MutableStateFlow(ViewMode.LIST)
     val viewMode: StateFlow<ViewMode> = _viewMode.asStateFlow()
 
+    private val _groupByDate = MutableStateFlow(true)
+    val groupByDate: StateFlow<Boolean> = _groupByDate.asStateFlow()
+
     // Multi-selection state
     private val _selectedNodes = MutableStateFlow<Set<StorageNode>>(emptySet())
     val selectedNodes: StateFlow<Set<StorageNode>> = _selectedNodes.asStateFlow()
@@ -146,6 +149,20 @@ class CategoryViewModel @JvmOverloads constructor(
         _selectedNodes.value = emptySet()
     }
 
+    fun toggleGroupSelection(group: CategoryDateGroup) {
+        val current = _selectedNodes.value.toMutableSet()
+        val allSelected = group.items.isNotEmpty() && group.items.all { item ->
+            current.any { it.path == item.path }
+        }
+        if (allSelected) {
+            val groupPaths = group.items.map { it.path }.toSet()
+            current.removeAll { it.path in groupPaths }
+        } else {
+            current.addAll(group.items)
+        }
+        _selectedNodes.value = current
+    }
+
     // --- In-Place Search Controls ---
 
     fun toggleSearch() {
@@ -216,6 +233,22 @@ class CategoryViewModel @JvmOverloads constructor(
         _viewMode.value = mode
     }
 
+    // --- Date Grouping Controls ---
+
+    fun toggleGroupByDate() {
+        _groupByDate.value = !_groupByDate.value
+        if (rawItems.isNotEmpty()) {
+            applySortingAndEmit()
+        }
+    }
+
+    fun setGroupByDate(enabled: Boolean) {
+        _groupByDate.value = enabled
+        if (rawItems.isNotEmpty()) {
+            applySortingAndEmit()
+        }
+    }
+
     private fun applySortingAndEmit() {
         val query = _searchQuery.value.trim()
         val filtered = if (query.isEmpty()) {
@@ -241,10 +274,20 @@ class CategoryViewModel @JvmOverloads constructor(
 
         val sorted = repository.sortItems(filtered, _sortOrder.value)
         val totalSize = sorted.sumOf { it.size }
+        val dateGroups = if (_groupByDate.value) {
+            CategoryDateGrouper.groupItems(
+                items = sorted,
+                sortDirection = _sortOrder.value.direction
+            )
+        } else {
+            emptyList()
+        }
+
         _uiState.value = CategoryUiState.Success(
             items = sorted,
             totalSizeBytes = totalSize,
-            fileCount = sorted.size
+            fileCount = sorted.size,
+            dateGroups = dateGroups
         )
     }
 

@@ -1,0 +1,159 @@
+<resources>
+    <!-- App Identity -->
+    <string name="app_name">ARCA</string>
+    <string name="app_tagline">தனியுரிமை மற்றும் உள்ளூர்-முதன்மை கோப்பு மேலாளர்</string>
+
+    <!-- Navigation & Titles -->
+    <string name="home_title">என் கோப்புகள்</string>
+    <string name="settings_title">அமைப்புகள்</string>
+    <string name="about_title">பற்றி</string>
+    <string name="nav_home">முகப்பு</string>
+    <string name="nav_browse">உலாவுக</string>
+    <string name="nav_favorites">விருப்பமானவை</string>
+    <string name="nav_recent">சமீபத்தியவை</string>
+    <string name="nav_trash">குப்பைத்தொட்டி</string>
+    <string name="nav_vault">பெட்டகம்</string>
+    <string name="nav_cleaner">துப்புரவாளர்</string>
+    <string name="nav_network">பிணையம்</string>
+
+    <!-- General Common Actions -->
+    <string name="action_cancel">ரத்து செய்</string>
+    <string name="action_confirm">உறுதிப்படுத்து</string>
+    <string name="action_save">சேமி</string>
+    <string name="action_done">முடிந்தது</string>
+    <string name="action_close">மூடு</string>
+    <string name="action_retry">மீண்டும் முயற்சி செய்</string>
+    <string name="action_copy">நகலெடு</string>
+    <string name="action_move">நகர்த்து</string>
+    <string name="action_delete">நீக்கு</string>
+    <string name="action_rename">மறுபெயரிடு</string>
+    <string name="action_share">பகிர்</string>
+    <string name="action_select_all">அனைத்தையும் தேர்ந்தெடு</string>
+    <string name="action_deselect_all">தேர்வை நீக்கு</string>
+    <string name="action_search">தேடு</string>
+    <string name="action_refresh">புதுப்பி</string>
+    <string name="action_open_with">இதன் மூலம் திற</string>
+    <string name="action_properties">பண்புகள்</string>
+    <string name="action_details">விவரங்கள்</string>
+    <string name="action_install">நிறுவு</string>
+    <string name="action_extract">பிரித்தெடு</string>
+    <string name="action_compress">சுருக்கு</string>
+    <string name="action_send_to">அனுப்பு</string>
+    <string name="action_show_in_folder">கோப்புறையில் காட்டு</string>
+
+    <!-- Categories & File Filters -->
+    <string name="category_images">படங்கள்</string>
+    <string name="category_videos">வீடியோக்கள்</string>
+    <string name="category_audio">ஆடியோ</string>
+    <string name="category_documents">ஆவணங்கள்</string>
+    <string name="category_downloads">பதிவிறக்கங்கள்</string>
+    <string name="category_apks">பயன்பாடுகள் &amp; APKகள்</string>
+    <string name="category_archives">காப்பகங்கள்</string>
+    <string name="category_all_files">அனைத்து கோப்புகள்</string>
+    <string name="category_group_by_date">தேதி வாரியாக குழுவாக்கு</string>
+    <string name="category_sorted_by">வரிசைப்படுத்தப்பட்டது: </string>
+    <string name="category_ascending">ஏறுவரிசை</string>
+    <string name="category_descending">இறங்குவரிசை</string>
+
+    <!-- Chronological Date Grouping -->
+    <string name="date_group_today">இன்று</string>
+    <string name="date_group_yesterday">நேற்று</string>
+    <string name="date_group_this_week">இந்த வாரம்</string>
+    <string name="date_group_this_month">இந்த மாதம்</string>
+    <string name="date_group_older">பழையவை</string>
+    <string name="date_group_unknown">தெரியாத தேதி</string>
+    <string name="date_group_items_count">%1$d உருப்படிகள் • %2$s</string>
+    <string name="date_group_select_all">பிரிவைத் தேர்ந்தெடு</string>
+    <string name="date_group_deselect_all">பிரிவுத் தேர்வை நீக்கு</string>
+
+    <!-- Home & Dashboard -->
+    <string name="home_internal_storage">உள் சேமிப்பகம்</string>
+    <string name="home_sd_card">SD கார்டு</string>
+    <string name="home_usb_storage">USB சேமிப்பகம்</string>
+    <string name="home_used_of">%2$s இல் %1$s பயன்படுத்தப்பட்டது</string>
+    <string name="home_free_space">%1$s காலியாக உள்ளது</string>
+    <string name="home_quick_access">விரைவு அணுகல்</string>
+    <string name="home_recent_files">சமீபத்திய கோப்புகள்</string>
+    <string name="home_storage_analysis">சேமிப்பக பகுப்பாய்வு</string>
+
+    <!-- File Browser & Storage Operations -->
+    <string name="browser_empty_folder">இந்தக் கோப்புறை காலியாக உள்ளது</string>
+    <string name="browser_no_files_found">பொருந்தும் கோப்புகள் இல்லை</string>
+    <string name="browser_items_count">%1$d உருப்படிகள்</string>
+    <string name="browser_selected_count">%1$d தேர்ந்தெடுக்கப்பட்டது</string>
+    <string name="browser_file_copied">%1$s நகலெடுக்கப்பட்டது</string>
+    <string name="browser_file_moved">%1$s நகர்த்தப்பட்டது</string>
+    <string name="browser_file_deleted">%1$s நீக்கப்பட்டது</string>
+    <string name="browser_file_renamed">%1$s என மறுபெயரிடப்பட்டது</string>
+    <string name="browser_confirm_delete">கோப்புகளை நீக்கவா?</string>
+    <string name="browser_delete_warning">தேர்ந்தெடுக்கப்பட்ட %1$d உருப்படிகளை நிச்சயமாக நீக்க விரும்புகிறீர்களா?</string>
+    <string name="browser_permanent_delete">நிரந்தரமாக நீக்கு</string>
+    <string name="browser_move_to_trash">குப்பைத்தொட்டிக்கு நகர்த்து</string>
+    <string name="browser_create_folder">புதிய கோப்புறை</string>
+    <string name="browser_folder_name">கோப்புறை பெயர்</string>
+
+    <!-- ARCA Drop & Wi-Fi Direct Transfer -->
+    <string name="drop_title">ARCA Drop</string>
+    <string name="drop_tagline">மேகக்கணி இல்லாத உள்ளூர் Wi-Fi பரிமாற்றம்</string>
+    <string name="drop_pin_label">அமர்வு PIN</string>
+    <string name="drop_waiting_connections">இணைப்புகளுக்காக காத்திருக்கிறது…</string>
+    <string name="drop_server_running">பகிர்வு சேவையகம் செயலில் உள்ளது</string>
+    <string name="drop_stop_service">பகிர்வை நிறுத்து</string>
+    <string name="drop_scan_qr_prompt">QR குறியீட்டை ஸ்கேன் செய்யவும் அல்லது ஒரே Wi-Fi இல் உள்ள சாதனத்தில் இந்த URL ஐ திறக்கவும்</string>
+    <string name="drop_copy_link">இணைப்பை நகலெடு</string>
+    <string name="drop_link_copied">இணைப்பு நகலெடுக்கப்பட்டது</string>
+    <string name="drop_files_shared">%1$d கோப்புகள் பகிரப்பட்டன</string>
+    <string name="drop_files_received">%1$d கோப்புகள் பெறப்பட்டன</string>
+
+    <!-- FTP Server -->
+    <string name="ftp_title">FTP சேவையகம்</string>
+    <string name="ftp_server_running">FTP சேவையகம் இயங்குகிறது</string>
+    <string name="ftp_server_stopped">FTP சேவையகம் நிறுத்தப்பட்டது</string>
+    <string name="ftp_start_server">சேவையகத்தைத் தொடங்கு</string>
+    <string name="ftp_stop_server">சேவையகத்தை நிறுத்து</string>
+    <string name="ftp_server_url">FTP URL</string>
+    <string name="ftp_port">போர்ட்</string>
+    <string name="ftp_anonymous_login">அநாமதேய உள்நுழைவு</string>
+    <string name="ftp_username">பயனர்பெயர்</string>
+    <string name="ftp_password">கடவுச்சொல்</string>
+
+    <!-- App Update Dialog -->
+    <string name="update_available_title">புதுப்பிப்பு கிடைக்கிறது</string>
+    <string name="update_available_msg">ARCA-இன் புதிய பதிப்பு கிடைக்கிறது (%1$s). இப்போது புதுப்பிக்க விரும்புகிறீர்களா?</string>
+    <string name="update_now">இப்போது புதுப்பி</string>
+    <string name="update_download_in_background">பின்னணியில்</string>
+    <string name="update_later">பின்னர்</string>
+    <string name="update_downloading">பதிவிறக்குகிறது… (%1$d%%)</string>
+    <string name="update_install_ready">நிறுவ தயாராக உள்ளது</string>
+    <string name="update_up_to_date">ARCA புதுப்பித்த நிலையில் உள்ளது</string>
+    <string name="update_check_failed">புதுப்பிப்புகளை சரிபார்க்க முடியவில்லை</string>
+
+    <!-- Security, App Lock & Vault -->
+    <string name="lock_title">பாதுகாப்பு பூட்டு</string>
+    <string name="lock_enter_pin">4-இலக்க PIN ஐ உள்ளிடவும்</string>
+    <string name="lock_wrong_pin">தவறான PIN. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="lock_biometric_prompt">ARCA ஐ திறக்கவும்</string>
+    <string name="lock_biometric_desc">பயோமெட்ரிக்ஸ் மூலம் அடையாளத்தை உறுதிப்படுத்தவும்</string>
+    <string name="vault_title">குறியாக்கப்பட்ட பெட்டகம்</string>
+    <string name="vault_locked">பெட்டகம் பூட்டப்பட்டுள்ளது</string>
+    <string name="vault_unlock">பெட்டகத்தைத் திறக்கவும்</string>
+    <string name="vault_empty">உங்கள் பெட்டகம் காலியாக உள்ளது</string>
+    <string name="vault_add_files">பெட்டகத்தில் கோப்புகளைச் சேர்க்கவும்</string>
+
+    <!-- Settings & Preferences -->
+    <string name="settings_theme">தீம்</string>
+    <string name="settings_theme_system">கணினி இயல்புநிலை</string>
+    <string name="settings_theme_light">வெளிச்சம்</string>
+    <string name="settings_theme_dark">இருள்</string>
+    <string name="settings_language">மொழி</string>
+    <string name="settings_privacy">தனியுரிமை அறிக்கை</string>
+    <string name="settings_security">பாதுகாப்பு மையம்</string>
+    <string name="settings_version">பதிப்பு</string>
+    <string name="settings_licenses">திறந்த மூல உரிமங்கள்</string>
+    <string name="settings_show_hidden">மறைக்கப்பட்ட கோப்புகளைக் காட்டு</string>
+
+    <!-- About & Legal -->
+    <string name="about_description">ARCA என்பது தனியுரிமை சார்ந்த, உள்ளூர் மட்டுமேயான ஆண்ட்ராய்டு கோப்பு மேலாளர். இதில் மூன்றாம் தரப்பு டெலிமெட்ரி இல்லாமல், முழுமையான பாதுகாப்பு மற்றும் சிறந்த செயல்திறன் வழங்கப்படுகிறது.</string>
+    <string name="about_developer">உருவாக்குநர்</string>
+    <string name="about_source_code">மூலக் குறியீடு</string>
+</resources>

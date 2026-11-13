@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -77,6 +78,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -85,6 +88,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -149,6 +153,7 @@ fun CategoryScreen(
     val category by viewModel.category.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
+    val groupByDate by viewModel.groupByDate.collectAsStateWithLifecycle()
     val selectedNodes by viewModel.selectedNodes.collectAsStateWithLifecycle()
     val operationProgress by viewModel.operationProgress.collectAsStateWithLifecycle()
     val isOperating by viewModel.isOperating.collectAsStateWithLifecycle()
@@ -440,6 +445,8 @@ fun CategoryScreen(
             if (uiState is CategoryUiState.Success) {
                 CategorySortControlBar(
                     sortOrder = sortOrder,
+                    groupByDate = groupByDate,
+                    onToggleGroupByDate = { viewModel.toggleGroupByDate() },
                     onToggleDirection = { viewModel.toggleSortDirection() },
                     onOpenSortSheet = { showSortSheet = true }
                 )
@@ -478,9 +485,15 @@ fun CategoryScreen(
                         if (viewMode == ViewMode.GRID) {
                             CategoryGridView(
                                 items = state.items,
+                                dateGroups = state.dateGroups,
+                                groupByDate = groupByDate,
                                 categoryColor = categoryColor,
                                 selectedNodes = selectedNodes,
                                 isSelectionMode = isSelectionMode,
+                                onToggleGroupSelection = { group ->
+                                    SelectionHaptics.playSelectionFeedback(context, view)
+                                    viewModel.toggleGroupSelection(group)
+                                },
                                 onItemClick = { node ->
                                     if (isSelectionMode) {
                                         viewModel.toggleSelection(node)
@@ -523,9 +536,15 @@ fun CategoryScreen(
                         } else {
                             CategoryListView(
                                 items = state.items,
+                                dateGroups = state.dateGroups,
+                                groupByDate = groupByDate,
                                 categoryColor = categoryColor,
                                 selectedNodes = selectedNodes,
                                 isSelectionMode = isSelectionMode,
+                                onToggleGroupSelection = { group ->
+                                    SelectionHaptics.playSelectionFeedback(context, view)
+                                    viewModel.toggleGroupSelection(group)
+                                },
                                 onItemClick = { node ->
                                     if (isSelectionMode) {
                                         viewModel.toggleSelection(node)
@@ -703,6 +722,8 @@ private fun handleItemClick(
 @Composable
 private fun CategorySortControlBar(
     sortOrder: com.Hrshd1eux.filemanager.core.display.model.SortOrder,
+    groupByDate: Boolean,
+    onToggleGroupByDate: () -> Unit,
     onToggleDirection: () -> Unit,
     onOpenSortSheet: () -> Unit,
     modifier: Modifier = Modifier
@@ -716,7 +737,9 @@ private fun CategorySortControlBar(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onOpenSortSheet() }
         ) {
             Text(
                 text = "Sorted by ",
@@ -731,25 +754,47 @@ private fun CategorySortControlBar(
             )
         }
 
-        AssistChip(
-            onClick = onToggleDirection,
-            label = {
-                Text(
-                    text = if (sortOrder.direction == SortDirection.ASCENDING) "Ascending" else "Descending",
-                    style = MaterialTheme.typography.labelSmall
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = if (sortOrder.direction == SortDirection.ASCENDING) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp)
-                )
-            },
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = groupByDate,
+                onClick = onToggleGroupByDate,
+                label = {
+                    Text(
+                        text = "By Date",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                shape = RoundedCornerShape(8.dp)
             )
-        )
+
+            AssistChip(
+                onClick = onToggleDirection,
+                label = {
+                    Text(
+                        text = if (sortOrder.direction == SortDirection.ASCENDING) "Ascending" else "Descending",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = if (sortOrder.direction == SortDirection.ASCENDING) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
+                },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            )
+        }
     }
 }
 
@@ -916,11 +961,83 @@ private fun CategoryErrorView(
 }
 
 @Composable
+private fun CategoryDateGroupHeader(
+    group: CategoryDateGroup,
+    categoryColor: Color,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    onToggleGroupSelection: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(enabled = isSelectionMode) {
+                SelectionHaptics.playSelectionFeedback(context, view)
+                onToggleGroupSelection()
+            }
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f, fill = false)
+        ) {
+            AnimatedVisibility(
+                visible = isSelectionMode,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        onToggleGroupSelection()
+                    },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+
+            Text(
+                text = group.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+        ) {
+            Text(
+                text = "${group.fileCount} • ${FileFormatter.formatFileSize(group.totalSizeBytes)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
 private fun CategoryListView(
     items: List<StorageNode>,
+    dateGroups: List<CategoryDateGroup>,
+    groupByDate: Boolean,
     categoryColor: Color,
     selectedNodes: Set<StorageNode>,
     isSelectionMode: Boolean,
+    onToggleGroupSelection: (CategoryDateGroup) -> Unit,
     onItemClick: (StorageNode) -> Unit,
     onItemLongClick: (StorageNode) -> Unit,
     onCopy: (StorageNode) -> Unit,
@@ -939,25 +1056,66 @@ private fun CategoryListView(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(items, key = { it.path }) { node ->
-            val isSelected = selectedNodes.any { it.path == node.path }
-            CategoryListItemRow(
-                node = node,
-                categoryColor = categoryColor,
-                isSelected = isSelected,
-                isSelectionMode = isSelectionMode,
-                onClick = { onItemClick(node) },
-                onLongClick = { onItemLongClick(node) },
-                onCopy = { onCopy(node) },
-                onMove = { onMove(node) },
-                onOpenWith = { onOpenWith(node) },
-                onShare = { onShare(node) },
-                onSendTo = { onSendTo(node) },
-                onShowInFolder = { onShowInFolder(node) },
-                onRename = { onRename(node) },
-                onDelete = { onDelete(node) },
-                onProperties = { onProperties(node) }
-            )
+        if (groupByDate && dateGroups.isNotEmpty()) {
+            dateGroups.forEach { group ->
+                stickyHeader(key = "header_${group.id}") {
+                    val isGroupSelected = group.items.isNotEmpty() && group.items.all { item ->
+                        selectedNodes.any { it.path == item.path }
+                    }
+                    CategoryDateGroupHeader(
+                        group = group,
+                        categoryColor = categoryColor,
+                        isSelectionMode = isSelectionMode,
+                        isSelected = isGroupSelected,
+                        onToggleGroupSelection = { onToggleGroupSelection(group) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.background)
+                            .padding(vertical = 4.dp)
+                    )
+                }
+                items(group.items, key = { it.path }) { node ->
+                    val isSelected = selectedNodes.any { it.path == node.path }
+                    CategoryListItemRow(
+                        node = node,
+                        categoryColor = categoryColor,
+                        isSelected = isSelected,
+                        isSelectionMode = isSelectionMode,
+                        onClick = { onItemClick(node) },
+                        onLongClick = { onItemLongClick(node) },
+                        onCopy = { onCopy(node) },
+                        onMove = { onMove(node) },
+                        onOpenWith = { onOpenWith(node) },
+                        onShare = { onShare(node) },
+                        onSendTo = { onSendTo(node) },
+                        onShowInFolder = { onShowInFolder(node) },
+                        onRename = { onRename(node) },
+                        onDelete = { onDelete(node) },
+                        onProperties = { onProperties(node) }
+                    )
+                }
+            }
+        } else {
+            items(items, key = { it.path }) { node ->
+                val isSelected = selectedNodes.any { it.path == node.path }
+                CategoryListItemRow(
+                    node = node,
+                    categoryColor = categoryColor,
+                    isSelected = isSelected,
+                    isSelectionMode = isSelectionMode,
+                    onClick = { onItemClick(node) },
+                    onLongClick = { onItemLongClick(node) },
+                    onCopy = { onCopy(node) },
+                    onMove = { onMove(node) },
+                    onOpenWith = { onOpenWith(node) },
+                    onShare = { onShare(node) },
+                    onSendTo = { onSendTo(node) },
+                    onShowInFolder = { onShowInFolder(node) },
+                    onRename = { onRename(node) },
+                    onDelete = { onDelete(node) },
+                    onProperties = { onProperties(node) }
+                )
+            }
         }
     }
 }
@@ -1163,9 +1321,12 @@ private fun CategoryListItemRow(
 @Composable
 private fun CategoryGridView(
     items: List<StorageNode>,
+    dateGroups: List<CategoryDateGroup>,
+    groupByDate: Boolean,
     categoryColor: Color,
     selectedNodes: Set<StorageNode>,
     isSelectionMode: Boolean,
+    onToggleGroupSelection: (CategoryDateGroup) -> Unit,
     onItemClick: (StorageNode) -> Unit,
     onItemLongClick: (StorageNode) -> Unit,
     onCopy: (StorageNode) -> Unit,
@@ -1186,25 +1347,69 @@ private fun CategoryGridView(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(items, key = { it.path }) { node ->
-            val isSelected = selectedNodes.any { it.path == node.path }
-            CategoryGridItemCard(
-                node = node,
-                categoryColor = categoryColor,
-                isSelected = isSelected,
-                isSelectionMode = isSelectionMode,
-                onClick = { onItemClick(node) },
-                onLongClick = { onItemLongClick(node) },
-                onCopy = { onCopy(node) },
-                onMove = { onMove(node) },
-                onOpenWith = { onOpenWith(node) },
-                onShare = { onShare(node) },
-                onSendTo = { onSendTo(node) },
-                onShowInFolder = { onShowInFolder(node) },
-                onRename = { onRename(node) },
-                onDelete = { onDelete(node) },
-                onProperties = { onProperties(node) }
-            )
+        if (groupByDate && dateGroups.isNotEmpty()) {
+            dateGroups.forEach { group ->
+                item(
+                    key = "header_${group.id}",
+                    span = { GridItemSpan(maxLineSpan) }
+                ) {
+                    val isGroupSelected = group.items.isNotEmpty() && group.items.all { item ->
+                        selectedNodes.any { it.path == item.path }
+                    }
+                    CategoryDateGroupHeader(
+                        group = group,
+                        categoryColor = categoryColor,
+                        isSelectionMode = isSelectionMode,
+                        isSelected = isGroupSelected,
+                        onToggleGroupSelection = { onToggleGroupSelection(group) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.background)
+                            .padding(vertical = 4.dp)
+                    )
+                }
+                items(group.items, key = { it.path }) { node ->
+                    val isSelected = selectedNodes.any { it.path == node.path }
+                    CategoryGridItemCard(
+                        node = node,
+                        categoryColor = categoryColor,
+                        isSelected = isSelected,
+                        isSelectionMode = isSelectionMode,
+                        onClick = { onItemClick(node) },
+                        onLongClick = { onItemLongClick(node) },
+                        onCopy = { onCopy(node) },
+                        onMove = { onMove(node) },
+                        onOpenWith = { onOpenWith(node) },
+                        onShare = { onShare(node) },
+                        onSendTo = { onSendTo(node) },
+                        onShowInFolder = { onShowInFolder(node) },
+                        onRename = { onRename(node) },
+                        onDelete = { onDelete(node) },
+                        onProperties = { onProperties(node) }
+                    )
+                }
+            }
+        } else {
+            items(items, key = { it.path }) { node ->
+                val isSelected = selectedNodes.any { it.path == node.path }
+                CategoryGridItemCard(
+                    node = node,
+                    categoryColor = categoryColor,
+                    isSelected = isSelected,
+                    isSelectionMode = isSelectionMode,
+                    onClick = { onItemClick(node) },
+                    onLongClick = { onItemLongClick(node) },
+                    onCopy = { onCopy(node) },
+                    onMove = { onMove(node) },
+                    onOpenWith = { onOpenWith(node) },
+                    onShare = { onShare(node) },
+                    onSendTo = { onSendTo(node) },
+                    onShowInFolder = { onShowInFolder(node) },
+                    onRename = { onRename(node) },
+                    onDelete = { onDelete(node) },
+                    onProperties = { onProperties(node) }
+                )
+            }
         }
     }
 }

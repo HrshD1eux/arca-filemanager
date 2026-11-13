@@ -1,0 +1,159 @@
+<resources>
+    <!-- App Identity -->
+    <string name="app_name">ARCA</string>
+    <string name="app_tagline">Приватный и локальный файловый менеджер</string>
+
+    <!-- Navigation & Titles -->
+    <string name="home_title">Мои файлы</string>
+    <string name="settings_title">Настройки</string>
+    <string name="about_title">О приложении</string>
+    <string name="nav_home">Главная</string>
+    <string name="nav_browse">Обзор</string>
+    <string name="nav_favorites">Избранное</string>
+    <string name="nav_recent">Недавние</string>
+    <string name="nav_trash">Корзина</string>
+    <string name="nav_vault">Сейф</string>
+    <string name="nav_cleaner">Очистка</string>
+    <string name="nav_network">Сеть</string>
+
+    <!-- General Common Actions -->
+    <string name="action_cancel">Отмена</string>
+    <string name="action_confirm">Подтвердить</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_done">Готово</string>
+    <string name="action_close">Закрыть</string>
+    <string name="action_retry">Повторить</string>
+    <string name="action_copy">Копировать</string>
+    <string name="action_move">Переместить</string>
+    <string name="action_delete">Удалить</string>
+    <string name="action_rename">Переименовать</string>
+    <string name="action_share">Поделиться</string>
+    <string name="action_select_all">Выбрать все</string>
+    <string name="action_deselect_all">Снять выбор</string>
+    <string name="action_search">Поиск</string>
+    <string name="action_refresh">Обновить</string>
+    <string name="action_open_with">Открыть с помощью</string>
+    <string name="action_properties">Свойства</string>
+    <string name="action_details">Сведения</string>
+    <string name="action_install">Установить</string>
+    <string name="action_extract">Распаковать</string>
+    <string name="action_compress">Сжать</string>
+    <string name="action_send_to">Отправить</string>
+    <string name="action_show_in_folder">Показать в папке</string>
+
+    <!-- Categories & File Filters -->
+    <string name="category_images">Изображения</string>
+    <string name="category_videos">Видео</string>
+    <string name="category_audio">Аудио</string>
+    <string name="category_documents">Документы</string>
+    <string name="category_downloads">Загрузки</string>
+    <string name="category_apks">Приложения и APK</string>
+    <string name="category_archives">Архивы</string>
+    <string name="category_all_files">Все файлы</string>
+    <string name="category_group_by_date">Группировать по дате</string>
+    <string name="category_sorted_by">Сортировка по </string>
+    <string name="category_ascending">По возрастанию</string>
+    <string name="category_descending">По убыванию</string>
+
+    <!-- Chronological Date Grouping -->
+    <string name="date_group_today">Сегодня</string>
+    <string name="date_group_yesterday">Вчера</string>
+    <string name="date_group_this_week">На этой неделе</string>
+    <string name="date_group_this_month">В этом месяце</string>
+    <string name="date_group_older">Ранее</string>
+    <string name="date_group_unknown">Неизвестная дата</string>
+    <string name="date_group_items_count">%1$d элементов • %2$s</string>
+    <string name="date_group_select_all">Выбрать раздел</string>
+    <string name="date_group_deselect_all">Снять выбор раздела</string>
+
+    <!-- Home & Dashboard -->
+    <string name="home_internal_storage">Внутренняя память</string>
+    <string name="home_sd_card">SD-карта</string>
+    <string name="home_usb_storage">USB-накопитель</string>
+    <string name="home_used_of">%1$s занято из %2$s</string>
+    <string name="home_free_space">%1$s свободно</string>
+    <string name="home_quick_access">Быстрый доступ</string>
+    <string name="home_recent_files">Недавние файлы</string>
+    <string name="home_storage_analysis">Анализ памяти</string>
+
+    <!-- File Browser & Storage Operations -->
+    <string name="browser_empty_folder">Папка пуста</string>
+    <string name="browser_no_files_found">Файлы не найдены</string>
+    <string name="browser_items_count">%1$d элементов</string>
+    <string name="browser_selected_count">%1$d выбрано</string>
+    <string name="browser_file_copied">Скопировано: %1$s</string>
+    <string name="browser_file_moved">Перемещено: %1$s</string>
+    <string name="browser_file_deleted">Удалено: %1$s</string>
+    <string name="browser_file_renamed">Переименовано в %1$s</string>
+    <string name="browser_confirm_delete">Удалить файлы?</string>
+    <string name="browser_delete_warning">Вы уверены, что хотите удалить выбранные элементы (%1$d)?</string>
+    <string name="browser_permanent_delete">Удалить навсегда</string>
+    <string name="browser_move_to_trash">Переместить в корзину</string>
+    <string name="browser_create_folder">Новая папка</string>
+    <string name="browser_folder_name">Имя папки</string>
+
+    <!-- ARCA Drop & Wi-Fi Direct Transfer -->
+    <string name="drop_title">ARCA Drop</string>
+    <string name="drop_tagline">Локальная передача по Wi-Fi без облака</string>
+    <string name="drop_pin_label">PIN сеанса</string>
+    <string name="drop_waiting_connections">Ожидание подключений…</string>
+    <string name="drop_server_running">Сервер передачи активен</string>
+    <string name="drop_stop_service">Остановить передачу</string>
+    <string name="drop_scan_qr_prompt">Отсканируйте QR-код или откройте этот URL на устройстве в той же сети Wi-Fi</string>
+    <string name="drop_copy_link">Копировать ссылку</string>
+    <string name="drop_link_copied">Ссылка скопирована в буфер обмена</string>
+    <string name="drop_files_shared">Передано файлов: %1$d</string>
+    <string name="drop_files_received">Получено файлов: %1$d</string>
+
+    <!-- FTP Server -->
+    <string name="ftp_title">FTP-сервер</string>
+    <string name="ftp_server_running">FTP-сервер работает</string>
+    <string name="ftp_server_stopped">FTP-сервер остановлен</string>
+    <string name="ftp_start_server">Запустить сервер</string>
+    <string name="ftp_stop_server">Остановить сервер</string>
+    <string name="ftp_server_url">FTP URL</string>
+    <string name="ftp_port">Порт</string>
+    <string name="ftp_anonymous_login">Анонимный вход</string>
+    <string name="ftp_username">Имя пользователя</string>
+    <string name="ftp_password">Пароль</string>
+
+    <!-- App Update Dialog -->
+    <string name="update_available_title">Доступно обновление</string>
+    <string name="update_available_msg">Доступна новая версия ARCA (%1$s). Обновить сейчас?</string>
+    <string name="update_now">Обновить сейчас</string>
+    <string name="update_download_in_background">В фоне</string>
+    <string name="update_later">Позже</string>
+    <string name="update_downloading">Загрузка обновления… (%1$d%%)</string>
+    <string name="update_install_ready">Обновление готово к установке</string>
+    <string name="update_up_to_date">Установлена актуальная версия ARCA</string>
+    <string name="update_check_failed">Не удалось проверить обновления</string>
+
+    <!-- Security, App Lock & Vault -->
+    <string name="lock_title">Защита доступа</string>
+    <string name="lock_enter_pin">Введите 4-значный PIN</string>
+    <string name="lock_wrong_pin">Неверный PIN. Попробуйте еще раз.</string>
+    <string name="lock_biometric_prompt">Разблокировать ARCA</string>
+    <string name="lock_biometric_desc">Подтвердите личность с помощью биометрии</string>
+    <string name="vault_title">Зашифрованный сейф</string>
+    <string name="vault_locked">Сейф заблокирован</string>
+    <string name="vault_unlock">Разблокировать сейф</string>
+    <string name="vault_empty">Ваш сейф пуст</string>
+    <string name="vault_add_files">Добавить файлы в сейф</string>
+
+    <!-- Settings & Preferences -->
+    <string name="settings_theme">Тема</string>
+    <string name="settings_theme_system">Системная</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Темная</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_privacy">Политика конфиденциальности</string>
+    <string name="settings_security">Центр безопасности</string>
+    <string name="settings_version">Версия</string>
+    <string name="settings_licenses">Лицензии открытого ПО</string>
+    <string name="settings_show_hidden">Показывать скрытые файлы</string>
+
+    <!-- About & Legal -->
+    <string name="about_description">ARCA — это безопасный файловый менеджер для Android с акцентом на приватность и локальную работу, без телеметрии третьих сторон и с высокой производительностью.</string>
+    <string name="about_developer">Разработчик</string>
+    <string name="about_source_code">Исходный код</string>
+</resources>

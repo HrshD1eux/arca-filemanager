@@ -305,4 +305,70 @@ class CategoryViewModelTest {
         assertEquals(1, docs.fileCount)
         assertEquals("contract.pdf", docs.items[0].name)
     }
+
+    @Test
+    fun dateGrouping_populatesDateGroupsAndCanBeToggled() = runTest {
+        val now = System.currentTimeMillis()
+        File(rootDir, "photo_today.jpg").apply {
+            writeBytes(ByteArray(100))
+            setLastModified(now)
+        }
+        File(rootDir, "photo_yesterday.jpg").apply {
+            writeBytes(ByteArray(200))
+            setLastModified(now - 26 * 3600 * 1000L)
+        }
+
+        viewModel.loadCategory("IMAGES", rootDir.absolutePath)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.groupByDate.value)
+        val state = viewModel.uiState.value as CategoryUiState.Success
+        assertEquals(2, state.fileCount)
+        assertTrue(state.dateGroups.isNotEmpty())
+
+        // Toggle date grouping off
+        viewModel.toggleGroupByDate()
+        advanceUntilIdle()
+        assertFalse(viewModel.groupByDate.value)
+        val stateNoGroups = viewModel.uiState.value as CategoryUiState.Success
+        assertTrue(stateNoGroups.dateGroups.isEmpty())
+        assertEquals(2, stateNoGroups.items.size)
+
+        // Toggle back on
+        viewModel.toggleGroupByDate()
+        advanceUntilIdle()
+        assertTrue(viewModel.groupByDate.value)
+        val stateRegrouped = viewModel.uiState.value as CategoryUiState.Success
+        assertTrue(stateRegrouped.dateGroups.isNotEmpty())
+    }
+
+    @Test
+    fun toggleGroupSelection_selectsAndDeselectsEntireGroup() = runTest {
+        val now = System.currentTimeMillis()
+        File(rootDir, "f1.jpg").apply {
+            writeBytes(ByteArray(100))
+            setLastModified(now)
+        }
+        File(rootDir, "f2.jpg").apply {
+            writeBytes(ByteArray(200))
+            setLastModified(now)
+        }
+
+        viewModel.loadCategory("IMAGES", rootDir.absolutePath)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as CategoryUiState.Success
+        val group = state.dateGroups.first()
+        assertEquals(2, group.items.size)
+
+        // Select the group
+        viewModel.toggleGroupSelection(group)
+        assertEquals(2, viewModel.selectedNodes.value.size)
+        assertTrue(viewModel.isSelectionMode)
+
+        // Toggle again deselects the group
+        viewModel.toggleGroupSelection(group)
+        assertEquals(0, viewModel.selectedNodes.value.size)
+        assertFalse(viewModel.isSelectionMode)
+    }
 }

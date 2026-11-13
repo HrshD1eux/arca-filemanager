@@ -1,0 +1,159 @@
+<resources>
+    <!-- App Identity -->
+    <string name="app_name">ARCA</string>
+    <string name="app_tagline">গোপনীয় এবং লোকাল-ফার্স্ট ফাইল ম্যানেজার</string>
+
+    <!-- Navigation & Titles -->
+    <string name="home_title">আমার ফাইল</string>
+    <string name="settings_title">সেটিংস</string>
+    <string name="about_title">সম্পর্কে</string>
+    <string name="nav_home">হোম</string>
+    <string name="nav_browse">ব্রাউজ</string>
+    <string name="nav_favorites">পছন্দসমূহ</string>
+    <string name="nav_recent">সাম্প্রতিক</string>
+    <string name="nav_trash">ট্র্যাশ</string>
+    <string name="nav_vault">ভল্ট</string>
+    <string name="nav_cleaner">ক্লিনার</string>
+    <string name="nav_network">নেটওয়ার্ক</string>
+
+    <!-- General Common Actions -->
+    <string name="action_cancel">বাতিল</string>
+    <string name="action_confirm">নিশ্চিত করুন</string>
+    <string name="action_save">সংরক্ষণ করুন</string>
+    <string name="action_done">সম্পন্ন</string>
+    <string name="action_close">বন্ধ করুন</string>
+    <string name="action_retry">পুনরায় চেষ্টা করুন</string>
+    <string name="action_copy">কপি করুন</string>
+    <string name="action_move">সরান</string>
+    <string name="action_delete">মুছুন</string>
+    <string name="action_rename">নাম পরিবর্তন</string>
+    <string name="action_share">শেয়ার করুন</string>
+    <string name="action_select_all">সব নির্বাচন করুন</string>
+    <string name="action_deselect_all">সব অনির্বাচন করুন</string>
+    <string name="action_search">অনুসন্ধান</string>
+    <string name="action_refresh">রিফ্রেশ</string>
+    <string name="action_open_with">এর সাথে খুলুন</string>
+    <string name="action_properties">বৈশিষ্ট্য</string>
+    <string name="action_details">বিবরণ</string>
+    <string name="action_install">ইনস্টল করুন</string>
+    <string name="action_extract">আনপ্যাক করুন</string>
+    <string name="action_compress">সংকোচন করুন</string>
+    <string name="action_send_to">পাঠান</string>
+    <string name="action_show_in_folder">ফোল্ডারে দেখান</string>
+
+    <!-- Categories & File Filters -->
+    <string name="category_images">ছবি</string>
+    <string name="category_videos">ভিডিও</string>
+    <string name="category_audio">অডিও</string>
+    <string name="category_documents">নথি</string>
+    <string name="category_downloads">ডাউনলোড</string>
+    <string name="category_apks">অ্যাপ ও APK</string>
+    <string name="category_archives">আর্কাইভ</string>
+    <string name="category_all_files">সকল ফাইল</string>
+    <string name="category_group_by_date">তারিখ অনুযায়ী গ্রুপ করুন</string>
+    <string name="category_sorted_by">সাজানো হয়েছে: </string>
+    <string name="category_ascending">উর্ধ্বমুখী</string>
+    <string name="category_descending">নিম্নমুখী</string>
+
+    <!-- Chronological Date Grouping -->
+    <string name="date_group_today">আজ</string>
+    <string name="date_group_yesterday">গতকাল</string>
+    <string name="date_group_this_week">এই সপ্তাহে</string>
+    <string name="date_group_this_month">এই মাসে</string>
+    <string name="date_group_older">পূর্ববর্তী</string>
+    <string name="date_group_unknown">অজানা তারিখ</string>
+    <string name="date_group_items_count">%1$d টি ফাইল • %2$s</string>
+    <string name="date_group_select_all">বিভাগ নির্বাচন করুন</string>
+    <string name="date_group_deselect_all">বিভাগ অনির্বাচন করুন</string>
+
+    <!-- Home & Dashboard -->
+    <string name="home_internal_storage">অভ্যন্তরীণ স্টোরেজ</string>
+    <string name="home_sd_card">এসডি কার্ড</string>
+    <string name="home_usb_storage">ইউএসবি স্টোরেজ</string>
+    <string name="home_used_of">%2$s এর মধ্যে %1$s ব্যবহৃত</string>
+    <string name="home_free_space">%1$s খালি</string>
+    <string name="home_quick_access">দ্রুত প্রবেশ</string>
+    <string name="home_recent_files">সাম্প্রতিক ফাইল</string>
+    <string name="home_storage_analysis">স্টোরেজ বিশ্লেষণ</string>
+
+    <!-- File Browser & Storage Operations -->
+    <string name="browser_empty_folder">এই ফোল্ডারটি খালি</string>
+    <string name="browser_no_files_found">কোনো মিল পাওয়া যায়নি</string>
+    <string name="browser_items_count">%1$d টি ফাইল</string>
+    <string name="browser_selected_count">%1$d টি নির্বাচিত</string>
+    <string name="browser_file_copied">%1$s কপি করা হয়েছে</string>
+    <string name="browser_file_moved">%1$s সরানো হয়েছে</string>
+    <string name="browser_file_deleted">%1$s মুছে ফেলা হয়েছে</string>
+    <string name="browser_file_renamed">নতুন নাম: %1$s</string>
+    <string name="browser_confirm_delete">ফাইল মুছবেন?</string>
+    <string name="browser_delete_warning">আপনি কি নিশ্চিত যে নির্বাচিত %1$d টি ফাইল মুছতে চান?</string>
+    <string name="browser_permanent_delete">স্থায়ীভাবে মুছুন</string>
+    <string name="browser_move_to_trash">ট্র্যাশে সরান</string>
+    <string name="browser_create_folder">নতুন ফোল্ডার</string>
+    <string name="browser_folder_name">ফোল্ডারের নাম</string>
+
+    <!-- ARCA Drop & Wi-Fi Direct Transfer -->
+    <string name="drop_title">ARCA Drop</string>
+    <string name="drop_tagline">ক্লাউডবিহীন স্থানীয় ওয়াই-ফাই স্থানান্তর</string>
+    <string name="drop_pin_label">সেশন পিন</string>
+    <string name="drop_waiting_connections">সংযোগের অপেক্ষায়…</string>
+    <string name="drop_server_running">শেয়ারিং সার্ভার সক্রিয়</string>
+    <string name="drop_stop_service">শেয়ারিং বন্ধ করুন</string>
+    <string name="drop_scan_qr_prompt">একই ওয়াই-ফাইতে সংযুক্ত যেকোনো ডিভাইসে QR কোড স্ক্যান করুন বা এই URL লিখুন</string>
+    <string name="drop_copy_link">লিঙ্ক কপি করুন</string>
+    <string name="drop_link_copied">লিঙ্ক ক্লিপবোর্ডে কপি করা হয়েছে</string>
+    <string name="drop_files_shared">%1$d টি ফাইল শেয়ার করা হয়েছে</string>
+    <string name="drop_files_received">%1$d টি ফাইল প্রাপ্ত হয়েছে</string>
+
+    <!-- FTP Server -->
+    <string name="ftp_title">FTP সার্ভার</string>
+    <string name="ftp_server_running">FTP সার্ভার সক্রিয়</string>
+    <string name="ftp_server_stopped">FTP সার্ভার বন্ধ</string>
+    <string name="ftp_start_server">সার্ভার চালু করুন</string>
+    <string name="ftp_stop_server">সার্ভার বন্ধ করুন</string>
+    <string name="ftp_server_url">FTP URL</string>
+    <string name="ftp_port">পোর্ট</string>
+    <string name="ftp_anonymous_login">বেনামী লগইন</string>
+    <string name="ftp_username">ব্যবহারকারী নাম</string>
+    <string name="ftp_password">পাসওয়ার্ড</string>
+
+    <!-- App Update Dialog -->
+    <string name="update_available_title">আপডেট উপলব্ধ</string>
+    <string name="update_available_msg">ARCA-এর একটি নতুন সংস্করণ উপলব্ধ (%1$s)। এখনই আপডেট করবেন?</string>
+    <string name="update_now">এখনই আপডেট করুন</string>
+    <string name="update_download_in_background">ব্যাকগ্রাউন্ডে</string>
+    <string name="update_later">পরে</string>
+    <string name="update_downloading">আপডেট ডাউনলোড হচ্ছে… (%1$d%%)</string>
+    <string name="update_install_ready">ইনস্টল করার জন্য প্রস্তুত</string>
+    <string name="update_up_to_date">ARCA আপ-টু-ডেট আছে</string>
+    <string name="update_check_failed">আপডেট পরীক্ষা করতে ব্যর্থ হয়েছে</string>
+
+    <!-- Security, App Lock & Vault -->
+    <string name="lock_title">নিরাপত্তা লক</string>
+    <string name="lock_enter_pin">৪-সংখ্যার পিন লিখুন</string>
+    <string name="lock_wrong_pin">ভুল পিন। আবার চেষ্টা করুন।</string>
+    <string name="lock_biometric_prompt">ARCA আনলক করুন</string>
+    <string name="lock_biometric_desc">বায়োমেট্রিক্স দিয়ে পরিচয় যাচাই করুন</string>
+    <string name="vault_title">এনক্রিপ্ট করা ভল্ট</string>
+    <string name="vault_locked">ভল্ট লক করা আছে</string>
+    <string name="vault_unlock">ভল্ট আনলক করুন</string>
+    <string name="vault_empty">আপনার ভল্ট খালি</string>
+    <string name="vault_add_files">ভল্টে ফাইল যোগ করুন</string>
+
+    <!-- Settings & Preferences -->
+    <string name="settings_theme">থিম</string>
+    <string name="settings_theme_system">সিস্টেম ডিফল্ট</string>
+    <string name="settings_theme_light">হালকা</string>
+    <string name="settings_theme_dark">গাঢ়</string>
+    <string name="settings_language">ভাষা</string>
+    <string name="settings_privacy">গোপনীয়তা নীতি</string>
+    <string name="settings_security">নিরাপত্তা কেন্দ্র</string>
+    <string name="settings_version">সংস্করণ</string>
+    <string name="settings_licenses">ওপেন সোর্স লাইসেন্স</string>
+    <string name="settings_show_hidden">লুকানো ফাইল দেখান</string>
+
+    <!-- About & Legal -->
+    <string name="about_description">ARCA হলো একটি গোপনীয়তা-কেন্দ্রিক অ্যান্ড্রয়েড ফাইল ম্যানেজার যা কোনো তৃতীয়-পক্ষের টেলিমেট্রি ছাড়া, এন্ড-টু-এন্ড সুরক্ষা ও উচ্চ পারফরম্যান্স প্রদান করে।</string>
+    <string name="about_developer">ডেভেলপার</string>
+    <string name="about_source_code">উৎস কোড</string>
+</resources>
