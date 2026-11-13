@@ -688,4 +688,6 @@
     <string name="action_clear">క్లియర్ చేయి</string>
     <string name="label_name">పేరు</string>
     <string name="sort_dialog_title">దీని ప్రకారం క్రమబద్ధీకరించు</string>
+    <string name="language_system_default">సిస్టమ్ డిఫాల్ట్</string>
+    <string name="language_system_default_desc">సిస్టమ్ భాషను అనుసరించండి</string>
 </resources>

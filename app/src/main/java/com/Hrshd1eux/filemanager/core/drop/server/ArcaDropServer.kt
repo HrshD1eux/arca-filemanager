@@ -116,9 +116,15 @@ class ArcaDropServer(
         if (isRunning) return
 
         val socket = try {
-            ServerSocket(preferredPort).apply { reuseAddress = true }
+            ServerSocket().apply {
+                reuseAddress = true
+                bind(java.net.InetSocketAddress(preferredPort))
+            }
         } catch (_: IOException) {
-            ServerSocket(0).apply { reuseAddress = true }
+            ServerSocket().apply {
+                reuseAddress = true
+                bind(java.net.InetSocketAddress(0))
+            }
         }
 
         serverSocket = socket
@@ -239,7 +245,8 @@ class ArcaDropServer(
             }
 
             val qIdx = rawTarget.indexOf('?')
-            val path = if (qIdx >= 0) rawTarget.substring(0, qIdx) else rawTarget
+            val rawPath = if (qIdx >= 0) rawTarget.substring(0, qIdx) else rawTarget
+            val path = if (rawPath.isEmpty()) "/" else rawPath
             val queryParams = if (qIdx >= 0) parseQueryParams(rawTarget.substring(qIdx + 1)) else emptyMap()
 
             // CORS preflight handling without wildcard origin

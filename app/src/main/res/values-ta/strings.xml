@@ -688,4 +688,6 @@
     <string name="action_clear">அழி</string>
     <string name="label_name">பெயர்</string>
     <string name="sort_dialog_title">இதன்படி வரிசைப்படுத்து</string>
+    <string name="language_system_default">கணினி இயல்புநிலை</string>
+    <string name="language_system_default_desc">கணினி மொழியைப் பின்தொடரவும்</string>
 </resources>

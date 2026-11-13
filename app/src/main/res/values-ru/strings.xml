@@ -688,4 +688,6 @@
     <string name="action_clear">Очистить</string>
     <string name="label_name">Имя</string>
     <string name="sort_dialog_title">Сортировать по</string>
+    <string name="language_system_default">По умолчанию для системы</string>
+    <string name="language_system_default_desc">Использовать язык системы</string>
 </resources>

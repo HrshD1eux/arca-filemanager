@@ -60,6 +60,6 @@ data class ArcaDropState(
 
     val qrUrl: String?
         get() = baseUrl?.let { url ->
-            if (pin.isNotEmpty()) "$url?pin=$pin" else url
+            if (pin.isNotEmpty()) "$url/?pin=$pin" else "$url/"
         }
 }

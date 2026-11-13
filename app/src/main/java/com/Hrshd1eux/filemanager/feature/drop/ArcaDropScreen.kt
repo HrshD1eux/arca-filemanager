@@ -268,7 +268,7 @@ fun ArcaDropScreen(
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = "Browser URL",
+                                                text = stringResource(R.string.drop_browser_url_label),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -284,7 +284,10 @@ fun ArcaDropScreen(
                                         IconButton(onClick = {
                                             copyToClipboard(context, "ARCA Drop URL", state.qrUrl ?: displayUrl)
                                         }) {
-                                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy URL")
+                                            Icon(
+                                                imageVector = Icons.Default.ContentCopy,
+                                                contentDescription = stringResource(R.string.drop_copy_url)
+                                            )
                                         }
                                     }
                                 }
@@ -309,7 +312,7 @@ fun ArcaDropScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = "Session PIN",
+                                                text = stringResource(R.string.drop_pin_label),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -323,7 +326,10 @@ fun ArcaDropScreen(
                                         IconButton(onClick = {
                                             copyToClipboard(context, "ARCA Drop PIN", state.pin)
                                         }) {
-                                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy PIN")
+                                            Icon(
+                                                imageVector = Icons.Default.ContentCopy,
+                                                contentDescription = stringResource(R.string.drop_copy_pin)
+                                            )
                                         }
                                     }
                                 }
@@ -806,5 +812,5 @@ private fun HotspotGuidanceBanner() {
 private fun copyToClipboard(context: Context, label: String, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
     clipboard?.setPrimaryClip(ClipData.newPlainText(label, text))
-    Toast.makeText(context, "$label copied", Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, context.getString(R.string.drop_link_copied), Toast.LENGTH_SHORT).show()
 }

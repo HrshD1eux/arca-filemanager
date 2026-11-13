@@ -688,4 +688,6 @@
     <string name="action_clear">মুছুন</string>
     <string name="label_name">নাম</string>
     <string name="sort_dialog_title">এর মাধ্যমে সাজান</string>
+    <string name="language_system_default">সিস্টেম ডিফল্ট</string>
+    <string name="language_system_default_desc">সিস্টেমের ভাষা অনুসরণ করুন</string>
 </resources>

@@ -688,4 +688,6 @@
     <string name="action_clear">साफ करा</string>
     <string name="label_name">नाव</string>
     <string name="sort_dialog_title">यानुसार क्रमवारी लावा</string>
+    <string name="language_system_default">सिस्टम डीफॉल्ट</string>
+    <string name="language_system_default_desc">सिस्टम भाषेचे अनुसरण करा</string>
 </resources>

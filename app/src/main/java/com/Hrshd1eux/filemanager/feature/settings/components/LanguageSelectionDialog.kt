@@ -108,18 +108,24 @@ private fun LanguageItemRow(
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = language.nativeName,
+                    text = if (language.tag.isEmpty()) {
+                        stringResource(R.string.language_system_default)
+                    } else {
+                        language.nativeName
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                if (language.tag.isNotEmpty()) {
-                    Text(
-                        text = language.englishName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = if (language.tag.isEmpty()) {
+                        stringResource(R.string.language_system_default_desc)
+                    } else {
+                        language.englishName
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

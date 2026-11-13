@@ -18,6 +18,10 @@ class LocalLanNetworkUtilTest {
         assertTrue(LocalLanNetworkUtil.isExcludedInterface("dummy0"))
         assertTrue(LocalLanNetworkUtil.isExcludedInterface("radio0"))
         assertTrue(LocalLanNetworkUtil.isExcludedInterface("ims0"))
+        assertTrue(LocalLanNetworkUtil.isExcludedInterface("wg0"))
+        assertTrue(LocalLanNetworkUtil.isExcludedInterface("vpn0"))
+        assertTrue(LocalLanNetworkUtil.isExcludedInterface("tailscale0"))
+        assertTrue(LocalLanNetworkUtil.isExcludedInterface("adguard"))
 
         assertFalse(LocalLanNetworkUtil.isExcludedInterface("wlan0"))
         assertFalse(LocalLanNetworkUtil.isExcludedInterface("ap0"))
@@ -52,6 +56,11 @@ class LocalLanNetworkUtilTest {
         assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("[fe80::1]"))
         assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("fc00::1"))
         assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("fd12:3456:789a::1"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("100.64.0.1"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("169.254.1.1"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("arca.local"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("router.lan"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("phone.home"))
 
         assertFalse(LocalLanNetworkUtil.isPrivateOrLocalAddress("8.8.8.8"))
         assertFalse(LocalLanNetworkUtil.isPrivateOrLocalAddress("1.1.1.1"))
@@ -69,6 +78,15 @@ class LocalLanNetworkUtilTest {
             "wlan0" to "192.168.43.1"
         )
         assertEquals("172.20.10.4", LocalLanNetworkUtil.selectBestLanIp(candidates))
+    }
+
+    @Test
+    fun selectBestLanIp_prefersWlanOverUsbTetheringRndis() {
+        val candidates = listOf(
+            "rndis0" to "192.168.42.129",
+            "wlan0" to "192.168.1.100"
+        )
+        assertEquals("192.168.1.100", LocalLanNetworkUtil.selectBestLanIp(candidates))
     }
 
     @Test

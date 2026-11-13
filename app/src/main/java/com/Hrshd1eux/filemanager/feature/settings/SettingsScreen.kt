@@ -75,6 +75,7 @@ import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.lock.manager.AppLockManager
 import com.Hrshd1eux.filemanager.core.lock.model.AppLockMode
 import com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager
+import com.Hrshd1eux.filemanager.core.settings.locale.findActivity
 import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 import com.Hrshd1eux.filemanager.feature.lock.ui.AppLockSettingsDialog
@@ -207,7 +208,11 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = stringResource(id = R.string.settings_language),
-                        subtitle = AppLocaleManager.getDisplayNameForTag(currentLanguageTag),
+                        subtitle = if (currentLanguageTag.isEmpty()) {
+                            stringResource(R.string.language_system_default)
+                        } else {
+                            AppLocaleManager.getDisplayNameForTag(currentLanguageTag)
+                        },
                         icon = Icons.Default.Language,
                         onClick = { showLanguageDialog = true }
                     )
@@ -377,7 +382,7 @@ fun SettingsScreen(
             currentLanguageTag = currentLanguageTag,
             onLanguageSelected = { tag ->
                 viewModel.setAppLanguage(context, tag)
-                (context as? android.app.Activity)?.recreate()
+                context.findActivity()?.recreate()
             },
             onDismiss = { showLanguageDialog = false }
         )

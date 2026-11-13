@@ -217,13 +217,10 @@ class ArcaDropService : Service() {
             }
 
             val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-            val lockMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                WifiManager.WIFI_MODE_FULL_LOW_LATENCY
-            } else {
-                @Suppress("DEPRECATION")
-                WifiManager.WIFI_MODE_FULL_HIGH_PERF
-            }
+            @Suppress("DEPRECATION")
+            val lockMode = WifiManager.WIFI_MODE_FULL_HIGH_PERF
             wifiLock = wm?.createWifiLock(lockMode, "ARCA:ArcaDropWifiLock")?.apply {
+                setReferenceCounted(false)
                 acquire()
             }
         }

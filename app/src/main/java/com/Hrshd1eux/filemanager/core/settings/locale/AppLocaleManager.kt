@@ -1,12 +1,24 @@
 package com.Hrshd1eux.filemanager.core.settings.locale
 
+import android.app.Activity
 import android.app.LocaleManager
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.os.Build
 import android.os.LocaleList
 import com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository
 import java.util.Locale
+
+/**
+ * Unwraps any ContextWrapper hierarchy to find the enclosing Activity instance.
+ */
+tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext?.findActivity()
+    else -> null
+}
 
 /**
  * Descriptor for an in-app selectable locale option.
@@ -68,19 +80,35 @@ object AppLocaleManager {
                 localeManager?.applicationLocales = LocaleList.forLanguageTags(languageTag)
             }
         }
+        applyLocaleContext(context, languageTag)
+        context.findActivity()?.recreate()
     }
 
     fun applyLocaleContext(context: Context, languageTag: String): Context {
-        if (languageTag.isEmpty()) return context
-        val parts = languageTag.split('-')
-        val targetLocale = if (parts.size == 2) {
-            Locale(parts[0], parts[1])
+        val targetLocale = if (languageTag.isEmpty()) {
+            val systemLocales = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                Resources.getSystem().configuration.locales
+            } else {
+                null
+            }
+            if (systemLocales != null && !systemLocales.isEmpty) {
+                systemLocales.get(0)
+            } else {
+                @Suppress("DEPRECATION")
+                Resources.getSystem().configuration.locale ?: Locale.getDefault()
+            }
         } else {
-            Locale(parts[0])
+            val parts = languageTag.split('-')
+            if (parts.size == 2) {
+                Locale(parts[0], parts[1])
+            } else {
+                Locale(parts[0])
+            }
         }
         Locale.setDefault(targetLocale)
         val config = Configuration(context.resources.configuration)
         config.setLocale(targetLocale)
+        config.setLayoutDirection(targetLocale)
         return context.createConfigurationContext(config)
     }
 

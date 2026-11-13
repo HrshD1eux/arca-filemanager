@@ -688,4 +688,6 @@
     <string name="action_clear">Limpar</string>
     <string name="label_name">Nome</string>
     <string name="sort_dialog_title">Ordenar por</string>
+    <string name="language_system_default">Padrão do sistema</string>
+    <string name="language_system_default_desc">Seguir o idioma do sistema</string>
 </resources>
