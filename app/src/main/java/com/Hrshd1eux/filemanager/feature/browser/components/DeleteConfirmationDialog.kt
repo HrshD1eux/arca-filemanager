@@ -36,9 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FolderDetailsCalculator
@@ -89,8 +91,11 @@ fun DeleteConfirmationDialog(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = if (permanentDelete) "Delete ${if (node.isDirectory) "Folder" else "File"} Permanently?"
-                    else "Move to Trash?",
+                    text = if (permanentDelete) {
+                        if (node.isDirectory) stringResource(R.string.delete_perm_title_folder) else stringResource(R.string.delete_perm_title_file)
+                    } else {
+                        stringResource(R.string.delete_move_to_trash_title)
+                    },
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -104,9 +109,9 @@ fun DeleteConfirmationDialog(
             ) {
                 Text(
                     text = if (permanentDelete) {
-                        "Are you sure you want to permanently delete this item? Data will be cryptographically shredded and this action cannot be undone."
+                        stringResource(R.string.delete_perm_desc)
                     } else {
-                        "This item will be moved to Trash and kept for 30 days before permanent auto-purge. You can restore it anytime from Trash."
+                        stringResource(R.string.delete_trash_desc)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -135,10 +140,10 @@ fun DeleteConfirmationDialog(
 
                         val detailText = if (node.isDirectory) {
                             if (isCalculatingFolder) {
-                                "Calculating folder contents..."
+                                stringResource(R.string.delete_calculating_folder)
                             } else {
                                 val details = folderDetails ?: FolderDetailsCalculator.FolderDetails()
-                                "${details.totalFiles} files, ${details.totalFolders} folders (${FileFormatter.formatFileSize(details.totalBytes)})"
+                                stringResource(R.string.delete_folder_details_summary, details.totalFiles, details.totalFolders, FileFormatter.formatFileSize(details.totalBytes))
                             }
                         } else {
                             "${FileFormatter.formatFileSize(node.size)} (${FileFormatter.formatExactBytes(node.size)})"
@@ -168,13 +173,13 @@ fun DeleteConfirmationDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = "Permanently delete (skip Trash)",
+                                text = stringResource(R.string.delete_skip_trash_checkbox),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = if (permanentDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Cryptographic multi-pass shredding",
+                                text = stringResource(R.string.delete_shred_subtitle),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -192,7 +197,7 @@ fun DeleteConfirmationDialog(
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(if (permanentDelete) "Delete Permanently" else "Move to Trash")
+                Text(if (permanentDelete) stringResource(R.string.delete_perm_button) else stringResource(R.string.delete_move_trash_button))
             }
         },
         dismissButton = {
@@ -200,7 +205,7 @@ fun DeleteConfirmationDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         },
         modifier = modifier

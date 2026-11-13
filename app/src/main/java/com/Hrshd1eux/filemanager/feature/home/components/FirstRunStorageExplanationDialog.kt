@@ -38,8 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 
@@ -47,12 +49,11 @@ import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManage
  * First-run explanation dialog for storage permissions.
  *
  * Implements Version 1.2.35 requirements:
- * 1. Explains why broader file access is useful (browsing, archives, storage breakdown, moving).
- * 2. Explicitly communicates Android platform limitations (all-files access is not a universal
- *    pass to other apps' private sandboxes or restricted system directories).
- * 3. Highlights private, zero-telemetry design with isolated user-configured network storage.
- * 4. Provides clear Grant Access vs. Continue with Limited Access actions.
- * 5. Direct access to Privacy Statement.
+ * 1. Explains why broader file access is useful (Archive Studio, browsing, storage breakdown, moving).
+ * 2. Explicitly communicates Android platform limitations (ANDROID_STORAGE_LIMITATION_DISCLAIMER: all-files access
+ *    is not a universal pass to other apps' private sandboxes or restricted system directories).
+ * 3. Highlights Private & Zero Telemetry design with isolated user-configured network storage.
+ * 4. Actions: "Grant Storage Access", "Continue with Limited Access", "Read Privacy Statement".
  */
 @Composable
 fun FirstRunStorageExplanationDialog(
@@ -92,13 +93,13 @@ fun FirstRunStorageExplanationDialog(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Storage Access in ARCA",
+                        text = stringResource(R.string.first_run_storage_dialog_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Transparent & Privacy-First",
+                        text = stringResource(R.string.first_run_storage_dialog_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -115,7 +116,7 @@ fun FirstRunStorageExplanationDialog(
             ) {
                 // Section 1: Why broader file access is useful
                 Text(
-                    text = "Why ARCA benefits from file access:",
+                    text = stringResource(R.string.first_run_storage_why_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
@@ -123,20 +124,20 @@ fun FirstRunStorageExplanationDialog(
 
                 ExplanationFeatureRow(
                     icon = Icons.Default.Folder,
-                    title = "File Management",
-                    description = "Browse, move, copy, rename, and organize files on internal storage and SD cards."
+                    title = stringResource(R.string.first_run_storage_file_management_title),
+                    description = stringResource(R.string.first_run_storage_file_management_desc)
                 )
 
                 ExplanationFeatureRow(
                     icon = Icons.Default.Archive,
-                    title = "Archive Studio",
-                    description = "Create, extract, inspect, and verify ZIP, 7Z, TAR, and GZ archives."
+                    title = stringResource(R.string.first_run_storage_archive_title),
+                    description = stringResource(R.string.first_run_storage_archive_desc)
                 )
 
                 ExplanationFeatureRow(
                     icon = Icons.Default.CheckCircle,
-                    title = "Storage Breakdown & Checksums",
-                    description = "Analyze used storage metrics and verify file integrity via MD5 and SHA-256."
+                    title = stringResource(R.string.first_run_storage_checksums_title),
+                    description = stringResource(R.string.first_run_storage_checksums_desc)
                 )
 
                 // Section 2: Important Android Limitation Card
@@ -157,7 +158,7 @@ fun FirstRunStorageExplanationDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Android Security Boundary",
+                                text = stringResource(R.string.first_run_storage_boundary_title),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -165,7 +166,7 @@ fun FirstRunStorageExplanationDialog(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = StoragePermissionManager.ANDROID_STORAGE_LIMITATION_DISCLAIMER,
+                            text = stringResource(R.string.first_run_storage_boundary_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -190,7 +191,7 @@ fun FirstRunStorageExplanationDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Private & Zero Telemetry",
+                                text = stringResource(R.string.first_run_storage_zero_telemetry_title),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = VaultEmerald
@@ -198,7 +199,7 @@ fun FirstRunStorageExplanationDialog(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "ARCA has zero telemetry and zero cloud sync. If you choose limited access, Private Vault, Network connections, and offline tools remain fully functional.",
+                            text = stringResource(R.string.first_run_storage_zero_telemetry_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -219,7 +220,7 @@ fun FirstRunStorageExplanationDialog(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Grant Storage Access")
+                    Text(stringResource(R.string.first_run_storage_grant))
                 }
 
                 OutlinedButton(
@@ -227,7 +228,7 @@ fun FirstRunStorageExplanationDialog(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Continue with Limited Access")
+                    Text(stringResource(R.string.first_run_storage_continue_limited))
                 }
 
                 TextButton(
@@ -242,7 +243,7 @@ fun FirstRunStorageExplanationDialog(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Read Privacy Statement",
+                        text = stringResource(R.string.first_run_storage_read_privacy),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

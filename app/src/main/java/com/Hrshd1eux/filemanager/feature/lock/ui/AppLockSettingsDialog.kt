@@ -37,10 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.lock.manager.AppLockManager
 import com.Hrshd1eux.filemanager.core.lock.model.AppLockMode
@@ -72,7 +74,7 @@ fun AppLockSettingsDialog(
         },
         title = {
             Text(
-                text = "App Lock & Biometrics",
+                text = stringResource(R.string.app_lock_dialog_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -102,15 +104,20 @@ fun AppLockSettingsDialog(
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
+                        val modeName = when (settings.mode) {
+                            AppLockMode.PIN -> stringResource(R.string.app_lock_mode_pin)
+                            AppLockMode.BIOMETRIC_WITH_PIN -> stringResource(R.string.app_lock_mode_biometric)
+                            AppLockMode.DISABLED -> stringResource(R.string.app_lock_status_disabled)
+                        }
                         Column {
                             Text(
-                                text = if (settings.isConfigured) "App Lock Active" else "App Lock Disabled",
+                                text = if (settings.isConfigured) stringResource(R.string.app_lock_status_active) else stringResource(R.string.app_lock_status_disabled),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = if (settings.isConfigured) settings.mode.displayName else "Configure a PIN to protect ARCA when opened",
+                                text = if (settings.isConfigured) modeName else stringResource(R.string.app_lock_status_disabled_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -123,7 +130,7 @@ fun AppLockSettingsDialog(
                         onClick = { showPinSetupDialog = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Set Up Master PIN")
+                        Text(stringResource(R.string.app_lock_setup_pin))
                     }
                 } else {
                     // Biometric Unlock Switch (if supported)
@@ -141,12 +148,12 @@ fun AppLockSettingsDialog(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Unlock with Biometrics",
+                                    text = stringResource(R.string.app_lock_biometrics_title),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Use fingerprint or face recognition (PIN remains root fallback)",
+                                    text = stringResource(R.string.app_lock_biometrics_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -174,12 +181,12 @@ fun AppLockSettingsDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Lock When Screen Turns Off",
+                                text = stringResource(R.string.app_lock_screen_off_title),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "Locks immediately when device screen is turned off",
+                                text = stringResource(R.string.app_lock_screen_off_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -196,12 +203,19 @@ fun AppLockSettingsDialog(
 
                     // Auto-Lock Timeout
                     Text(
-                        text = "Auto-Lock Timeout",
+                        text = stringResource(R.string.app_lock_timeout_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold
                     )
 
-                    for (timeout in AppLockTimeout.values()) {
+                    for (timeout in AppLockTimeout.entries) {
+                        val timeoutName = when (timeout) {
+                            AppLockTimeout.IMMEDIATELY -> stringResource(R.string.app_lock_timeout_immediately)
+                            AppLockTimeout.THIRTY_SECONDS -> timeout.displayName
+                            AppLockTimeout.ONE_MINUTE -> stringResource(R.string.app_lock_timeout_1_min)
+                            AppLockTimeout.FIVE_MINUTES -> stringResource(R.string.app_lock_timeout_5_min)
+                            AppLockTimeout.FIFTEEN_MINUTES -> stringResource(R.string.app_lock_timeout_15_min)
+                        }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -217,7 +231,7 @@ fun AppLockSettingsDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = timeout.displayName,
+                                text = timeoutName,
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -230,10 +244,10 @@ fun AppLockSettingsDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         TextButton(onClick = { showPinSetupDialog = true }) {
-                            Text("Change PIN")
+                            Text(stringResource(R.string.app_lock_change_pin))
                         }
                         TextButton(onClick = { showDisableConfirmDialog = true }) {
-                            Text("Disable Lock", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.app_lock_disable_lock), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -241,7 +255,7 @@ fun AppLockSettingsDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(R.string.action_done))
             }
         }
     )
@@ -282,13 +296,16 @@ private fun PinSetupModal(
     var enableBiometrics by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    val minDigitsError = stringResource(R.string.app_lock_error_min_digits)
+    val mismatchError = stringResource(R.string.app_lock_error_mismatch)
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isChangingPin) "Change PIN" else "Set Up Master PIN") },
+        title = { Text(if (isChangingPin) stringResource(R.string.app_lock_change_pin) else stringResource(R.string.app_lock_setup_pin)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Enter a 4 to 8 digit numeric PIN. This PIN is your root cryptographic fallback.",
+                    text = stringResource(R.string.app_lock_pin_instructions),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -296,7 +313,7 @@ private fun PinSetupModal(
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { if (it.length <= 8 && it.all { c -> c.isDigit() }) pin = it },
-                    label = { Text("New PIN (4-8 digits)") },
+                    label = { Text(stringResource(R.string.app_lock_new_pin_label)) },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     singleLine = true,
@@ -306,7 +323,7 @@ private fun PinSetupModal(
                 OutlinedTextField(
                     value = confirmPin,
                     onValueChange = { if (it.length <= 8 && it.all { c -> c.isDigit() }) confirmPin = it },
-                    label = { Text("Confirm PIN") },
+                    label = { Text(stringResource(R.string.app_lock_confirm_pin_label)) },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     singleLine = true,
@@ -326,20 +343,20 @@ private fun PinSetupModal(
             TextButton(
                 onClick = {
                     if (pin.length < 4) {
-                        error = "PIN must be at least 4 digits."
+                        error = minDigitsError
                     } else if (pin != confirmPin) {
-                        error = "PINs do not match."
+                        error = mismatchError
                     } else {
                         onPinConfirmed(pin, enableBiometrics)
                     }
                 }
             ) {
-                Text("Save PIN")
+                Text(stringResource(R.string.app_lock_save_pin))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -352,21 +369,22 @@ private fun DisableLockModal(
 ) {
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    val incorrectPinError = stringResource(R.string.app_lock_error_incorrect)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Disable App Lock") },
+        title = { Text(stringResource(R.string.app_lock_disable_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Enter your current PIN to confirm disabling App Lock.",
+                    text = stringResource(R.string.app_lock_disable_instructions),
                     style = MaterialTheme.typography.bodySmall
                 )
 
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { if (it.length <= 8 && it.all { c -> c.isDigit() }) pin = it },
-                    label = { Text("Current PIN") },
+                    label = { Text(stringResource(R.string.app_lock_current_pin_label)) },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     singleLine = true,
@@ -387,16 +405,16 @@ private fun DisableLockModal(
                 onClick = {
                     val success = onConfirmDisable(pin)
                     if (!success) {
-                        error = "Incorrect PIN."
+                        error = incorrectPinError
                     }
                 }
             ) {
-                Text("Disable", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.app_lock_disable_button), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )

@@ -27,10 +27,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
@@ -227,7 +229,7 @@ fun StorageNodeGridItem(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 val subtitle = if (node.isDirectory) {
-                    "Folder"
+                    stringResource(R.string.type_folder)
                 } else {
                     FileFormatter.formatFileSize(node.size)
                 }

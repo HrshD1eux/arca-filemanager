@@ -26,8 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 
 @Composable
@@ -50,7 +52,7 @@ fun ThemeSelectionDialog(
         },
         title = {
             Text(
-                text = "Choose Theme",
+                text = stringResource(R.string.theme_dialog_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -59,6 +61,11 @@ fun ThemeSelectionDialog(
             Column(modifier = Modifier.fillMaxWidth()) {
                 ThemeMode.entries.forEach { mode ->
                     val isSelected = currentThemeMode == mode
+                    val modeLabel = when (mode) {
+                        ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
+                        ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
+                        ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -73,7 +80,7 @@ fun ThemeSelectionDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = mode.displayName,
+                            text = modeLabel,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )
@@ -95,12 +102,12 @@ fun ThemeSelectionDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Dynamic Colors",
+                                text = stringResource(R.string.theme_dynamic_color_title),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Apply Material You theme from wallpaper",
+                                text = stringResource(R.string.theme_dynamic_color_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -119,7 +126,7 @@ fun ThemeSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(R.string.action_done))
             }
         }
     )

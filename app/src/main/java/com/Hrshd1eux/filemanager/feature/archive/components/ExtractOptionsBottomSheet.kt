@@ -42,8 +42,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
 import com.Hrshd1eux.filemanager.core.operations.model.ConflictResolution
@@ -78,7 +80,7 @@ fun ExtractOptionsBottomSheet(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = if (isSelective) "Extract $selectedCount Selected Items" else "Extract Archive",
+                text = if (isSelective) stringResource(R.string.extract_dialog_title_selective, selectedCount) else stringResource(R.string.extract_dialog_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -96,8 +98,8 @@ fun ExtractOptionsBottomSheet(
                 ExtractActionCard(
                     icon = Icons.Default.CreateNewFolder,
                     iconTint = FolderYellow,
-                    title = "Extract to '$folderName/'",
-                    subtitle = "1-tap unpack into dedicated folder",
+                    title = stringResource(R.string.extract_to_subfolder_title, folderName),
+                    subtitle = stringResource(R.string.extract_to_subfolder_desc),
                     isPrimary = true,
                     onClick = {
                         onDismiss()
@@ -112,8 +114,8 @@ fun ExtractOptionsBottomSheet(
             ExtractActionCard(
                 icon = Icons.Default.FolderOpen,
                 iconTint = MaterialTheme.colorScheme.primary,
-                title = "Extract here",
-                subtitle = "Unpacks directly into current directory",
+                title = stringResource(R.string.extract_here_title),
+                subtitle = stringResource(R.string.extract_here_desc),
                 isPrimary = isSelective,
                 onClick = {
                     onDismiss()
@@ -127,8 +129,8 @@ fun ExtractOptionsBottomSheet(
             ExtractActionCard(
                 icon = Icons.AutoMirrored.Filled.DriveFileMove,
                 iconTint = ZipOrange,
-                title = "Extract to…",
-                subtitle = "Choose destination directory across storage",
+                title = stringResource(R.string.extract_custom_title),
+                subtitle = stringResource(R.string.extract_custom_desc),
                 isPrimary = false,
                 onClick = {
                     onDismiss()
@@ -159,7 +161,7 @@ fun ExtractOptionsBottomSheet(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Advanced Options",
+                        text = stringResource(R.string.extract_advanced_title),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -179,7 +181,7 @@ fun ExtractOptionsBottomSheet(
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                     Text(
-                        text = "If file already exists:",
+                        text = stringResource(R.string.extract_collision_policy),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -193,7 +195,7 @@ fun ExtractOptionsBottomSheet(
                         FilterChip(
                             selected = selectedResolution == ConflictResolution.RENAME_AUTO,
                             onClick = { selectedResolution = ConflictResolution.RENAME_AUTO },
-                            label = { Text("Auto-Rename") },
+                            label = { Text(stringResource(R.string.extract_conflict_autorename)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = ZipOrange.copy(alpha = 0.15f),
                                 selectedLabelColor = ZipOrange
@@ -203,7 +205,7 @@ fun ExtractOptionsBottomSheet(
                         FilterChip(
                             selected = selectedResolution == ConflictResolution.OVERWRITE,
                             onClick = { selectedResolution = ConflictResolution.OVERWRITE },
-                            label = { Text("Overwrite") },
+                            label = { Text(stringResource(R.string.extract_conflict_overwrite)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -213,7 +215,7 @@ fun ExtractOptionsBottomSheet(
                         FilterChip(
                             selected = selectedResolution == ConflictResolution.SKIP,
                             onClick = { selectedResolution = ConflictResolution.SKIP },
-                            label = { Text("Skip") },
+                            label = { Text(stringResource(R.string.extract_conflict_skip)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 selectedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -234,12 +236,12 @@ fun ExtractOptionsBottomSheet(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Verify integrity after extraction",
+                                text = stringResource(R.string.extract_verify_integrity),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "Checks CRC against archive records",
+                                text = stringResource(R.string.extract_verify_desc),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

@@ -18,8 +18,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 
 @Composable
@@ -33,9 +35,12 @@ fun BatchRenameDialog(
     val forbiddenChars = listOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
     val hasForbiddenChars = forbiddenChars.any { baseName.contains(it) }
 
+    val emptyError = stringResource(R.string.batch_rename_error_empty)
+    val forbiddenError = stringResource(R.string.rename_error_forbidden)
+
     val errorMessage = when {
-        baseName.isBlank() -> "Base name cannot be empty"
-        hasForbiddenChars -> "Invalid characters: / \\ : * ? \" < > |"
+        baseName.isBlank() -> emptyError
+        hasForbiddenChars -> forbiddenError
         else -> null
     }
 
@@ -57,7 +62,7 @@ fun BatchRenameDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Rename ${nodes.size} Items",
+                text = stringResource(R.string.batch_rename_dialog_title, nodes.size),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -73,8 +78,8 @@ fun BatchRenameDialog(
                 OutlinedTextField(
                     value = baseName,
                     onValueChange = { baseName = it },
-                    label = { Text("Base Name") },
-                    placeholder = { Text("e.g. Document, Photo") },
+                    label = { Text(stringResource(R.string.batch_rename_base_label)) },
+                    placeholder = { Text(stringResource(R.string.batch_rename_placeholder)) },
                     singleLine = true,
                     isError = !isValid && baseName.isNotEmpty(),
                     supportingText = {
@@ -101,12 +106,12 @@ fun BatchRenameDialog(
                 },
                 enabled = isValid
             ) {
-                Text("Rename All")
+                Text(stringResource(R.string.batch_rename_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         },
         modifier = modifier

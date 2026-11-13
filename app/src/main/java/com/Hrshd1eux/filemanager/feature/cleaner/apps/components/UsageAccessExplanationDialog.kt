@@ -37,9 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 
 /**
@@ -83,13 +85,13 @@ fun UsageAccessExplanationDialog(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "App Usage Access",
+                        text = stringResource(R.string.usage_access_dialog_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Optional • Android 13+ Guidance",
+                        text = stringResource(R.string.usage_access_dialog_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -121,7 +123,7 @@ fun UsageAccessExplanationDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Is the switch disabled/greyed out?",
+                                text = stringResource(R.string.usage_access_card_title),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -129,7 +131,7 @@ fun UsageAccessExplanationDialog(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "On Android 13, 14, and 15, Android places 'Restricted settings' on apps installed from APK files. If the toggle has an 'X' or says 'Restricted setting', you can unlock it in 2 quick steps:",
+                            text = stringResource(R.string.usage_access_card_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp
@@ -140,32 +142,16 @@ fun UsageAccessExplanationDialog(
                 // Step 1
                 StepItem(
                     stepNumber = "1",
-                    title = "Allow Restricted Settings",
-                    instruction = "Tap 'Open App Info' below. Tap the 3 dots (⋮) in the top right corner, select 'Allow restricted settings', and verify with your Fingerprint or PIN."
+                    title = stringResource(R.string.usage_access_step1_title),
+                    instruction = stringResource(R.string.usage_access_step1_desc)
                 )
 
                 // Step 2
                 StepItem(
                     stepNumber = "2",
-                    title = "Turn On Usage Access",
-                    instruction = "Tap 'Open Usage Access' below and flip the toggle switch to ON."
+                    title = stringResource(R.string.usage_access_step2_title),
+                    instruction = stringResource(R.string.usage_access_step2_desc)
                 )
-
-                // Reassurance Note
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    )
-                ) {
-                    Text(
-                        text = "Usage Access is completely optional: ARCA already measures package sizes directly from storage. Zero telemetry or user analytics are ever collected.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
             }
         },
         confirmButton = {
@@ -188,7 +174,7 @@ fun UsageAccessExplanationDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("1. Open App Info (Allow Restricted)")
+                    Text(stringResource(R.string.usage_access_btn_app_info))
                 }
 
                 // Step 2 Button: Usage Access Settings
@@ -206,7 +192,7 @@ fun UsageAccessExplanationDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("2. Open Usage Access")
+                    Text(stringResource(R.string.usage_access_btn_usage_settings))
                 }
 
                 // Dismiss Button
@@ -214,7 +200,7 @@ fun UsageAccessExplanationDialog(
                     onClick = onDismissRequest,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Continue without Usage Access")
+                    Text(stringResource(R.string.usage_access_btn_continue_without))
                 }
             }
         }

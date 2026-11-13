@@ -73,7 +73,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.lock.manager.AppLockManager
+import com.Hrshd1eux.filemanager.core.lock.model.AppLockMode
 import com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager
+import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 import com.Hrshd1eux.filemanager.feature.lock.ui.AppLockSettingsDialog
 import com.Hrshd1eux.filemanager.feature.settings.components.ArchiveSettingsDialog
@@ -159,7 +161,7 @@ fun SettingsScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.action_back)
                         )
                     }
                 },
@@ -184,10 +186,16 @@ fun SettingsScreen(
 
             item {
                 SettingsCard {
+                    val themeName = when (themeMode) {
+                        ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
+                        ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
+                        ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                    }
+                    val themeDynamicSuffix = stringResource(R.string.settings_theme_dynamic_suffix)
                     val themeSubtitle = buildString {
-                        append(themeMode.displayName)
+                        append(themeName)
                         if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            append(" • Dynamic colors")
+                            append(themeDynamicSuffix)
                         }
                     }
                     SettingsRow(
@@ -214,7 +222,7 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsToggleRow(
                         title = stringResource(R.string.settings_show_hidden),
-                        subtitle = "Display files starting with a dot (.)",
+                        subtitle = stringResource(R.string.settings_show_hidden_desc),
                         icon = Icons.Default.Visibility,
                         checked = showHiddenFiles,
                         onCheckedChange = { viewModel.setShowHiddenFiles(it) }
@@ -222,7 +230,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsToggleRow(
                         title = stringResource(R.string.settings_confirm_delete),
-                        subtitle = "Ask for confirmation before deleting items",
+                        subtitle = stringResource(R.string.settings_confirm_delete_desc),
                         icon = Icons.Default.DeleteOutline,
                         checked = confirmDelete,
                         onCheckedChange = { viewModel.setConfirmDelete(it) }
@@ -230,7 +238,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsToggleRow(
                         title = stringResource(R.string.settings_haptic_feedback),
-                        subtitle = "Vibrate when selecting files and items",
+                        subtitle = stringResource(R.string.settings_haptic_feedback_desc),
                         icon = Icons.Default.Vibration,
                         checked = hapticFeedback,
                         onCheckedChange = { viewModel.setHapticFeedback(it) }
@@ -238,15 +246,15 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsToggleRow(
                         title = stringResource(R.string.settings_sound_feedback),
-                        subtitle = "Play subtle tactile audio click when selecting files",
+                        subtitle = stringResource(R.string.settings_sound_feedback_desc),
                         icon = Icons.AutoMirrored.Filled.VolumeUp,
                         checked = soundFeedback,
                         onCheckedChange = { viewModel.setSoundFeedback(it) }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
-                        title = "All Files Access",
-                        subtitle = if (hasAllFilesAccess) "Granted • Full storage management active" else "Not granted • Tap to configure in system settings",
+                        title = stringResource(R.string.settings_all_files_access),
+                        subtitle = if (hasAllFilesAccess) stringResource(R.string.settings_all_files_access_granted) else stringResource(R.string.settings_all_files_access_not_granted),
                         icon = Icons.Default.Storage,
                         onClick = {
                             runCatching {
@@ -256,8 +264,8 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
-                        title = "Usage Access",
-                        subtitle = if (hasUsageAccess) "Granted • Storage Analyzer app stats enabled" else "Optional • Required for app size breakdown",
+                        title = stringResource(R.string.settings_usage_access),
+                        subtitle = if (hasUsageAccess) stringResource(R.string.settings_usage_access_granted) else stringResource(R.string.settings_usage_access_optional),
                         icon = Icons.Default.Security,
                         onClick = {
                             if (!hasUsageAccess) {
@@ -280,14 +288,14 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsRow(
                         title = stringResource(R.string.backup_title),
-                        subtitle = "Safe Copy, Incremental, and Mirror sync policies",
+                        subtitle = stringResource(R.string.settings_backup_desc),
                         icon = Icons.Default.Backup,
                         onClick = onNavigateToBackup
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = stringResource(R.string.settings_archives),
-                        subtitle = "Default: ${defaultArchiveFormat.displayName} • ${enabledArchiveFormats.size} format(s) enabled",
+                        subtitle = stringResource(R.string.settings_archives_desc, defaultArchiveFormat.displayName, enabledArchiveFormats.size),
                         icon = Icons.Default.Archive,
                         onClick = { showArchiveDialog = true }
                     )
@@ -295,14 +303,24 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = stringResource(R.string.settings_security_center),
-                        subtitle = "Inspect verified security posture & technical claims",
+                        subtitle = stringResource(R.string.settings_security_center_desc),
                         icon = Icons.Default.Shield,
                         onClick = onNavigateToSecurityCenter
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    val lockModeName = when (appLockSettings.mode) {
+                        AppLockMode.PIN -> stringResource(R.string.app_lock_mode_pin)
+                        AppLockMode.BIOMETRIC_WITH_PIN -> stringResource(R.string.app_lock_mode_biometric)
+                        AppLockMode.DISABLED -> stringResource(R.string.app_lock_status_disabled)
+                    }
+                    val lockSubtitle = if (appLockSettings.isConfigured) {
+                        stringResource(R.string.settings_app_lock_active, lockModeName)
+                    } else {
+                        stringResource(R.string.settings_app_lock_disabled)
+                    }
                     SettingsRow(
                         title = stringResource(R.string.settings_app_lock),
-                        subtitle = if (appLockSettings.isConfigured) "${appLockSettings.mode.displayName} active" else "Disabled • Configure PIN to lock app",
+                        subtitle = lockSubtitle,
                         icon = Icons.Default.Fingerprint,
                         onClick = { showAppLockDialog = true }
                     )
@@ -317,21 +335,21 @@ fun SettingsScreen(
                 SettingsCard {
                     SettingsRow(
                         title = stringResource(R.string.about_product_title),
-                        subtitle = "Version, open-source licenses, and legal info",
+                        subtitle = stringResource(R.string.settings_about_desc),
                         icon = Icons.Default.Info,
                         onClick = onNavigateToAbout
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = stringResource(R.string.settings_privacy),
-                        subtitle = "Zero telemetry, zero ads, local-first",
+                        subtitle = stringResource(R.string.settings_privacy_desc),
                         icon = Icons.Default.Security,
                         onClick = onNavigateToPrivacy
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SettingsRow(
                         title = stringResource(R.string.settings_check_updates),
-                        subtitle = "Current: ${versionInfo.displayVersion} (${versionInfo.displayBuild}) • Check GitHub releases",
+                        subtitle = stringResource(R.string.settings_check_updates_desc, versionInfo.displayVersion, versionInfo.displayBuild),
                         icon = Icons.Default.SystemUpdate,
                         onClick = { showUpdateDialog = true }
                     )

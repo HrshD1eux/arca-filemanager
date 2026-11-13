@@ -53,10 +53,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.favorites.repository.FavoritesRepository
@@ -308,7 +310,7 @@ fun DestinationPickerDialog(
                                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                             modifier = Modifier.height(30.dp)
                                         ) {
-                                            Text("Move Here", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                            Text(stringResource(R.string.action_move_here), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -318,7 +320,7 @@ fun DestinationPickerDialog(
 
                         // 1. Recent Section
                         item {
-                            DestinationSectionHeader(title = "Recent", count = recentDestinations.size)
+                            DestinationSectionHeader(title = stringResource(R.string.dest_picker_recent_header), count = recentDestinations.size)
                         }
                         items(recentDestinations, key = { "recent_${it.path}" }) { destination ->
                             SmartDestinationCard(
@@ -335,12 +337,12 @@ fun DestinationPickerDialog(
                         // 2. Favorites Section
                         item {
                             Spacer(modifier = Modifier.height(6.dp))
-                            DestinationSectionHeader(title = "Favorites", count = favoriteDestinations.size)
+                            DestinationSectionHeader(title = stringResource(R.string.dest_picker_favorites_header), count = favoriteDestinations.size)
                         }
                         if (favoriteDestinations.isEmpty()) {
                             item {
                                 Text(
-                                    text = "No favorites starred yet. Tap ★ on any folder to pin here.",
+                                    text = stringResource(R.string.dest_picker_no_favorites),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -363,7 +365,7 @@ fun DestinationPickerDialog(
                         // 3. Storage Devices Section
                         item {
                             Spacer(modifier = Modifier.height(6.dp))
-                            DestinationSectionHeader(title = "Storage", count = storageDestinations.size)
+                            DestinationSectionHeader(title = stringResource(R.string.dest_picker_storage_header), count = storageDestinations.size)
                         }
                         items(storageDestinations, key = { "storage_${it.id}" }) { destination ->
                             SmartDestinationCard(
@@ -409,7 +411,7 @@ fun DestinationPickerDialog(
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("New Folder", style = MaterialTheme.typography.labelMedium)
+                                Text(stringResource(R.string.dest_picker_new_folder), style = MaterialTheme.typography.labelMedium)
                             }
                         }
 
@@ -562,7 +564,7 @@ fun DestinationPickerDialog(
                     onClick = onDismiss,
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         },
@@ -713,7 +715,7 @@ private fun SmartDestinationCard(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                         modifier = Modifier.height(28.dp)
                     ) {
-                        Text("Select", style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
+                        Text(stringResource(R.string.dest_picker_select_btn), style = MaterialTheme.typography.labelSmall, fontSize = 10.sp)
                     }
 
                     Spacer(modifier = Modifier.width(4.dp))

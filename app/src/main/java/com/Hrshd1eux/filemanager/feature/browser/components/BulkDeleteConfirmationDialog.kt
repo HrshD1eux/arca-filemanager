@@ -36,8 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FolderDetailsCalculator
@@ -95,8 +97,8 @@ fun BulkDeleteConfirmationDialog(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = if (permanentDelete) "Delete ${selectedNodes.size} Items Permanently?"
-                    else "Move ${selectedNodes.size} Items to Trash?",
+                    text = if (permanentDelete) stringResource(R.string.bulk_delete_perm_title, selectedNodes.size)
+                    else stringResource(R.string.bulk_delete_trash_title, selectedNodes.size),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -110,9 +112,9 @@ fun BulkDeleteConfirmationDialog(
             ) {
                 Text(
                     text = if (permanentDelete) {
-                        "Are you sure you want to permanently delete these ${selectedNodes.size} items? Data will be cryptographically shredded and this action cannot be undone."
+                        stringResource(R.string.bulk_delete_perm_desc, selectedNodes.size)
                     } else {
-                        "Selected items will be moved to Trash and kept for 30 days before permanent auto-purge. You can restore them anytime from Trash."
+                        stringResource(R.string.bulk_delete_trash_desc, selectedNodes.size)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -129,13 +131,13 @@ fun BulkDeleteConfirmationDialog(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         val sizeText = if (isCalculating) {
-                            "Calculating total size..."
+                            stringResource(R.string.bulk_delete_calculating)
                         } else {
                             "Total size: ${FileFormatter.formatFileSize(totalBytes)} (${FileFormatter.formatExactBytes(totalBytes)})"
                         }
 
                         Text(
-                            text = "${selectedNodes.size} items selected",
+                            text = stringResource(R.string.bulk_delete_size_summary, selectedNodes.size, FileFormatter.formatFileSize(totalBytes)),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -167,13 +169,13 @@ fun BulkDeleteConfirmationDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = "Permanently delete (skip Trash)",
+                                text = stringResource(R.string.delete_skip_trash_checkbox),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = if (permanentDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Cryptographic multi-pass shredding",
+                                text = stringResource(R.string.delete_shred_subtitle),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -191,7 +193,7 @@ fun BulkDeleteConfirmationDialog(
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(if (permanentDelete) "Delete ${selectedNodes.size} Items" else "Move to Trash")
+                Text(if (permanentDelete) stringResource(R.string.delete_perm_button) else stringResource(R.string.delete_move_trash_button))
             }
         },
         dismissButton = {
@@ -199,7 +201,7 @@ fun BulkDeleteConfirmationDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         },
         modifier = modifier

@@ -16,10 +16,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 
 @Composable
@@ -44,9 +46,12 @@ fun RenameDialog(
     val trimmed = textFieldValue.text.trim()
     val hasForbiddenChars = forbiddenChars.any { textFieldValue.text.contains(it) }
 
+    val emptyError = stringResource(R.string.rename_error_empty)
+    val forbiddenError = stringResource(R.string.rename_error_forbidden)
+
     val errorMessage = when {
-        trimmed.isEmpty() -> "Name cannot be empty"
-        hasForbiddenChars -> "Invalid characters: / \\ : * ? \" < > |"
+        trimmed.isEmpty() -> emptyError
+        hasForbiddenChars -> forbiddenError
         trimmed == node.name -> null
         else -> null
     }
@@ -57,7 +62,7 @@ fun RenameDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Rename ${if (node.isDirectory) "Folder" else "File"}",
+                text = if (node.isDirectory) stringResource(R.string.rename_dialog_title_folder) else stringResource(R.string.rename_dialog_title_file),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -70,7 +75,7 @@ fun RenameDialog(
                 OutlinedTextField(
                     value = textFieldValue,
                     onValueChange = { textFieldValue = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.label_name)) },
                     singleLine = true,
                     isError = errorMessage != null && trimmed.isNotEmpty(),
                     supportingText = {
@@ -93,7 +98,7 @@ fun RenameDialog(
                 enabled = isValid,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Rename")
+                Text(stringResource(R.string.action_rename))
             }
         },
         dismissButton = {
@@ -101,7 +106,7 @@ fun RenameDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         },
         modifier = modifier

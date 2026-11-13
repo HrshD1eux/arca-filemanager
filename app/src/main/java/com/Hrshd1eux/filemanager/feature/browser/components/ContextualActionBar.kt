@@ -15,7 +15,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.Hrshd1eux.filemanager.R
 
 /**
  * Streamlined Selection Top App Bar.
@@ -46,7 +48,7 @@ fun ContextualActionBar(
     TopAppBar(
         title = {
             Text(
-                text = "$selectedCount selected",
+                text = stringResource(R.string.selection_count, selectedCount),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -55,7 +57,7 @@ fun ContextualActionBar(
             IconButton(onClick = onCloseSelection) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Clear Selection"
+                    contentDescription = stringResource(R.string.action_clear_selection)
                 )
             }
         },
@@ -64,21 +66,21 @@ fun ContextualActionBar(
             IconButton(onClick = onProperties) {
                 Icon(
                     imageVector = Icons.Outlined.Info,
-                    contentDescription = "Properties"
+                    contentDescription = stringResource(R.string.action_properties)
                 )
             }
             // Quick Share button
             IconButton(onClick = onShare) {
                 Icon(
                     imageVector = Icons.Default.Share,
-                    contentDescription = "Share"
+                    contentDescription = stringResource(R.string.action_share)
                 )
             }
             // Select All / Deselect All Toggle
             IconButton(onClick = onSelectAllToggle) {
                 Icon(
                     imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
-                    contentDescription = if (allSelected) "Deselect All" else "Select All"
+                    contentDescription = if (allSelected) stringResource(R.string.action_deselect_all) else stringResource(R.string.action_select_all)
                 )
             }
         },

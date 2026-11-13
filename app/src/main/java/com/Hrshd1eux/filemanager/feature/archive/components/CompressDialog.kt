@@ -70,12 +70,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionDialogMode
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionLevelPreset
@@ -206,7 +208,7 @@ fun CompressDialog(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "Compression",
+                    text = stringResource(R.string.compress_dialog_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -704,21 +706,21 @@ fun CompressDialog(
                 OutlinedTextField(
                     value = rawName,
                     onValueChange = { rawName = it },
-                    label = { Text("Archive Name") },
+                    label = { Text(stringResource(R.string.compress_archive_name_label)) },
                     suffix = { Text(displaySuffix, color = ZipOrange, fontWeight = FontWeight.Bold) },
                     singleLine = true,
                     isError = !isNameValid && rawName.isNotBlank(),
                     supportingText = {
                         if (hasIllegalChar) {
-                            Text("Name cannot contain illegal characters (/ \\ : * ? \" < > |)", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.compress_error_chars), color = MaterialTheme.colorScheme.error)
                         } else if (rawName.isBlank()) {
-                            Text("Archive name cannot be empty", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.compress_error_empty), color = MaterialTheme.colorScheme.error)
                         }
                     },
                     trailingIcon = {
                         if (rawName.isNotEmpty()) {
                             IconButton(onClick = { rawName = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.action_clear))
                             }
                         }
                     },
@@ -868,7 +870,7 @@ fun CompressDialog(
                                     ) {
                                         Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Generate Password...", style = MaterialTheme.typography.labelMedium)
+                                        Text(stringResource(R.string.compress_generate_password), style = MaterialTheme.typography.labelMedium)
                                     }
 
                                     if (password.isNotEmpty()) {
@@ -892,7 +894,7 @@ fun CompressDialog(
                                         password = it
                                         copyFeedback = false
                                     },
-                                    label = { Text("Password") },
+                                    label = { Text(stringResource(R.string.compress_password_label)) },
                                     placeholder = { Text("••••••••••") },
                                     singleLine = true,
                                     isError = isEncryptEnabled && password.isEmpty() && confirmPassword.isNotEmpty(),
@@ -901,7 +903,7 @@ fun CompressDialog(
                                         IconButton(onClick = { showPassword = !showPassword }) {
                                             Icon(
                                                 imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                contentDescription = if (showPassword) "Hide password" else "Show password"
+                                                contentDescription = if (showPassword) stringResource(R.string.action_hide_password) else stringResource(R.string.action_show_password)
                                             )
                                         }
                                     },
@@ -969,19 +971,19 @@ fun CompressDialog(
                                 OutlinedTextField(
                                     value = confirmPassword,
                                     onValueChange = { confirmPassword = it },
-                                    label = { Text("Confirm Password") },
+                                    label = { Text(stringResource(R.string.compress_confirm_password_label)) },
                                     placeholder = { Text("••••••••••") },
                                     singleLine = true,
                                     isError = passwordsMismatch,
                                     supportingText = if (passwordsMismatch) {
-                                        { Text("Passwords do not match", color = MaterialTheme.colorScheme.error) }
+                                        { Text(stringResource(R.string.compress_error_password_mismatch), color = MaterialTheme.colorScheme.error) }
                                     } else null,
                                     visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                                     trailingIcon = {
                                         IconButton(onClick = { showPassword = !showPassword }) {
                                             Icon(
                                                 imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                contentDescription = if (showPassword) "Hide password" else "Show password"
+                                                contentDescription = if (showPassword) stringResource(R.string.action_hide_password) else stringResource(R.string.action_show_password)
                                             )
                                         }
                                     },
@@ -1035,7 +1037,7 @@ fun CompressDialog(
                 enabled = canCreate,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Create")
+                Text(stringResource(R.string.compress_button_create))
             }
         },
         dismissButton = {
@@ -1047,7 +1049,7 @@ fun CompressDialog(
                 },
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -1118,8 +1120,8 @@ private fun SplitSizeSelector(
         OutlinedTextField(
             value = customSplitMb,
             onValueChange = { if (it.all { c -> c.isDigit() }) onCustomMbChange(it) },
-            label = { Text("Volume Size") },
-            suffix = { Text("MB", fontWeight = FontWeight.Bold) },
+            label = { Text(stringResource(R.string.compress_volume_size_label)) },
+            suffix = { Text(stringResource(R.string.compress_volume_size_suffix), fontWeight = FontWeight.Bold) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),

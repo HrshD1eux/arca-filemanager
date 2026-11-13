@@ -16,10 +16,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 
 @Composable
 fun CreateFolderDialog(
@@ -27,11 +29,12 @@ fun CreateFolderDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val defaultName = stringResource(R.string.create_folder_default_name)
     var textFieldValue by remember {
         mutableStateOf(
             TextFieldValue(
-                text = "New Folder",
-                selection = TextRange(0, "New Folder".length)
+                text = defaultName,
+                selection = TextRange(0, defaultName.length)
             )
         )
     }
@@ -40,9 +43,12 @@ fun CreateFolderDialog(
     val trimmed = textFieldValue.text.trim()
     val hasForbiddenChars = forbiddenChars.any { textFieldValue.text.contains(it) }
 
+    val emptyError = stringResource(R.string.create_folder_error_empty)
+    val forbiddenError = stringResource(R.string.rename_error_forbidden)
+
     val errorMessage = when {
-        trimmed.isEmpty() -> "Folder name cannot be empty"
-        hasForbiddenChars -> "Invalid characters: / \\ : * ? \" < > |"
+        trimmed.isEmpty() -> emptyError
+        hasForbiddenChars -> forbiddenError
         else -> null
     }
 
@@ -52,7 +58,7 @@ fun CreateFolderDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Create New Folder",
+                text = stringResource(R.string.create_folder_dialog_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -65,7 +71,7 @@ fun CreateFolderDialog(
                 OutlinedTextField(
                     value = textFieldValue,
                     onValueChange = { textFieldValue = it },
-                    label = { Text("Folder Name") },
+                    label = { Text(stringResource(R.string.folder_dialog_name_label)) },
                     singleLine = true,
                     isError = errorMessage != null && trimmed.isNotEmpty(),
                     supportingText = {
@@ -88,7 +94,7 @@ fun CreateFolderDialog(
                 enabled = isValid,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Create")
+                Text(stringResource(R.string.compress_button_create))
             }
         },
         dismissButton = {
@@ -96,7 +102,7 @@ fun CreateFolderDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         },
         modifier = modifier

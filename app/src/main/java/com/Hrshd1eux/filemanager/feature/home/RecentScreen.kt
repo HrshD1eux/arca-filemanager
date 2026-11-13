@@ -50,10 +50,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
@@ -84,7 +86,7 @@ fun RecentScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Recent Files (${recents.size})",
+                        text = stringResource(R.string.recent_title_with_count, recents.size),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -93,7 +95,7 @@ fun RecentScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.action_back)
                         )
                     }
                 },
@@ -102,13 +104,13 @@ fun RecentScreen(
                         IconButton(onClick = { isGridView = !isGridView }) {
                             Icon(
                                 imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                                contentDescription = if (isGridView) "Switch to List View" else "Switch to Grid View"
+                                contentDescription = if (isGridView) stringResource(R.string.action_switch_to_list) else stringResource(R.string.action_switch_to_grid)
                             )
                         }
                         IconButton(onClick = { showClearConfirmation = true }) {
                             Icon(
                                 imageVector = Icons.Default.DeleteSweep,
-                                contentDescription = "Clear History",
+                                contentDescription = stringResource(R.string.recent_clear_history),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -140,13 +142,13 @@ fun RecentScreen(
                         modifier = Modifier.size(64.dp)
                     )
                     Text(
-                        text = "No Recent Files",
+                        text = stringResource(R.string.recent_empty_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Files and media you open or view will appear here for fast access.",
+                        text = stringResource(R.string.recent_empty_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -315,7 +317,7 @@ fun RecentScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Remove from Recent",
+                                    contentDescription = stringResource(R.string.action_remove_from_recent),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -330,8 +332,8 @@ fun RecentScreen(
     if (showClearConfirmation) {
         AlertDialog(
             onDismissRequest = { showClearConfirmation = false },
-            title = { Text("Clear Recent History?") },
-            text = { Text("This will clear your recent file access history. No files will be deleted from storage.") },
+            title = { Text(stringResource(R.string.dialog_clear_recent_title)) },
+            text = { Text(stringResource(R.string.dialog_clear_recent_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -339,12 +341,12 @@ fun RecentScreen(
                         showClearConfirmation = false
                     }
                 ) {
-                    Text("Clear All", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.button_clear_all), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmation = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )

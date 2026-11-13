@@ -354,7 +354,7 @@ fun CategoryScreen(
                         IconButton(onClick = onNavigateBack) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = stringResource(R.string.action_back)
                             )
                         }
                     },
@@ -363,7 +363,7 @@ fun CategoryScreen(
                             IconButton(onClick = onNavigateToInstalledApps) {
                                 Icon(
                                     imageVector = Icons.Default.Apps,
-                                    contentDescription = "Installed Apps",
+                                    contentDescription = stringResource(R.string.category_installed_apps),
                                     tint = categoryColor
                                 )
                             }
@@ -372,14 +372,14 @@ fun CategoryScreen(
                         IconButton(onClick = { viewModel.toggleSearch() }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
-                                contentDescription = "Search"
+                                contentDescription = stringResource(R.string.action_search)
                             )
                         }
                         // View Mode Toggle (Grid / List)
                         IconButton(onClick = { viewModel.toggleViewMode() }) {
                             Icon(
                                 imageVector = if (viewMode == ViewMode.GRID) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                                contentDescription = if (viewMode == ViewMode.GRID) "Switch to List View" else "Switch to Grid View"
+                                contentDescription = if (viewMode == ViewMode.GRID) stringResource(R.string.action_switch_to_list) else stringResource(R.string.action_switch_to_grid)
                             )
                         }
 
@@ -387,7 +387,7 @@ fun CategoryScreen(
                         IconButton(onClick = { showSortSheet = true }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Sort,
-                                contentDescription = "Sort"
+                                contentDescription = stringResource(R.string.action_sort)
                             )
                         }
 
@@ -395,7 +395,7 @@ fun CategoryScreen(
                         IconButton(onClick = { viewModel.refresh() }) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh"
+                                contentDescription = stringResource(R.string.action_refresh)
                             )
                         }
                     },
@@ -434,7 +434,7 @@ fun CategoryScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Installed Applications",
+                                text = stringResource(R.string.category_installed_apps),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -658,7 +658,7 @@ fun CategoryScreen(
         DestinationPickerDialog(
             storageProvider = remember { LocalFileSystemProvider() },
             title = "Copy ${selectedNodes.size} item(s) to",
-            confirmButtonText = "Copy Here",
+            confirmButtonText = stringResource(R.string.action_copy_here),
             onDestinationSelected = { destination, verifyIntegrity ->
                 showCopyDestinationPicker = false
                 viewModel.copySelected(destination, verifyIntegrity)
@@ -672,7 +672,7 @@ fun CategoryScreen(
         DestinationPickerDialog(
             storageProvider = remember { LocalFileSystemProvider() },
             title = "Move ${selectedNodes.size} item(s) to",
-            confirmButtonText = "Move Here",
+            confirmButtonText = stringResource(R.string.action_move_here),
             onDestinationSelected = { destination, verifyIntegrity ->
                 showMoveDestinationPicker = false
                 viewModel.moveSelected(destination, verifyIntegrity)
@@ -755,7 +755,7 @@ private fun CategorySortControlBar(
                 .clickable { onOpenSortSheet() }
         ) {
             Text(
-                text = "Sorted by ",
+                text = stringResource(R.string.category_sorted_by),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -776,7 +776,7 @@ private fun CategorySortControlBar(
                 onClick = onToggleGroupByDate,
                 label = {
                     Text(
-                        text = "By Date",
+                        text = stringResource(R.string.category_group_by_date),
                         style = MaterialTheme.typography.labelSmall
                     )
                 },
@@ -792,7 +792,7 @@ private fun CategorySortControlBar(
                 onClick = onToggleDirection,
                 label = {
                     Text(
-                        text = if (sortOrder.direction == SortDirection.ASCENDING) "Ascending" else "Descending",
+                        text = if (sortOrder.direction == SortDirection.ASCENDING) stringResource(R.string.category_ascending) else stringResource(R.string.category_descending),
                         style = MaterialTheme.typography.labelSmall
                     )
                 },
@@ -905,7 +905,7 @@ private fun CategoryEmptyView(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isSearchFilterEmpty) "Clear Search" else "Refresh")
+                Text(if (isSearchFilterEmpty) stringResource(R.string.action_clear) else stringResource(R.string.action_refresh))
             }
         }
     }
@@ -967,7 +967,7 @@ private fun CategoryErrorView(
                 onClick = onRetry,
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Retry")
+                Text(stringResource(R.string.action_retry))
             }
         }
     }

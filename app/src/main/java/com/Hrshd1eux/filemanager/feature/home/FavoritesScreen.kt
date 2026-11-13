@@ -45,9 +45,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import com.Hrshd1eux.filemanager.core.designsystem.bounceClick
@@ -77,7 +79,7 @@ fun FavoritesScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Favorites (${favorites.size})",
+                        text = stringResource(R.string.favorites_title_with_count, favorites.size),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -86,7 +88,7 @@ fun FavoritesScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.action_back)
                         )
                     }
                 },
@@ -116,13 +118,13 @@ fun FavoritesScreen(
                         modifier = Modifier.size(64.dp)
                     )
                     Text(
-                        text = "No Favorites Yet",
+                        text = stringResource(R.string.favorites_empty_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Star files and folders from the browser or recent list to quickly access them here.",
+                        text = stringResource(R.string.favorites_empty_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -195,7 +197,7 @@ fun FavoritesScreen(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 val subtitle = if (node.isDirectory) {
-                                    "Folder • ${item.path}"
+                                    stringResource(R.string.folder_path_summary, item.path)
                                 } else {
                                     "${FileFormatter.formatFileSize(node.size)} • ${item.path}"
                                 }
@@ -213,7 +215,7 @@ fun FavoritesScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Star,
-                                    contentDescription = "Remove from Favorites",
+                                    contentDescription = stringResource(R.string.action_remove_from_favorites),
                                     tint = Color(0xFFFFB300),
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -229,8 +231,8 @@ fun FavoritesScreen(
         val target = favoriteToRemove!!
         AlertDialog(
             onDismissRequest = { favoriteToRemove = null },
-            title = { Text("Remove from Favorites?") },
-            text = { Text("Are you sure you want to remove \"${target.displayName}\" from your Favorites?") },
+            title = { Text(stringResource(R.string.dialog_remove_favorite_title)) },
+            text = { Text(stringResource(R.string.dialog_remove_favorite_message, target.displayName)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -238,12 +240,12 @@ fun FavoritesScreen(
                         favoriteToRemove = null
                     }
                 ) {
-                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.button_remove), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { favoriteToRemove = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )

@@ -374,8 +374,8 @@ private fun FolderShortcutEditorDialog(
                         name = it
                         errorMessage = null
                     },
-                    label = { Text("Folder Name") },
-                    placeholder = { Text("e.g. Camera, Music") },
+                    label = { Text(stringResource(R.string.folder_dialog_name_label)) },
+                    placeholder = { Text(stringResource(R.string.folder_dialog_name_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
@@ -387,7 +387,7 @@ private fun FolderShortcutEditorDialog(
                         path = it
                         errorMessage = null
                     },
-                    label = { Text("Folder Path") },
+                    label = { Text(stringResource(R.string.folder_dialog_path_label)) },
                     placeholder = { Text("/storage/emulated/0/...") },
                     singleLine = true,
                     isError = errorMessage != null,
@@ -410,7 +410,7 @@ private fun FolderShortcutEditorDialog(
                 },
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Save")
+                Text(stringResource(R.string.action_save))
             }
         },
         dismissButton = {
@@ -427,7 +427,7 @@ private fun FolderShortcutEditorDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                     }
                 }
 
@@ -435,7 +435,7 @@ private fun FolderShortcutEditorDialog(
                     onClick = onDismiss,
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         }

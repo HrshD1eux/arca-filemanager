@@ -45,9 +45,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.thumbnail.FileThumbnailView
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
@@ -277,7 +279,7 @@ fun StorageNodeCompactItem(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Copy to...") },
+                            text = { Text(stringResource(R.string.action_copy_to)) },
                             leadingIcon = {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                             },
@@ -287,7 +289,7 @@ fun StorageNodeCompactItem(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Move to...") },
+                            text = { Text(stringResource(R.string.action_move_to)) },
                             leadingIcon = {
                                 Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null, modifier = Modifier.size(18.dp))
                             },
@@ -297,7 +299,7 @@ fun StorageNodeCompactItem(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Compress to ZIP") },
+                            text = { Text(stringResource(R.string.action_compress_zip)) },
                             leadingIcon = {
                                 Icon(Icons.Default.Archive, contentDescription = null, modifier = Modifier.size(18.dp))
                             },
@@ -308,7 +310,7 @@ fun StorageNodeCompactItem(
                         )
                         if (FileTypeResolver.isArchive(node.name)) {
                             DropdownMenuItem(
-                                text = { Text("Extract...") },
+                                text = { Text(stringResource(R.string.action_extract)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.Unarchive, contentDescription = null, modifier = Modifier.size(18.dp))
                                 },
@@ -318,7 +320,7 @@ fun StorageNodeCompactItem(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Test Archive") },
+                                text = { Text(stringResource(R.string.action_test_archive)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                                 },
@@ -329,7 +331,7 @@ fun StorageNodeCompactItem(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text("Rename") },
+                            text = { Text(stringResource(R.string.action_rename)) },
                             leadingIcon = {
                                 Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
                             },
@@ -340,7 +342,7 @@ fun StorageNodeCompactItem(
                         )
                         if (!node.isDirectory) {
                             DropdownMenuItem(
-                                text = { Text("Open with...") },
+                                text = { Text(stringResource(R.string.action_open_with)) },
                                 leadingIcon = {
                                     Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                                 },
@@ -350,7 +352,7 @@ fun StorageNodeCompactItem(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Share") },
+                                text = { Text(stringResource(R.string.action_share)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                                 },
@@ -360,7 +362,7 @@ fun StorageNodeCompactItem(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Checksums") },
+                                text = { Text(stringResource(R.string.action_checksums)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
                                 },
@@ -371,7 +373,7 @@ fun StorageNodeCompactItem(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                             leadingIcon = {
                                 Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                             },
@@ -381,7 +383,7 @@ fun StorageNodeCompactItem(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(if (isFavorite) "Remove from Favorites" else "Add to Favorites") },
+                            text = { Text(if (isFavorite) stringResource(R.string.action_remove_from_favorites) else stringResource(R.string.action_add_to_favorites)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
@@ -396,7 +398,7 @@ fun StorageNodeCompactItem(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Properties") },
+                            text = { Text(stringResource(R.string.action_properties)) },
                             leadingIcon = {
                                 Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(18.dp))
                             },

@@ -30,8 +30,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionLevelPreset
 import com.Hrshd1eux.filemanager.core.designsystem.ZipOrange
@@ -59,7 +61,7 @@ fun ArchiveSettingsDialog(
         },
         title = {
             Text(
-                text = "Archive Formats & Engines",
+                text = stringResource(R.string.archive_settings_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -72,14 +74,14 @@ fun ArchiveSettingsDialog(
             ) {
                 // Section: Default Creation Format
                 Text(
-                    text = "Default Creation Format",
+                    text = stringResource(R.string.archive_settings_default_format_title),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Format selected when creating new archives",
+                    text = stringResource(R.string.archive_settings_default_format_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -104,14 +106,14 @@ fun ArchiveSettingsDialog(
 
                 // Section: Enabled Archive Formats
                 Text(
-                    text = "Enabled Archive Formats",
+                    text = stringResource(R.string.archive_settings_enabled_formats_title),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Formats available for compression throughout the app",
+                    text = stringResource(R.string.archive_settings_enabled_formats_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -143,7 +145,7 @@ fun ArchiveSettingsDialog(
                             )
                             if (isLastEnabled) {
                                 Text(
-                                    text = "Cannot disable (at least one format required)",
+                                    text = stringResource(R.string.archive_settings_cannot_disable),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.error
                                 )
@@ -158,7 +160,7 @@ fun ArchiveSettingsDialog(
 
                 // Section: Default Compression Level
                 Text(
-                    text = "Default Compression Level",
+                    text = stringResource(R.string.archive_settings_default_level_title),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -180,7 +182,7 @@ fun ArchiveSettingsDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(R.string.action_done))
             }
         }
     )

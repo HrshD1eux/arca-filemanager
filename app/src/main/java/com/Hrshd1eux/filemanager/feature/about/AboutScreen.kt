@@ -133,7 +133,7 @@ fun AboutScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.action_back)
                         )
                     }
                 },
@@ -916,7 +916,7 @@ private fun DeviceDiagnosticsCard(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "Device Diagnostics",
+                    text = stringResource(R.string.about_diagnostics_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -924,9 +924,9 @@ private fun DeviceDiagnosticsCard(
             }
             Spacer(modifier = Modifier.height(10.dp))
 
-            DiagnosticRow(label = "Device", value = "${Build.MANUFACTURER} ${Build.MODEL}")
-            DiagnosticRow(label = "Android Version", value = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-            DiagnosticRow(label = "Primary ABI", value = Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown")
+            DiagnosticRow(label = stringResource(R.string.about_diagnostics_device), value = "${Build.MANUFACTURER} ${Build.MODEL}")
+            DiagnosticRow(label = stringResource(R.string.about_diagnostics_android), value = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            DiagnosticRow(label = stringResource(R.string.about_diagnostics_abi), value = Build.SUPPORTED_ABIS.firstOrNull() ?: "Unknown")
         }
     }
 }
@@ -1040,7 +1040,7 @@ private fun LibraryDetailDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(R.string.action_close))
             }
         }
     )
