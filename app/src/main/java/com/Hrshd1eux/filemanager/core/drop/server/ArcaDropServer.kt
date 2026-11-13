@@ -721,7 +721,7 @@ class ArcaDropServer(
         if (currentLan != null && lower == currentLan.lowercase()) {
             return true
         }
-        return LocalLanNetworkUtil.isPrivateRfc1918Ipv4(host)
+        return LocalLanNetworkUtil.isPrivateOrLocalAddress(host)
     }
 
     private fun stripPortFromHost(hostHeader: String): String {

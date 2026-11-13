@@ -15,6 +15,9 @@ class LocalLanNetworkUtilTest {
         assertTrue(LocalLanNetworkUtil.isExcludedInterface("tun0"))
         assertTrue(LocalLanNetworkUtil.isExcludedInterface("p2p-wlan0-0"))
         assertTrue(LocalLanNetworkUtil.isExcludedInterface("v4-rmnet0"))
+        assertTrue(LocalLanNetworkUtil.isExcludedInterface("dummy0"))
+        assertTrue(LocalLanNetworkUtil.isExcludedInterface("radio0"))
+        assertTrue(LocalLanNetworkUtil.isExcludedInterface("ims0"))
 
         assertFalse(LocalLanNetworkUtil.isExcludedInterface("wlan0"))
         assertFalse(LocalLanNetworkUtil.isExcludedInterface("ap0"))
@@ -35,6 +38,25 @@ class LocalLanNetworkUtilTest {
         assertFalse(LocalLanNetworkUtil.isPrivateRfc1918Ipv4("8.8.8.8"))
         assertFalse(LocalLanNetworkUtil.isPrivateRfc1918Ipv4("100.64.0.1"))
         assertFalse(LocalLanNetworkUtil.isPrivateRfc1918Ipv4("not-an-ip"))
+    }
+
+    @Test
+    fun isPrivateOrLocalAddress_acceptsLoopbackPrivateIpv4AndLinkLocalIpv6() {
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("localhost"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("127.0.0.1"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("::1"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("[::1]"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("192.168.1.100"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("10.0.0.1"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("fe80::1ff:fe23:4567:890a"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("[fe80::1]"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("fc00::1"))
+        assertTrue(LocalLanNetworkUtil.isPrivateOrLocalAddress("fd12:3456:789a::1"))
+
+        assertFalse(LocalLanNetworkUtil.isPrivateOrLocalAddress("8.8.8.8"))
+        assertFalse(LocalLanNetworkUtil.isPrivateOrLocalAddress("1.1.1.1"))
+        assertFalse(LocalLanNetworkUtil.isPrivateOrLocalAddress("2001:4860:4860::8888"))
+        assertFalse(LocalLanNetworkUtil.isPrivateOrLocalAddress("attacker.com"))
     }
 
     @Test

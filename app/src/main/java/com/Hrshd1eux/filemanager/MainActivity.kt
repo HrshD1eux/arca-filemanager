@@ -51,6 +51,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        val lang = com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager.getCurrentLanguageTag(newBase)
+        val wrapped = com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager.applyLocaleContext(newBase, lang)
+        super.attachBaseContext(wrapped)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

@@ -11,11 +11,12 @@ import java.util.Collections
 object LocalLanNetworkUtil {
 
     private val excludedInterfacePrefixes = listOf(
-        "rmnet", "ccmni", "pdp", "clat", "tun", "tap", "ppp", "p2p", "wwan", "v4-"
+        "rmnet", "ccmni", "pdp", "clat", "tun", "tap", "ppp", "p2p", "wwan", "v4-",
+        "dummy", "radio", "ims", "epdg", "sit", "ip6", "bond"
     )
 
     private val preferredInterfacePrefixes = listOf(
-        "wlan", "ap", "softap", "swlan", "eth", "rndis"
+        "wlan", "wifi", "ap", "softap", "swlan", "ra", "wl", "tiwlan", "eth", "rndis", "usb", "wigig"
     )
 
     fun isExcludedInterface(interfaceName: String): Boolean {
@@ -47,6 +48,18 @@ object LocalLanNetworkUtil {
             a == 192 && b == 168 -> true
             else -> false
         }
+    }
+
+    /**
+     * Validates whether a host address belongs to local private IPv4, loopback, or private IPv6.
+     */
+    fun isPrivateOrLocalAddress(host: String): Boolean {
+        val lower = host.lowercase().removePrefix("[").removeSuffix("]")
+        if (lower == "localhost" || lower == "127.0.0.1" || lower == "::1") return true
+        if (isPrivateRfc1918Ipv4(lower)) return true
+        // IPv6 Link-Local (fe80::) or Unique Local (fc00:: / fd00::)
+        if (lower.startsWith("fe80:") || lower.startsWith("fc") || lower.startsWith("fd")) return true
+        return false
     }
 
     /**
@@ -85,15 +98,22 @@ object LocalLanNetworkUtil {
             val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
             val candidates = mutableListOf<Pair<String, String>>()
             for (iface in interfaces) {
-                if (!iface.isUp || iface.isLoopback) continue
-                val ifaceName = iface.name ?: continue
-                for (addr in Collections.list(iface.inetAddresses)) {
-                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
-                        val host = addr.hostAddress
-                        if (!host.isNullOrBlank()) {
-                            candidates.add(ifaceName to host)
+                try {
+                    val isLoopback = runCatching { iface.isLoopback }.getOrDefault(false)
+                    if (isLoopback) continue
+                    val isUp = runCatching { iface.isUp }.getOrDefault(true)
+                    if (!isUp) continue
+                    val ifaceName = iface.name ?: continue
+                    for (addr in Collections.list(iface.inetAddresses)) {
+                        if (!addr.isLoopbackAddress && addr is Inet4Address) {
+                            val host = addr.hostAddress
+                            if (!host.isNullOrBlank()) {
+                                candidates.add(ifaceName to host)
+                            }
                         }
                     }
+                } catch (_: Exception) {
+                    // Skip problematic individual interface and continue inspecting others
                 }
             }
             selectBestLanIp(candidates)

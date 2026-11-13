@@ -34,6 +34,9 @@ class AppSettingsRepository(context: Context? = null) {
     private val _soundFeedback = MutableStateFlow(loadSoundFeedback())
     val soundFeedback: StateFlow<Boolean> = _soundFeedback.asStateFlow()
 
+    private val _appLanguage = MutableStateFlow(loadAppLanguage())
+    val appLanguage: StateFlow<String> = _appLanguage.asStateFlow()
+
     private val _firstRunExplanationCompleted = MutableStateFlow(loadFirstRunExplanationCompleted())
     val firstRunExplanationCompleted: StateFlow<Boolean> = _firstRunExplanationCompleted.asStateFlow()
 
@@ -60,6 +63,11 @@ class AppSettingsRepository(context: Context? = null) {
     fun updateSoundFeedback(enabled: Boolean) {
         _soundFeedback.value = enabled
         prefs?.edit()?.putBoolean(KEY_SOUND_FEEDBACK, enabled)?.apply()
+    }
+
+    fun updateAppLanguage(languageTag: String) {
+        _appLanguage.value = languageTag
+        prefs?.edit()?.putString(KEY_APP_LANGUAGE, languageTag)?.apply()
     }
 
     fun setFirstRunExplanationCompleted(completed: Boolean = true) {
@@ -102,6 +110,10 @@ class AppSettingsRepository(context: Context? = null) {
         return prefs?.getBoolean(KEY_SOUND_FEEDBACK, true) ?: true
     }
 
+    private fun loadAppLanguage(): String {
+        return prefs?.getString(KEY_APP_LANGUAGE, "") ?: ""
+    }
+
     private fun loadFirstRunExplanationCompleted(): Boolean {
         return prefs?.getBoolean(KEY_FIRST_RUN_EXPLANATION_COMPLETED, false) ?: false
     }
@@ -115,6 +127,7 @@ class AppSettingsRepository(context: Context? = null) {
         private const val KEY_SOUND_FEEDBACK = "app_sound_feedback"
         private const val KEY_FIRST_RUN_EXPLANATION_COMPLETED = "app_first_run_storage_explanation_completed"
         private const val KEY_LAST_PROMPTED_UPDATE_VERSION = "app_last_prompted_update_version"
+        private const val KEY_APP_LANGUAGE = "app_selected_language"
 
         @Volatile
         private var instance: AppSettingsRepository? = null

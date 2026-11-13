@@ -334,4 +334,48 @@ class SettingsRegressionTest {
         settingsViewModel.setSoundFeedback(false)
         assertFalse(settingsViewModel.soundFeedback.value)
     }
+
+    @Test
+    fun appSettingsRepository_appLanguagePersistence() = runTest {
+        // Default language is empty (system default)
+        assertEquals("", appSettingsRepository.appLanguage.value)
+
+        // Set to Spanish
+        appSettingsRepository.updateAppLanguage("es")
+        assertEquals("es", appSettingsRepository.appLanguage.value)
+
+        // Set to Brazilian Portuguese
+        appSettingsRepository.updateAppLanguage("pt-BR")
+        assertEquals("pt-BR", appSettingsRepository.appLanguage.value)
+
+        // Reset to system default
+        appSettingsRepository.updateAppLanguage("")
+        assertEquals("", appSettingsRepository.appLanguage.value)
+    }
+
+    @Test
+    fun appLocaleManager_verifiesAll14SupportedLanguages() {
+        val supported = com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager.supportedLanguages
+        assertEquals(14, supported.size)
+
+        val tags = supported.map { it.tag }
+        assertTrue(tags.contains(""))
+        assertTrue(tags.contains("en"))
+        assertTrue(tags.contains("es"))
+        assertTrue(tags.contains("pt"))
+        assertTrue(tags.contains("pt-BR"))
+        assertTrue(tags.contains("de"))
+        assertTrue(tags.contains("ru"))
+        assertTrue(tags.contains("fr"))
+        assertTrue(tags.contains("hi"))
+        assertTrue(tags.contains("bn"))
+        assertTrue(tags.contains("mr"))
+        assertTrue(tags.contains("te"))
+        assertTrue(tags.contains("ta"))
+        assertTrue(tags.contains("gu"))
+
+        assertEquals("System Default", com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager.getDisplayNameForTag(""))
+        assertTrue(com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager.getDisplayNameForTag("es").contains("Español"))
+        assertTrue(com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager.getDisplayNameForTag("hi").contains("हिन्दी"))
+    }
 }

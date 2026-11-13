@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
@@ -72,9 +73,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.lock.manager.AppLockManager
+import com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager
 import com.Hrshd1eux.filemanager.core.storage.permission.StoragePermissionManager
 import com.Hrshd1eux.filemanager.feature.lock.ui.AppLockSettingsDialog
 import com.Hrshd1eux.filemanager.feature.settings.components.ArchiveSettingsDialog
+import com.Hrshd1eux.filemanager.feature.settings.components.LanguageSelectionDialog
 import com.Hrshd1eux.filemanager.feature.settings.components.ThemeSelectionDialog
 import com.Hrshd1eux.filemanager.feature.vault.components.VaultLockSettingsDialog
 
@@ -98,6 +101,8 @@ fun SettingsScreen(
     val confirmDelete by viewModel.confirmDelete.collectAsStateWithLifecycle()
     val hapticFeedback by viewModel.hapticFeedback.collectAsStateWithLifecycle()
     val soundFeedback by viewModel.soundFeedback.collectAsStateWithLifecycle()
+    val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+    val currentLanguageTag = remember(appLanguage) { AppLocaleManager.getCurrentLanguageTag(context) }
     val enabledArchiveFormats by viewModel.enabledArchiveFormats.collectAsStateWithLifecycle()
     val defaultArchiveFormat by viewModel.defaultArchiveFormat.collectAsStateWithLifecycle()
     val defaultCompressionLevel by viewModel.defaultCompressionLevel.collectAsStateWithLifecycle()
@@ -119,6 +124,7 @@ fun SettingsScreen(
     }
 
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
     var showArchiveDialog by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     val versionInfo = rememberAppVersionInfo()
@@ -189,6 +195,13 @@ fun SettingsScreen(
                         subtitle = themeSubtitle,
                         icon = Icons.Default.Palette,
                         onClick = { showThemeDialog = true }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsRow(
+                        title = stringResource(id = R.string.settings_language),
+                        subtitle = AppLocaleManager.getDisplayNameForTag(currentLanguageTag),
+                        icon = Icons.Default.Language,
+                        onClick = { showLanguageDialog = true }
                     )
                 }
             }
@@ -338,6 +351,17 @@ fun SettingsScreen(
             onThemeModeSelected = { viewModel.setThemeMode(it) },
             onDynamicColorToggled = { viewModel.setDynamicColor(it) },
             onDismiss = { showThemeDialog = false }
+        )
+    }
+
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            currentLanguageTag = currentLanguageTag,
+            onLanguageSelected = { tag ->
+                viewModel.setAppLanguage(context, tag)
+                (context as? android.app.Activity)?.recreate()
+            },
+            onDismiss = { showLanguageDialog = false }
         )
     }
 

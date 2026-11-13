@@ -37,6 +37,7 @@ class SettingsViewModel @JvmOverloads constructor(
     val confirmDelete: StateFlow<Boolean> = appSettingsRepository.confirmDelete
     val hapticFeedback: StateFlow<Boolean> = appSettingsRepository.hapticFeedback
     val soundFeedback: StateFlow<Boolean> = appSettingsRepository.soundFeedback
+    val appLanguage: StateFlow<String> = appSettingsRepository.appLanguage
 
     val enabledArchiveFormats: StateFlow<Set<ArchiveFormatOption>> = archivePreferencesRepository.enabledFormats
     val defaultArchiveFormat: StateFlow<ArchiveFormatOption> = archivePreferencesRepository.defaultFormat
@@ -80,6 +81,10 @@ class SettingsViewModel @JvmOverloads constructor(
 
     fun setSoundFeedback(enabled: Boolean) {
         appSettingsRepository.updateSoundFeedback(enabled)
+    }
+
+    fun setAppLanguage(context: Context, languageTag: String) {
+        com.Hrshd1eux.filemanager.core.settings.locale.AppLocaleManager.setLanguage(context, languageTag)
     }
 
     fun setDefaultArchiveFormat(format: ArchiveFormatOption) {
