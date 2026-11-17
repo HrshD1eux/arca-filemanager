@@ -32,7 +32,7 @@ class HomeViewModel @JvmOverloads constructor(
     val firstRunExplanationCompleted: StateFlow<Boolean> = appSettingsRepository.firstRunExplanationCompleted
     val storageShortcuts: StateFlow<List<com.Hrshd1eux.filemanager.core.storage.model.StorageFolderShortcut>> = storageShortcutsRepository.shortcuts
     val isVaultConfigured: Boolean
-        get() = com.Hrshd1eux.filemanager.core.vault.VaultManager(java.io.File(getApplication<Application>().filesDir, "vault")).isConfigured()
+        get() = com.Hrshd1eux.filemanager.core.vault.VaultManager.getInstance(java.io.File(getApplication<Application>().filesDir, "vault")).isConfigured()
 
     private val _storageBreakdown = MutableStateFlow(StorageBreakdown(isCalculating = true))
     val storageBreakdown: StateFlow<StorageBreakdown> = _storageBreakdown.asStateFlow()

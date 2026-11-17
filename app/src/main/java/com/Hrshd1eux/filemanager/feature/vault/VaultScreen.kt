@@ -1,7 +1,10 @@
 package com.Hrshd1eux.filemanager.feature.vault
 
 import android.os.Environment
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -105,6 +108,7 @@ import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
@@ -128,6 +132,7 @@ fun VaultScreen(
     val isBiometricReady = remember { biometricCoordinator.checkBiometricCapability() == BiometricCapabilityStatus.READY }
 
     var showImportPicker by remember { mutableStateOf(false) }
+    var showAddOptionsDialog by remember { mutableStateOf(false) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showLockSettingsDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
@@ -144,6 +149,14 @@ fun VaultScreen(
     val isUnlocked = uiState is VaultUiState.Unlocked
     val unlockedState = uiState as? VaultUiState.Unlocked
     val isSelectionMode = (unlockedState?.selectedIds?.size ?: 0) > 0
+
+    val systemPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            viewModel.importUris(context, uris)
+        }
+    }
 
     BackHandler {
         if (isSelectionMode) {
@@ -186,6 +199,7 @@ fun VaultScreen(
             entryToDelete = null
             entryToExport = null
             showImportPicker = false
+            showAddOptionsDialog = false
             showCreateFolderDialog = false
             showLockSettingsDialog = false
             showBatchMoveDialog = false
@@ -357,11 +371,11 @@ fun VaultScreen(
         floatingActionButton = {
             if (isUnlocked && !isSelectionMode && unlockedState?.isSearching != true) {
                 FloatingActionButton(
-                    onClick = { showImportPicker = true },
+                    onClick = { showAddOptionsDialog = true },
                     containerColor = VaultEmerald,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Import Files")
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add to Vault")
                 }
             }
         }
@@ -528,10 +542,42 @@ fun VaultScreen(
                                         )
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = "Tap '+' to import files or '📁' to create a folder.",
+                                            text = "Add files directly to keep them encrypted and private.",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
                                         )
+                                        Spacer(modifier = Modifier.height(20.dp))
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Button(
+                                                onClick = { showAddOptionsDialog = true },
+                                                colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald),
+                                                shape = RoundedCornerShape(12.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Add,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text("Add Files")
+                                            }
+                                            OutlinedButton(
+                                                onClick = { showCreateFolderDialog = true },
+                                                shape = RoundedCornerShape(12.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.CreateNewFolder,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text("New Folder")
+                                            }
+                                        }
                                     }
                                 }
                             } else {
@@ -609,6 +655,155 @@ fun VaultScreen(
                 entryToExport = target
             },
             onDismiss = { previewEntry = null }
+        )
+    }
+
+    // Add to Private Vault Options Dialog
+    if (showAddOptionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddOptionsDialog = false },
+            title = {
+                Text(
+                    text = "Add to Private Vault",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        onClick = {
+                            showAddOptionsDialog = false
+                            systemPickerLauncher.launch(arrayOf("*/*"))
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(VaultEmerald.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+                                    contentDescription = null,
+                                    tint = VaultEmerald
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Select Files (System Picker)",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Pick documents, photos, or downloads",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        onClick = {
+                            showAddOptionsDialog = false
+                            showImportPicker = true
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Browse Device Storage",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Browse folders and select multiple items",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        onClick = {
+                            showAddOptionsDialog = false
+                            showCreateFolderDialog = true
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(FolderYellow.copy(alpha = 0.2f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CreateNewFolder,
+                                    contentDescription = null,
+                                    tint = FolderYellow
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Create New Folder",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Organize files into encrypted folders",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAddOptionsDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 

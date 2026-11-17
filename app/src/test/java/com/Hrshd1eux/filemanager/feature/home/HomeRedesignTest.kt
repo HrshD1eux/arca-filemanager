@@ -97,4 +97,58 @@ class HomeRedesignTest {
         assertTrue(picturesPath.endsWith("Pictures"))
         assertTrue(moviesPath.endsWith("Movies"))
     }
+
+    @Test
+    fun homeQuickAccessRow_fileExistenceAndComponents() {
+        val rowFile = File("src/main/java/com/Hrshd1eux/filemanager/feature/home/components/HomeQuickAccessRow.kt").takeIf { it.exists() }
+            ?: File("app/src/main/java/com/Hrshd1eux/filemanager/feature/home/components/HomeQuickAccessRow.kt")
+
+        assertTrue("HomeQuickAccessRow.kt must exist", rowFile.exists())
+        val code = rowFile.readText()
+
+        assertTrue("Must contain Recent tile", code.contains("nav_recent"))
+        assertTrue("Must contain Favorites tile", code.contains("nav_favorites"))
+        assertTrue("Must contain Vault tile", code.contains("vault_title"))
+        assertTrue("Must contain Network tile", code.contains("nav_network"))
+        assertTrue("Must support showVault parameter", code.contains("showVault: Boolean = true"))
+    }
+
+    @Test
+    fun homeScreen_layoutOrderAdheresToErgonomicHierarchy() {
+        val screenFile = File("src/main/java/com/Hrshd1eux/filemanager/feature/home/HomeScreen.kt").takeIf { it.exists() }
+            ?: File("app/src/main/java/com/Hrshd1eux/filemanager/feature/home/HomeScreen.kt")
+
+        assertTrue("HomeScreen.kt must exist", screenFile.exists())
+        val code = screenFile.readText()
+
+        val storageCardIdx = code.indexOf("HomeStorageCard(")
+        val quickAccessIdx = code.indexOf("HomeQuickAccessRow(")
+        val categoriesIdx = code.indexOf("HomeCategoriesGrid(")
+        val storageFoldersIdx = code.indexOf("HomeStorageFoldersList(")
+        val offlineBannerIdx = code.indexOf("HomeOfflineStatusBanner(")
+
+        assertTrue("HomeStorageCard must be present", storageCardIdx > 0)
+        assertTrue("HomeQuickAccessRow must be present", quickAccessIdx > 0)
+        assertTrue("HomeCategoriesGrid must be present", categoriesIdx > 0)
+        assertTrue("HomeStorageFoldersList must be present", storageFoldersIdx > 0)
+        assertTrue("HomeOfflineStatusBanner must be present", offlineBannerIdx > 0)
+
+        // Verify Ergonomic sequence: Storage Card -> Quick Access Row -> Categories Grid -> Storage Folders -> Offline Banner
+        assertTrue("StorageCard must precede QuickAccessRow", storageCardIdx < quickAccessIdx)
+        assertTrue("QuickAccessRow must precede CategoriesGrid", quickAccessIdx < categoriesIdx)
+        assertTrue("CategoriesGrid must precede StorageFoldersList", categoriesIdx < storageFoldersIdx)
+        assertTrue("StorageFoldersList must precede OfflineBanner", storageFoldersIdx < offlineBannerIdx)
+    }
+
+    @Test
+    fun homeStorageCard_containsDirectBrowseAndAnalyzerActions() {
+        val cardFile = File("src/main/java/com/Hrshd1eux/filemanager/feature/home/components/HomeStorageCard.kt").takeIf { it.exists() }
+            ?: File("app/src/main/java/com/Hrshd1eux/filemanager/feature/home/components/HomeStorageCard.kt")
+
+        assertTrue("HomeStorageCard.kt must exist", cardFile.exists())
+        val code = cardFile.readText()
+
+        assertTrue("Must accept onStorageAnalyzerClick", code.contains("onStorageAnalyzerClick: (() -> Unit)? = null"))
+        assertTrue("Must support direct onCardClick browsing", code.contains("onCardClick()"))
+    }
 }

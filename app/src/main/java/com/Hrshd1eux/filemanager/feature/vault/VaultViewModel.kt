@@ -1,6 +1,8 @@
 package com.Hrshd1eux.filemanager.feature.vault
 
 import android.app.Application
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
@@ -28,7 +30,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     val vaultManager: VaultManager by lazy {
         val vaultDir = File(application.filesDir, "vault")
-        VaultManager(vaultDir = vaultDir)
+        VaultManager.getInstance(vaultDir = vaultDir)
     }
 
     val vaultLockManager: VaultLockManager by lazy {
@@ -415,6 +417,37 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         activeProgress = OperationProgress(
                             bytesProcessed = bytesRead,
                             totalFiles = sources.size,
+                            currentFileName = "Encrypting files into Vault..."
+                        )
+                    )
+                }
+            ).onSuccess { imported ->
+                publishUnlockedState()
+                _userMessage.emit(NotificationPrivacyGuard.sanitizeVaultMessage("imported", imported.size))
+            }.onFailure { error ->
+                publishUnlockedState()
+                _userMessage.emit("Import failed: ${error.localizedMessage}")
+            }
+        }
+    }
+
+    fun importUris(context: Context, uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        onUserInteraction()
+        viewModelScope.launch {
+            publishUnlockedState(
+                activeProgress = OperationProgress(totalFiles = uris.size, currentFileName = "Encrypting files into Vault...")
+            )
+
+            vaultManager.importFromUris(
+                context = context,
+                uris = uris,
+                targetVirtualPath = currentPath,
+                onProgress = { bytesRead ->
+                    publishUnlockedState(
+                        activeProgress = OperationProgress(
+                            bytesProcessed = bytesRead,
+                            totalFiles = uris.size,
                             currentFileName = "Encrypting files into Vault..."
                         )
                     )

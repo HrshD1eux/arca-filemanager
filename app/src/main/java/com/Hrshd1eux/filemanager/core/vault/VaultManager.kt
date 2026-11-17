@@ -259,8 +259,15 @@ class VaultManager(
             val cleanTarget = targetVirtualPath.trim('/').replace('\\', '/')
 
             val all = currentManifest?.files ?: emptyList()
+            val pathMappings = mutableListOf<Pair<String, String>>()
+
             val updatedList = all.map { entry ->
                 if (entryIds.contains(entry.id)) {
+                    val oldVirtualPath = if (entry.parentVirtualPath.isEmpty()) entry.originalName else "${entry.parentVirtualPath}/${entry.originalName}"
+                    val newVirtualPath = if (cleanTarget.isEmpty()) entry.originalName else "$cleanTarget/${entry.originalName}"
+                    if (entry.isDirectory) {
+                        pathMappings.add(oldVirtualPath to newVirtualPath)
+                    }
                     entry.copy(
                         parentVirtualPath = cleanTarget,
                         lastModified = System.currentTimeMillis()
@@ -268,6 +275,16 @@ class VaultManager(
                 } else {
                     entry
                 }
+            }.map { entry ->
+                var updated = entry
+                for ((oldPath, newPath) in pathMappings) {
+                    if (updated.parentVirtualPath == oldPath) {
+                        updated = updated.copy(parentVirtualPath = newPath)
+                    } else if (updated.parentVirtualPath.startsWith("$oldPath/")) {
+                        updated = updated.copy(parentVirtualPath = newPath + updated.parentVirtualPath.removePrefix(oldPath))
+                    }
+                }
+                updated
             }
 
             val updatedManifest = VaultManifest(updatedList)
@@ -293,37 +310,72 @@ class VaultManager(
             val importedEntries = mutableListOf<VaultFileEntry>()
             var totalBytesRead = 0L
 
-            sources.forEach { sourceFile ->
-                if (sourceFile.exists() && sourceFile.isFile) {
-                    val fileId = UUID.randomUUID().toString()
-                    val encFileName = "$fileId.enc"
-                    val encFile = File(dataDir, encFileName)
+            suspend fun importSingleFile(sourceFile: File, parentVirtual: String) {
+                if (!sourceFile.exists() || !sourceFile.isFile) return
+                val fileId = UUID.randomUUID().toString()
+                val encFileName = "$fileId.enc"
+                val encFile = File(dataDir, encFileName)
 
-                    cryptoEngine.encryptFile(
-                        sourceFile = sourceFile,
-                        destinationFile = encFile,
-                        key = key,
-                        onProgress = { bytes ->
-                            totalBytesRead += bytes
-                            onProgress?.invoke(totalBytesRead)
-                        }
-                    )
-
-                    val entry = VaultFileEntry(
-                        id = fileId,
-                        originalName = sourceFile.name,
-                        encryptedFileName = encFileName,
-                        parentVirtualPath = cleanParent,
-                        isDirectory = false,
-                        size = sourceFile.length(),
-                        mimeType = MimeTypeResolver.getMimeType(sourceFile.extension) ?: "*/*",
-                        addedDate = System.currentTimeMillis()
-                    )
-                    importedEntries.add(entry)
-
-                    if (deleteOriginals) {
-                        sourceFile.delete()
+                cryptoEngine.encryptFile(
+                    sourceFile = sourceFile,
+                    destinationFile = encFile,
+                    key = key,
+                    onProgress = { bytes ->
+                        totalBytesRead += bytes
+                        onProgress?.invoke(totalBytesRead)
                     }
+                )
+
+                val entry = VaultFileEntry(
+                    id = fileId,
+                    originalName = sourceFile.name,
+                    encryptedFileName = encFileName,
+                    parentVirtualPath = parentVirtual,
+                    isDirectory = false,
+                    size = sourceFile.length(),
+                    mimeType = MimeTypeResolver.getMimeType(sourceFile.extension) ?: "*/*",
+                    addedDate = System.currentTimeMillis()
+                )
+                importedEntries.add(entry)
+
+                if (deleteOriginals) {
+                    sourceFile.delete()
+                }
+            }
+
+            suspend fun importDirectory(sourceDir: File, parentVirtual: String) {
+                if (!sourceDir.exists() || !sourceDir.isDirectory) return
+                val dirEntry = VaultFileEntry(
+                    id = UUID.randomUUID().toString(),
+                    originalName = sourceDir.name,
+                    encryptedFileName = "",
+                    parentVirtualPath = parentVirtual,
+                    isDirectory = true,
+                    size = 0L,
+                    mimeType = "inode/directory",
+                    addedDate = System.currentTimeMillis()
+                )
+                importedEntries.add(dirEntry)
+
+                val virtualDirPath = if (parentVirtual.isEmpty()) sourceDir.name else "$parentVirtual/${sourceDir.name}"
+                val children = sourceDir.listFiles() ?: emptyArray()
+                for (child in children) {
+                    if (child.isFile) {
+                        importSingleFile(child, virtualDirPath)
+                    } else if (child.isDirectory) {
+                        importDirectory(child, virtualDirPath)
+                    }
+                }
+                if (deleteOriginals) {
+                    sourceDir.deleteRecursively()
+                }
+            }
+
+            for (source in sources) {
+                if (source.isFile) {
+                    importSingleFile(source, cleanParent)
+                } else if (source.isDirectory) {
+                    importDirectory(source, cleanParent)
                 }
             }
 
@@ -331,6 +383,91 @@ class VaultManager(
             val updatedManifest = VaultManifest(updatedList)
             saveManifest(updatedManifest, key)
             currentManifest = updatedManifest
+
+            importedEntries
+        }
+    }
+
+    /**
+     * Imports files directly from Android Content URIs (e.g. from system document/media picker).
+     */
+    suspend fun importFromUris(
+        context: android.content.Context,
+        uris: List<android.net.Uri>,
+        targetVirtualPath: String = "",
+        onProgress: ((bytesRead: Long) -> Unit)? = null
+    ): Result<List<VaultFileEntry>> = withContext(ioDispatcher) {
+        runCatching {
+            val key = activeKey ?: throw IllegalStateException("Vault is locked")
+            dataDir.mkdirs()
+
+            val cleanParent = targetVirtualPath.trim('/').replace('\\', '/')
+            val importedEntries = mutableListOf<VaultFileEntry>()
+            var totalBytesRead = 0L
+            val resolver = context.contentResolver
+
+            for (uri in uris) {
+                var displayName = "file_${System.currentTimeMillis()}"
+                var fileSize = 0L
+                resolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    val sizeIdx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    if (cursor.moveToFirst()) {
+                        if (nameIdx >= 0) {
+                            displayName = cursor.getString(nameIdx) ?: displayName
+                        }
+                        if (sizeIdx >= 0) {
+                            fileSize = cursor.getLong(sizeIdx)
+                        }
+                    }
+                }
+
+                val tempFile = File(vaultDir, "tmp_import_${UUID.randomUUID()}")
+                try {
+                    resolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(tempFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    if (tempFile.exists() && tempFile.length() > 0L) {
+                        val fileId = UUID.randomUUID().toString()
+                        val encFileName = "$fileId.enc"
+                        val encFile = File(dataDir, encFileName)
+
+                        cryptoEngine.encryptFile(
+                            sourceFile = tempFile,
+                            destinationFile = encFile,
+                            key = key,
+                            onProgress = { bytes ->
+                                totalBytesRead += bytes
+                                onProgress?.invoke(totalBytesRead)
+                            }
+                        )
+
+                        val entry = VaultFileEntry(
+                            id = fileId,
+                            originalName = displayName,
+                            encryptedFileName = encFileName,
+                            parentVirtualPath = cleanParent,
+                            isDirectory = false,
+                            size = tempFile.length(),
+                            mimeType = MimeTypeResolver.getMimeType(File(displayName).extension) ?: (resolver.getType(uri) ?: "*/*"),
+                            addedDate = System.currentTimeMillis()
+                        )
+                        importedEntries.add(entry)
+                    }
+                } finally {
+                    tempFile.delete()
+                }
+            }
+
+            if (importedEntries.isNotEmpty()) {
+                val updatedList = (currentManifest?.files ?: emptyList()) + importedEntries
+                val updatedManifest = VaultManifest(updatedList)
+                saveManifest(updatedManifest, key)
+                currentManifest = updatedManifest
+            }
 
             importedEntries
         }
@@ -592,5 +729,22 @@ class VaultManager(
         private const val MANIFEST_FILE_NAME = "manifest.enc"
         private const val DATA_DIR_NAME = "data"
         private val VERIFICATION_TOKEN_BYTES = "ARCA_VAULT_OK_v1".toByteArray(Charsets.UTF_8)
+
+        @Volatile
+        private var instance: VaultManager? = null
+
+        fun getInstance(vaultDir: File): VaultManager {
+            return instance?.takeIf { it.vaultDir.absolutePath == vaultDir.absolutePath }
+                ?: synchronized(this) {
+                    instance?.takeIf { it.vaultDir.absolutePath == vaultDir.absolutePath }
+                        ?: VaultManager(vaultDir).also { instance = it }
+                }
+        }
+
+        fun resetInstance() {
+            synchronized(this) {
+                instance = null
+            }
+        }
     }
 }

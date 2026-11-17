@@ -69,6 +69,7 @@ import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import com.Hrshd1eux.filemanager.feature.home.components.FavoritesSheet
 import com.Hrshd1eux.filemanager.feature.home.components.FirstRunStorageExplanationDialog
 import com.Hrshd1eux.filemanager.feature.home.components.HomeCategoriesGrid
+import com.Hrshd1eux.filemanager.feature.home.components.HomeQuickAccessRow
 import com.Hrshd1eux.filemanager.feature.home.components.HomeQuickNavGroup
 import com.Hrshd1eux.filemanager.feature.home.components.HomeStorageCard
 import com.Hrshd1eux.filemanager.feature.home.components.HomeStorageFoldersList
@@ -256,7 +257,7 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Storage Overview Card (Google Files style: Storage 86.4 GB / 128 GB with Progress bar)
+            // 1. Storage Overview Card (Tap to browse Internal Storage, badge/button to Analyze)
             item {
                 Spacer(modifier = Modifier.height(2.dp))
                 HomeStorageCard(
@@ -264,27 +265,30 @@ fun HomeScreen(
                     title = if (hasAllFilesAccess) stringResource(R.string.home_storage_title) else stringResource(R.string.home_storage_limited),
                     hasAllFilesAccess = hasAllFilesAccess,
                     onGrantPermissionClick = launchPermissionRequest,
-                    onCardClick = onNavigateToStorageAnalyzer
+                    onCardClick = {
+                        onNavigateToBrowser(
+                            android.os.Environment.getExternalStorageDirectory().absolutePath,
+                            context.getString(R.string.nav_internal_storage)
+                        )
+                    },
+                    onStorageAnalyzerClick = onNavigateToStorageAnalyzer
                 )
             }
 
-            // 2. Quick Navigation Group: Favorites, Recent, Private Vault, Network, Internal Storage
+            // 2. Compact Quick Access Row: Recent, Favorites, Private Vault, Network (Saves ~200dp)
             item {
-                HomeQuickNavGroup(
-                    favoriteCount = favorites.size,
+                HomeQuickAccessRow(
                     recentCount = recents.size,
+                    favoriteCount = favorites.size,
                     showVault = !lockSettings.isVaultHidden || !viewModel.isVaultConfigured,
-                    onFavoritesClick = onNavigateToFavorites,
                     onRecentsClick = onNavigateToRecent,
+                    onFavoritesClick = onNavigateToFavorites,
                     onVaultClick = onNavigateToVault,
-                    onNetworkClick = onNavigateToNetwork,
-                    onInternalStorageClick = {
-                        onNavigateToBrowser(android.os.Environment.getExternalStorageDirectory().absolutePath, context.getString(R.string.nav_internal_storage))
-                    }
+                    onNetworkClick = onNavigateToNetwork
                 )
             }
 
-            // 3. Categories Grid: Images, Videos, Audio, Documents, Downloads, Archives, Apps & APKs, Trash
+            // 3. Categories Grid: Core Thumb Zone (Images, Videos, Audio, Documents, Downloads, Archives, Apps, Trash)
             item {
                 HomeCategoriesGrid(
                     onCategoryClick = onNavigateToCategory,

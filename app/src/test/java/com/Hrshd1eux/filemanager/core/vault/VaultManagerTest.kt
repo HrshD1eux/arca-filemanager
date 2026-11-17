@@ -215,4 +215,82 @@ class VaultManagerTest {
         assertTrue(previewRes.exceptionOrNull() is IllegalArgumentException)
         assertTrue(previewRes.exceptionOrNull()!!.message!!.contains("50MB"))
     }
+
+    @Test
+    fun vaultImportFiles_importsDirectoryRecursively() = runTest {
+        val password = "Password123!".toCharArray()
+        vaultManager.createVault(password)
+
+        val folder = tempFolder.newFolder("Documents")
+        val file1 = File(folder, "doc1.txt").apply { writeText("Hello Doc 1") }
+        val subDir = File(folder, "SubFolder").apply { mkdirs() }
+        val file2 = File(subDir, "doc2.txt").apply { writeText("Hello Doc 2") }
+
+        val importRes = vaultManager.importFiles(listOf(folder))
+        assertTrue(importRes.isSuccess)
+
+        val all = vaultManager.getAllFiles()
+        // folder, file1, subDir, file2
+        assertEquals(4, all.size)
+
+        val rootEntries = vaultManager.getEntriesInPath("")
+        assertEquals(1, rootEntries.size)
+        assertEquals("Documents", rootEntries[0].originalName)
+        assertTrue(rootEntries[0].isDirectory)
+
+        val docsEntries = vaultManager.getEntriesInPath("Documents")
+        assertEquals(2, docsEntries.size)
+        assertTrue(docsEntries.any { it.originalName == "doc1.txt" && !it.isDirectory })
+        assertTrue(docsEntries.any { it.originalName == "SubFolder" && it.isDirectory })
+
+        val subEntries = vaultManager.getEntriesInPath("Documents/SubFolder")
+        assertEquals(1, subEntries.size)
+        assertEquals("doc2.txt", subEntries[0].originalName)
+    }
+
+    @Test
+    fun vaultMoveEntries_recursivelyUpdatesChildrenOfMovedFolder() = runTest {
+        val password = "Password123!".toCharArray()
+        vaultManager.createVault(password)
+
+        // Create folder hierarchy: Docs/Report.txt and TargetFolder
+        val folder = tempFolder.newFolder("Docs")
+        File(folder, "Report.txt").apply { writeText("Top Secret Report") }
+        vaultManager.importFiles(listOf(folder))
+
+        vaultManager.createFolder("TargetFolder", "")
+        val allBefore = vaultManager.getAllFiles()
+        val docsFolder = allBefore.first { it.originalName == "Docs" && it.isDirectory }
+
+        // Move Docs into TargetFolder
+        val moveRes = vaultManager.moveEntries(setOf(docsFolder.id), "TargetFolder")
+        assertTrue(moveRes.isSuccess)
+
+        val targetEntries = vaultManager.getEntriesInPath("TargetFolder")
+        assertEquals(1, targetEntries.size)
+        assertEquals("Docs", targetEntries[0].originalName)
+
+        val movedDocsEntries = vaultManager.getEntriesInPath("TargetFolder/Docs")
+        assertEquals(1, movedDocsEntries.size)
+        assertEquals("Report.txt", movedDocsEntries[0].originalName)
+
+        // Verify child can still be previewed
+        val preview = vaultManager.decryptToMemory(movedDocsEntries[0])
+        assertTrue(preview.isSuccess)
+        assertEquals("Top Secret Report", String(preview.getOrNull()!!, Charsets.UTF_8))
+    }
+
+    @Test
+    fun vaultManager_getInstance_sharesStateAndSingleton() = runTest {
+        VaultManager.resetInstance()
+        val instance1 = VaultManager.getInstance(vaultDir)
+        val instance2 = VaultManager.getInstance(vaultDir)
+        org.junit.Assert.assertSame(instance1, instance2)
+
+        instance1.createVault("Pass123!".toCharArray())
+        assertTrue(instance2.isUnlocked())
+        assertTrue(instance2.isConfigured())
+
+        VaultManager.resetInstance()
+    }
 }

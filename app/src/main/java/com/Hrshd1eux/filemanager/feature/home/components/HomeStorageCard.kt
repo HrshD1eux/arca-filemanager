@@ -43,6 +43,7 @@ fun HomeStorageCard(
     breakdown: StorageBreakdown,
     title: String = "Storage",
     onCardClick: () -> Unit,
+    onStorageAnalyzerClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     hasAllFilesAccess: Boolean = true,
     onGrantPermissionClick: (() -> Unit)? = null
@@ -95,6 +96,7 @@ fun HomeStorageCard(
                 if (breakdown.totalBytes > 0) {
                     val percent = (breakdown.usedPercentage * 100).toInt()
                     Surface(
+                        onClick = onStorageAnalyzerClick ?: onCardClick,
                         shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
@@ -166,12 +168,34 @@ fun HomeStorageCard(
                 )
 
                 if (breakdown.totalBytes > 0) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.home_free_space, freeFormatted),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.home_free_space, freeFormatted),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        if (onStorageAnalyzerClick != null) {
+                            Surface(
+                                onClick = onStorageAnalyzerClick,
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                            ) {
+                                Text(
+                                    text = "Analyzer \u203A",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

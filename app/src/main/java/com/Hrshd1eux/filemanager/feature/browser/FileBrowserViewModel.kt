@@ -1279,7 +1279,7 @@ class FileBrowserViewModel @JvmOverloads constructor(
     fun encryptIntoVault(context: android.content.Context, sources: List<File>, deleteOriginal: Boolean = false) {
         if (sources.isEmpty()) return
         val vaultDir = File(context.filesDir, "vault")
-        val vaultManager = com.Hrshd1eux.filemanager.core.vault.VaultManager(vaultDir = vaultDir)
+        val vaultManager = com.Hrshd1eux.filemanager.core.vault.VaultManager.getInstance(vaultDir = vaultDir)
 
         if (!vaultManager.isConfigured()) {
             viewModelScope.launch {
