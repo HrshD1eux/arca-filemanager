@@ -31,6 +31,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -165,7 +168,10 @@ fun UsageAccessExplanationDialog(
                     onClick = {
                         openAppDetailsSettings(context)
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Icon(
@@ -174,7 +180,13 @@ fun UsageAccessExplanationDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.usage_access_btn_app_info))
+                    Text(
+                        text = stringResource(R.string.usage_access_btn_app_info),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 // Step 2 Button: Usage Access Settings
@@ -183,7 +195,10 @@ fun UsageAccessExplanationDialog(
                         openUsageAccessSettings(context)
                         onDismissRequest()
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 46.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Icon(
@@ -192,15 +207,28 @@ fun UsageAccessExplanationDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.usage_access_btn_usage_settings))
+                    Text(
+                        text = stringResource(R.string.usage_access_btn_usage_settings),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 // Dismiss Button
                 TextButton(
                     onClick = onDismissRequest,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 42.dp)
                 ) {
-                    Text(stringResource(R.string.usage_access_btn_continue_without))
+                    Text(
+                        text = stringResource(R.string.usage_access_btn_continue_without),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }

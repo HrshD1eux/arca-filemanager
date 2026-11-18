@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -99,6 +100,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.Hrshd1eux.filemanager.core.designsystem.AdaptiveButtonRow
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.ftp.server.FtpActivityLog
@@ -404,14 +406,26 @@ fun FtpServerScreen(
                         runCatching {
                             context.startActivity(StoragePermissionManager.createManageAllFilesIntent(context))
                         }
-                    }
+                    },
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
-                    Text(stringResource(R.string.action_grant_permission))
+                    Text(
+                        text = stringResource(R.string.action_grant_permission),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showStoragePermissionDialog = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                TextButton(
+                    onClick = { showStoragePermissionDialog = false },
+                    modifier = Modifier.heightIn(min = 44.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_cancel),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         )
@@ -440,14 +454,26 @@ fun FtpServerScreen(
                         showSameNetworkDialog = false
                         isStarting = true
                         viewModel.startServer(context)
-                    }
+                    },
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
-                    Text(stringResource(R.string.ftp_start_server))
+                    Text(
+                        text = stringResource(R.string.ftp_start_server),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSameNetworkDialog = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                TextButton(
+                    onClick = { showSameNetworkDialog = false },
+                    modifier = Modifier.heightIn(min = 44.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_cancel),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         )
@@ -588,30 +614,38 @@ private fun FtpServerStatusCard(
                 }
 
                 // Action Buttons: Copy URL & Share
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onCopyUrl,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(R.string.ftp_copy_address))
+                AdaptiveButtonRow(
+                    primaryButton = {
+                        OutlinedButton(
+                            onClick = onCopyUrl,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.ftp_copy_address),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    secondaryButton = {
+                        OutlinedButton(
+                            onClick = onShareUrl,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.action_share),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
-
-                    OutlinedButton(
-                        onClick = onShareUrl,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(R.string.action_share))
-                    }
-                }
+                )
 
                 // Live Session Telemetry
                 Row(
@@ -666,11 +700,18 @@ private fun FtpServerStatusCard(
                     onClick = onStopClick,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
                 ) {
                     Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.ftp_stop_server), fontWeight = FontWeight.Bold)
+                    Text(
+                        text = stringResource(R.string.ftp_stop_server),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             } else {
                 // Not running explanation

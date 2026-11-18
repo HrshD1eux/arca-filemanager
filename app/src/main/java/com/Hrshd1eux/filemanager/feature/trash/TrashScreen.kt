@@ -475,14 +475,26 @@ fun TrashScreen(
                     onClick = {
                         showBulkRestoreDialog = false
                         viewModel.restoreMultiple(selectedEntries)
-                    }
+                    },
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
-                    Text("Restore All (${selectedEntries.size})")
+                    Text(
+                        text = "Restore All (${selectedEntries.size})",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showBulkRestoreDialog = false }) {
-                    Text("Cancel")
+                TextButton(
+                    onClick = { showBulkRestoreDialog = false },
+                    modifier = Modifier.heightIn(min = 44.dp)
+                ) {
+                    Text(
+                        text = "Cancel",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         )
@@ -520,14 +532,26 @@ fun TrashScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
-                    )
+                    ),
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
-                    Text("Shred All")
+                    Text(
+                        text = "Shred All",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEmptyTrashDialog = false }) {
-                    Text("Cancel")
+                TextButton(
+                    onClick = { showEmptyTrashDialog = false },
+                    modifier = Modifier.heightIn(min = 44.dp)
+                ) {
+                    Text(
+                        text = "Cancel",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         )
@@ -568,14 +592,26 @@ fun TrashScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
-                    )
+                    ),
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
-                    Text("Shred Permanently")
+                    Text(
+                        text = "Shred Permanently",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { entryToShred = null }) {
-                    Text("Cancel")
+                TextButton(
+                    onClick = { entryToShred = null },
+                    modifier = Modifier.heightIn(min = 44.dp)
+                ) {
+                    Text(
+                        text = "Cancel",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         )
@@ -614,14 +650,26 @@ fun TrashScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
-                    )
+                    ),
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
-                    Text("Shred Permanently (${selectedEntries.size})")
+                    Text(
+                        text = "Shred Permanently (${selectedEntries.size})",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showBulkShredDialog = false }) {
-                    Text("Cancel")
+                TextButton(
+                    onClick = { showBulkShredDialog = false },
+                    modifier = Modifier.heightIn(min = 44.dp)
+                ) {
+                    Text(
+                        text = "Cancel",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         )

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -78,6 +79,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
+import com.Hrshd1eux.filemanager.core.designsystem.AdaptiveButtonRow
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -345,14 +347,20 @@ fun ArcaDropScreen(
                                 containerColor = if (state.isRunning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                             ),
                             shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 44.dp)
                         ) {
                             Icon(
                                 imageVector = if (state.isRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
                                 contentDescription = null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (state.isRunning) stringResource(R.string.drop_stop_service) else stringResource(R.string.drop_start_button))
+                            Text(
+                                text = if (state.isRunning) stringResource(R.string.drop_stop_service) else stringResource(R.string.drop_start_button),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
 
                         Text(
@@ -445,29 +453,42 @@ fun ArcaDropScreen(
                             }
                         }
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedButton(
-                                onClick = { pickFilesLauncher.launch(arrayOf("*/*")) },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(stringResource(R.string.drop_add_files), maxLines = 1)
+                        AdaptiveButtonRow(
+                            primaryButton = {
+                                OutlinedButton(
+                                    onClick = { pickFilesLauncher.launch(arrayOf("*/*")) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 44.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = stringResource(R.string.drop_add_files),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            },
+                            secondaryButton = {
+                                OutlinedButton(
+                                    onClick = { showShareTextDialog = true },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 44.dp)
+                                ) {
+                                    Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (state.sharedText.isNullOrBlank()) stringResource(R.string.drop_btn_share_text) else stringResource(R.string.drop_btn_edit_text),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
-                            OutlinedButton(
-                                onClick = { showShareTextDialog = true },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.TextFields, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(if (state.sharedText.isNullOrBlank()) stringResource(R.string.drop_btn_share_text) else stringResource(R.string.drop_btn_edit_text), maxLines = 1)
-                            }
-                        }
+                        )
 
                         if (!state.sharedText.isNullOrBlank()) {
                             Surface(

@@ -1,7 +1,9 @@
 package com.Hrshd1eux.filemanager.core.storage.apk
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -97,6 +99,182 @@ object ApkInstaller {
         }
         val intent = createInstallIntent(context, apkFile)
         context.startActivity(intent)
+    }
+
+    /**
+     * Installs one or more APK files (such as a base APK and split configuration APKs)
+     * using Android's modern [PackageInstaller.Session] API.
+     *
+     * On standard unrooted devices, Android OS enqueues the session and presents the system
+     * confirmation prompt via [ApkInstallReceiver].
+     * On Android 12+ (API 31+), requests unattended update if ARCA is the installer of record.
+     *
+     * @param context Application or activity context
+     * @param apkFiles List of APK files to be committed as part of this atomic session
+     * @param packageName Optional package name of the app being installed/updated
+     * @return Result containing the created sessionId
+     */
+    fun installViaSession(
+        context: Context,
+        apkFiles: List<File>,
+        packageName: String? = null
+    ): Result<Int> = runCatching {
+        if (apkFiles.isEmpty()) {
+            throw IllegalArgumentException("At least one APK file must be provided")
+        }
+        for (apk in apkFiles) {
+            if (!apk.exists() || !apk.isFile) {
+                throw IllegalArgumentException("APK file does not exist: ${apk.absolutePath}")
+            }
+        }
+        if (!canInstallPackages(context)) {
+            throw SecurityException("Install unknown apps permission not granted")
+        }
+
+        val packageInstaller = context.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        if (packageName != null) {
+            params.setAppPackageName(packageName)
+        }
+
+        // Android 12+ (API 31+): enable unattended installation if ARCA is the installer of record
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+            params.setInstallScenario(PackageManager.INSTALL_SCENARIO_FAST)
+        }
+
+        val sessionId = packageInstaller.createSession(params)
+        val session = packageInstaller.openSession(sessionId)
+
+        try {
+            for (file in apkFiles) {
+                val streamName = file.name
+                val sizeBytes = file.length()
+                session.openWrite(streamName, 0, sizeBytes).use { out ->
+                    file.inputStream().use { input ->
+                        input.copyTo(out)
+                    }
+                    session.fsync(out)
+                }
+            }
+
+            val receiverIntent = Intent(context, ApkInstallReceiver::class.java).apply {
+                action = ApkInstallReceiver.ACTION_INSTALL_COMMIT
+                putExtra(ApkInstallReceiver.EXTRA_SESSION_ID, sessionId)
+            }
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val pendingIntent = PendingIntent.getBroadcast(context, sessionId, receiverIntent, flags)
+            session.commit(pendingIntent.intentSender)
+            sessionId
+        } catch (e: Exception) {
+            session.abandon()
+            throw e
+        } finally {
+            session.close()
+        }
+    }
+
+    /**
+     * Checks if a file is a bundled Split APK container (.xapk, .apks, or .apkm).
+     */
+    fun isSplitApkArchive(file: File): Boolean {
+        val name = file.name.lowercase()
+        return name.endsWith(".xapk") || name.endsWith(".apks") || name.endsWith(".apkm")
+    }
+
+    /**
+     * Extracts all .apk files from a Split APK archive (.xapk, .apks, .apkm) into [outputDir],
+     * validating against zip-slip directory traversal vulnerabilities.
+     */
+    fun extractSplitApk(archiveFile: File, outputDir: File): List<File> {
+        if (!archiveFile.exists() || !archiveFile.isFile) return emptyList()
+        if (!outputDir.exists()) outputDir.mkdirs()
+
+        val canonicalDest = outputDir.canonicalPath
+        val extractedApks = mutableListOf<File>()
+
+        java.util.zip.ZipInputStream(archiveFile.inputStream().buffered()).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory && entry.name.endsWith(".apk", ignoreCase = true)) {
+                    val targetFile = File(outputDir, File(entry.name).name)
+                    if (targetFile.canonicalPath.startsWith(canonicalDest)) {
+                        targetFile.outputStream().buffered().use { out ->
+                            zis.copyTo(out)
+                        }
+                        extractedApks.add(targetFile)
+                    }
+                }
+                zis.closeEntry()
+                entry = zis.nextEntry
+            }
+        }
+        return extractedApks
+    }
+
+    /**
+     * Checks if a `su` binary is present on the device filesystem.
+     */
+    fun isRootAvailable(): Boolean {
+        val paths = arrayOf(
+            "/system/bin/su",
+            "/system/xbin/su",
+            "/sbin/su",
+            "/system/sd/xbin/su",
+            "/system/bin/failsafe/su",
+            "/data/local/xbin/su",
+            "/data/local/bin/su",
+            "/data/local/su"
+        )
+        return paths.any { File(it).exists() }
+    }
+
+    /**
+     * Attempts to install packages silently via root shell (`su`).
+     *
+     * Only works on rooted devices where su permissions are granted.
+     */
+    fun installSilentlyViaRoot(apkFiles: List<File>): Result<Unit> = runCatching {
+        if (!isRootAvailable()) {
+            throw IllegalStateException("Root access is not available on this device")
+        }
+        if (apkFiles.isEmpty()) {
+            throw IllegalArgumentException("At least one APK file must be provided")
+        }
+
+        val command = if (apkFiles.size == 1) {
+            "pm install -r \"${apkFiles[0].absolutePath}\""
+        } else {
+            val filePaths = apkFiles.joinToString(" ") { "\"${it.absolutePath}\"" }
+            "pm install-create && pm install-write 0 base \"${apkFiles[0].absolutePath}\" && pm install-commit 0 || pm install -r $filePaths"
+        }
+
+        val process = ProcessBuilder("su", "-c", command)
+            .redirectErrorStream(true)
+            .start()
+
+        val exitCode = process.waitFor()
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+
+        if (exitCode != 0 || !output.contains("Success", ignoreCase = true)) {
+            throw RuntimeException("Root installation failed (code $exitCode): $output")
+        }
+    }
+
+    /**
+     * Checks if the Shizuku manager app is installed on the device.
+     */
+    fun isShizukuInstalled(context: Context): Boolean {
+        return try {
+            context.packageManager.getPackageInfo("moe.shizuku.privileged.api", 0)
+            true
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        }
     }
 
     /**

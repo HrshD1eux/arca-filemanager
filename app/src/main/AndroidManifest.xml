@@ -217,6 +217,14 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".core.storage.apk.ApkInstallReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.Hrshd1eux.filemanager.ACTION_INSTALL_COMMIT" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

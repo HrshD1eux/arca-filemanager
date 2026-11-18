@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.Hrshd1eux.filemanager.R
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
@@ -191,17 +193,27 @@ fun BulkDeleteConfirmationDialog(
                     containerColor = if (permanentDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     contentColor = if (permanentDelete) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
                 ),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.heightIn(min = 44.dp)
             ) {
-                Text(if (permanentDelete) stringResource(R.string.delete_perm_button) else stringResource(R.string.delete_move_trash_button))
+                Text(
+                    text = if (permanentDelete) stringResource(R.string.delete_perm_button) else stringResource(R.string.delete_move_trash_button),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.heightIn(min = 44.dp)
             ) {
-                Text(stringResource(R.string.action_cancel))
+                Text(
+                    text = stringResource(R.string.action_cancel),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         },
         modifier = modifier

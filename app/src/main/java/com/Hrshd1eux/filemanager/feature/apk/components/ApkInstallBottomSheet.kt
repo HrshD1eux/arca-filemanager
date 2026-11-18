@@ -36,6 +36,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.res.stringResource
+import com.Hrshd1eux.filemanager.R
+import com.Hrshd1eux.filemanager.core.designsystem.AdaptiveButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -283,59 +288,77 @@ fun ApkInstallBottomSheet(
                 }
 
                 // Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Cancel")
-                    }
-
-                    Button(
-                        onClick = {
-                            if (!ApkInstaller.canInstallPackages(context)) {
-                                Toast.makeText(
-                                    context,
-                                    "Enable 'Allow from this source', then tap Install again",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                context.startActivity(ApkInstaller.createManageUnknownAppSourcesIntent(context))
-                            } else {
-                                ApkInstaller.install(context, apkFile).onFailure { e ->
-                                    Toast.makeText(context, "Install failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-                                }
-                                onDismiss()
-                            }
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (pkg.installStatus == ApkInstallStatus.DOWNGRADE) {
-                                Color(0xFFE65100)
-                            } else {
-                                VaultEmerald
-                            }
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.InstallMobile,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        val actionLabel = when (pkg.installStatus) {
-                            ApkInstallStatus.NEW_APP -> "Install"
-                            ApkInstallStatus.UPDATE -> "Update"
-                            ApkInstallStatus.SAME_VERSION -> "Reinstall"
-                            ApkInstallStatus.DOWNGRADE -> "Install (Downgrade)"
-                        }
-                        Text(actionLabel, maxLines = 1)
-                    }
+                val actionLabel = when (pkg.installStatus) {
+                    ApkInstallStatus.NEW_APP -> "Install"
+                    ApkInstallStatus.UPDATE -> "Update"
+                    ApkInstallStatus.SAME_VERSION -> "Reinstall"
+                    ApkInstallStatus.DOWNGRADE -> "Install (Downgrade)"
                 }
+
+                AdaptiveButtonRow(
+                    primaryButton = {
+                        Button(
+                            onClick = {
+                                if (!ApkInstaller.canInstallPackages(context)) {
+                                    Toast.makeText(
+                                        context,
+                                        "Enable 'Allow from this source', then tap Install again",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    context.startActivity(ApkInstaller.createManageUnknownAppSourcesIntent(context))
+                                } else {
+                                    ApkInstaller.install(context, apkFile).onFailure { e ->
+                                        Toast.makeText(context, "Install failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                    }
+                                    onDismiss()
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (pkg.installStatus == ApkInstallStatus.DOWNGRADE) {
+                                    Color(0xFFE65100)
+                                } else {
+                                    VaultEmerald
+                                }
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.InstallMobile,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = actionLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    secondaryButton = {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.action_cancel),
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                )
             }
         }
     }

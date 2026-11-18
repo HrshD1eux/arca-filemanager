@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -254,14 +255,26 @@ fun FileComparisonDialog(
                                 }
                             },
                             enabled = !isCalculatingHash,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 44.dp)
                         ) {
                             if (isCalculatingHash) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Calculating SHA-256...", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = "Calculating SHA-256...",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             } else {
-                                Text("Verify Bit-for-Bit Hash (SHA-256)", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = "Verify Bit-for-Bit Hash (SHA-256)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
@@ -269,8 +282,15 @@ fun FileComparisonDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) {
-                Text("Close")
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 44.dp)
+            ) {
+                Text(
+                    text = "Close",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     )

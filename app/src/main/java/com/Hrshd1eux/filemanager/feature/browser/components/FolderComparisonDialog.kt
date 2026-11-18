@@ -275,25 +275,36 @@ fun FolderComparisonDialog(
         },
         confirmButton = {
             if (subfolderReport != null) {
-                OutlinedButton(onClick = { subfolderReport = null }) {
-                    Text("Back to Root")
+                OutlinedButton(
+                    onClick = { subfolderReport = null },
+                    modifier = Modifier.heightIn(min = 44.dp)
+                ) {
+                    Text("Back to Root", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             } else if (onSyncMissingToRight != null && (report.leftOnlyCount > 0 || report.modifiedCount > 0)) {
                 Button(
                     onClick = {
                         onSyncMissingToRight()
                         onDismiss()
-                    }
+                    },
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
                     Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Sync to Right (${report.leftOnlyCount + report.modifiedCount})")
+                    Text(
+                        text = "Sync to Right (${report.leftOnlyCount + report.modifiedCount})",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("Close")
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 44.dp)
+            ) {
+                Text("Close", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     )

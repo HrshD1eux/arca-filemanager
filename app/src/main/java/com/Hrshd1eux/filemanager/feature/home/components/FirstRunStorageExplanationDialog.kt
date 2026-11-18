@@ -32,6 +32,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -215,25 +218,47 @@ fun FirstRunStorageExplanationDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Grant Storage Access Action
                 Button(
                     onClick = onGrantAccess,
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 46.dp)
                 ) {
-                    Text(stringResource(R.string.first_run_storage_grant))
+                    Text(
+                        text = stringResource(R.string.first_run_storage_grant), // Grant Storage Access
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
+                // Continue with Limited Access Action
                 OutlinedButton(
                     onClick = onContinueWithLimitedAccess,
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
                 ) {
-                    Text(stringResource(R.string.first_run_storage_continue_limited))
+                    Text(
+                        text = stringResource(R.string.first_run_storage_continue_limited), // Continue with Limited Access
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
+                // Read Privacy Statement Action
                 TextButton(
                     onClick = onReadPrivacyStatement,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 42.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Shield,
@@ -243,8 +268,10 @@ fun FirstRunStorageExplanationDialog(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = stringResource(R.string.first_run_storage_read_privacy),
-                        style = MaterialTheme.typography.bodyMedium
+                        text = stringResource(R.string.first_run_storage_read_privacy), // Read Privacy Statement
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

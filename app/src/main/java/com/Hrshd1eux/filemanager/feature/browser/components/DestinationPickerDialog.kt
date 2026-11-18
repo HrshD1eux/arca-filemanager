@@ -308,9 +308,15 @@ fun DestinationPickerDialog(
                                             onClick = { onDestinationSelected(lastMoveDestination, verifyIntegrity) },
                                             shape = RoundedCornerShape(8.dp),
                                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                            modifier = Modifier.height(30.dp)
+                                            modifier = Modifier.heightIn(min = 32.dp)
                                         ) {
-                                            Text(stringResource(R.string.action_move_here), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                text = stringResource(R.string.action_move_here),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                         }
                                     }
                                 }
@@ -535,10 +541,13 @@ fun DestinationPickerDialog(
                     currentDir?.let { onDestinationSelected(it, verifyIntegrity) }
                 },
                 enabled = isEnabled,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.heightIn(min = 44.dp)
             ) {
                 Text(
-                    if (currentDir != null) "$confirmButtonText" else "Pick a Folder"
+                    text = if (currentDir != null) "$confirmButtonText" else "Pick a Folder",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         },
@@ -548,7 +557,8 @@ fun DestinationPickerDialog(
                     val isMove = confirmButtonText.contains("Move", ignoreCase = true)
                     TextButton(
                         onClick = onStageForMove,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.heightIn(min = 44.dp)
                     ) {
                         Icon(
                             imageVector = if (isMove) Icons.AutoMirrored.Filled.DriveFileMove else Icons.Default.ContentCopy,
@@ -556,15 +566,24 @@ fun DestinationPickerDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isMove) "Stage Move" else "Stage Copy")
+                        Text(
+                            text = if (isMove) "Stage Move" else "Stage Copy",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                 }
                 TextButton(
                     onClick = onDismiss,
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.heightIn(min = 44.dp)
                 ) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(
+                        text = stringResource(R.string.action_cancel),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         },

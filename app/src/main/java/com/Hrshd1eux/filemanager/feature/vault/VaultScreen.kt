@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -83,6 +84,7 @@ import androidx.compose.ui.platform.LocalView
 import com.Hrshd1eux.filemanager.core.designsystem.SelectionHaptics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.Hrshd1eux.filemanager.core.designsystem.AdaptiveButtonRow
 import com.Hrshd1eux.filemanager.core.designsystem.FolderYellow
 import com.Hrshd1eux.filemanager.core.designsystem.VaultEmerald
 import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
@@ -548,36 +550,39 @@ fun VaultScreen(
                                             textAlign = TextAlign.Center
                                         )
                                         Spacer(modifier = Modifier.height(20.dp))
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Button(
-                                                onClick = { showAddOptionsDialog = true },
-                                                colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald),
-                                                shape = RoundedCornerShape(12.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Add,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Add Files")
+                                        AdaptiveButtonRow(
+                                            primaryButton = {
+                                                Button(
+                                                    onClick = { showAddOptionsDialog = true },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald),
+                                                    shape = RoundedCornerShape(12.dp),
+                                                    modifier = Modifier.heightIn(min = 44.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Add,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text("Add Files", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                }
+                                            },
+                                            secondaryButton = {
+                                                OutlinedButton(
+                                                    onClick = { showCreateFolderDialog = true },
+                                                    shape = RoundedCornerShape(12.dp),
+                                                    modifier = Modifier.heightIn(min = 44.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.CreateNewFolder,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text("New Folder", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                }
                                             }
-                                            OutlinedButton(
-                                                onClick = { showCreateFolderDialog = true },
-                                                shape = RoundedCornerShape(12.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.CreateNewFolder,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Text("New Folder")
-                                            }
-                                        }
+                                        )
                                     }
                                 }
                             } else {
