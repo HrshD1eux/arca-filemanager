@@ -193,10 +193,10 @@ fun AppUpdateDialog(
                 .fillMaxWidth()
                 .widthIn(max = 500.dp)
                 .padding(horizontal = 20.dp),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
-            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         ) {
             Column(
                 modifier = Modifier
@@ -275,8 +275,9 @@ fun AppUpdateDialog(
 
                     UpdateDialogStep.UP_TO_DATE -> {
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = Color(0xFF4CAF50).copy(alpha = 0.12f),
+                            border = BorderStroke(0.5.dp, Color(0xFF4CAF50).copy(alpha = 0.3f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
@@ -418,8 +419,9 @@ fun AppUpdateDialog(
 
                     UpdateDialogStep.DOWNLOAD_COMPLETED -> {
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = Color(0xFF4CAF50).copy(alpha = 0.12f),
+                            border = BorderStroke(0.5.dp, Color(0xFF4CAF50).copy(alpha = 0.3f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
@@ -470,8 +472,9 @@ fun AppUpdateDialog(
 
                     UpdateDialogStep.ERROR -> {
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {

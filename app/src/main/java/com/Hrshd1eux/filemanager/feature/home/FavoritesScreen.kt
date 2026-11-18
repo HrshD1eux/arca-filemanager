@@ -155,7 +155,7 @@ fun FavoritesScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .bounceClick(scaleDown = 0.98f) {
+                            .bounceClick(scaleDown = 0.985f) {
                                 if (node.isDirectory) {
                                     onNavigateToBrowser(item.path, item.displayName)
                                 } else if (item.path.endsWith(".apk", ignoreCase = true) || FileTypeResolver.isPackage(item.path)) {
@@ -164,7 +164,7 @@ fun FavoritesScreen(
                                     onNavigateToPreview(item.path)
                                 }
                             },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer
                         ),

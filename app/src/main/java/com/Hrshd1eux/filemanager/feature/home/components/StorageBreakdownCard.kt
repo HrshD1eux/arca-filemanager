@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.home.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,10 +51,11 @@ fun StorageBreakdownCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column(
             modifier = Modifier
@@ -112,13 +114,13 @@ fun StorageBreakdownCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Multi-color Segmented Storage Bar
+            // Precision Slender Segmented Storage Bar
             SegmentedStorageBar(
                 breakdown = breakdown,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(5.dp))
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
             )
 
             Spacer(modifier = Modifier.height(16.dp))

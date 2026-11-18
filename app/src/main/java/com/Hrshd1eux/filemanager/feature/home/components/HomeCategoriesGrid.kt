@@ -182,34 +182,34 @@ private fun CategoryGridItem(
 ) {
     Card(
         modifier = modifier
-            .bounceClick(scaleDown = 0.94f, onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+            .bounceClick(scaleDown = 0.985f, onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 4.dp),
+                .padding(vertical = 10.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             TwoToneIconBadge(
                 icon = icon,
                 tint = iconTint,
-                size = 42.dp,
-                iconSize = 22.dp,
-                shape = RoundedCornerShape(12.dp)
+                size = 36.dp,
+                iconSize = 19.dp,
+                shape = RoundedCornerShape(8.dp)
             )
 
-            Spacer(modifier = Modifier.height(7.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, letterSpacing = 0.2.sp),
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,

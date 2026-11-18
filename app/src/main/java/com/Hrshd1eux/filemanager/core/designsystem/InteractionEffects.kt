@@ -16,12 +16,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 
 /**
- * High-performance, hardware-accelerated scale bounce interaction modifier.
- * Applies smooth spring physics on touch down/up directly on RenderNode (0 layout passes)
- * and triggers a crisp native haptic tick.
+ * High-performance, precision mechanical touch interaction modifier.
+ * Applies instantaneous, zero-oscillation micro-press physics directly on RenderNode (0 layout passes)
+ * with a subtle opacity dip and crisp native haptic tick, eliminating cartoon bouncy springs.
  */
 fun Modifier.bounceClick(
-    scaleDown: Float = 0.96f,
+    scaleDown: Float = 0.985f,
     enabled: Boolean = true,
     hapticFeedback: Boolean = true,
     onClick: (() -> Unit)? = null
@@ -33,16 +33,26 @@ fun Modifier.bounceClick(
     val scale by animateFloatAsState(
         targetValue = if (isPressed && enabled) scaleDown else 1f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessHigh
         ),
-        label = "bounceScale"
+        label = "luxuryPressScale"
+    )
+
+    val alpha by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 0.92f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "luxuryPressAlpha"
     )
 
     this
         .graphicsLayer {
             scaleX = scale
             scaleY = scale
+            this.alpha = alpha
         }
         .then(
             if (onClick != null) {

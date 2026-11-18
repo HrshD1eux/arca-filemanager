@@ -51,24 +51,24 @@ fun HomeStorageCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .bounceClick(scaleDown = 0.98f, onClick = {
+            .bounceClick(scaleDown = 0.985f, onClick = {
                 if (!hasAllFilesAccess && onGrantPermissionClick != null) {
                     onGrantPermissionClick()
                 } else {
                     onCardClick()
                 }
             }),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp)
+                .padding(16.dp)
         ) {
             // Header Row: "Storage" title & percentage
             Row(
@@ -80,11 +80,11 @@ fun HomeStorageCard(
                     TwoToneIconBadge(
                         icon = Icons.Default.Storage,
                         tint = MaterialTheme.colorScheme.primary,
-                        size = 38.dp,
-                        iconSize = 20.dp,
-                        shape = RoundedCornerShape(10.dp)
+                        size = 36.dp,
+                        iconSize = 18.dp,
+                        shape = RoundedCornerShape(8.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
@@ -97,16 +97,16 @@ fun HomeStorageCard(
                     val percent = (breakdown.usedPercentage * 100).toInt()
                     Surface(
                         onClick = onStorageAnalyzerClick ?: onCardClick,
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                     ) {
                         Text(
                             text = "$percent%",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                         )
                     }
                 }
@@ -151,19 +151,19 @@ fun HomeStorageCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Progress Bar (e.g. ████████████░░░)
+                // Slender Precision Telemetry Bar
                 LinearProgressIndicator(
                     progress = { breakdown.usedPercentage },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(RoundedCornerShape(5.dp)),
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
                     color = if (breakdown.usedPercentage > 0.9f) {
                         MaterialTheme.colorScheme.error
                     } else {
                         MaterialTheme.colorScheme.primary
                     },
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     drawStopIndicator = {}
                 )
 
@@ -183,15 +183,16 @@ fun HomeStorageCard(
                         if (onStorageAnalyzerClick != null) {
                             Surface(
                                 onClick = onStorageAnalyzerClick,
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                             ) {
                                 Text(
                                     text = "Analyzer \u203A",
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                                 )
                             }
                         }

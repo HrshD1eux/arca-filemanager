@@ -129,8 +129,8 @@ fun StorageNodeGridItem(
                     }
                 }
             ),
-        shape = RoundedCornerShape(12.dp),
-        border = if (isHoveredAsDropTarget) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        shape = RoundedCornerShape(8.dp),
+        border = if (isHoveredAsDropTarget) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         colors = CardDefaults.cardColors(
             containerColor = if (isHoveredAsDropTarget) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)

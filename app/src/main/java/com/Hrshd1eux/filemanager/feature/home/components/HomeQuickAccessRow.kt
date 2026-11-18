@@ -103,14 +103,14 @@ private fun RowScope.QuickAccessTile(
     Card(
         modifier = modifier
             .weight(1f)
-            .heightIn(min = 86.dp)
-            .bounceClick(scaleDown = 0.95f, onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+            .heightIn(min = 84.dp)
+            .bounceClick(scaleDown = 0.985f, onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -122,9 +122,9 @@ private fun RowScope.QuickAccessTile(
             TwoToneIconBadge(
                 icon = icon,
                 tint = iconTint,
-                size = 30.dp,
-                iconSize = 16.dp,
-                shape = RoundedCornerShape(8.dp)
+                size = 28.dp,
+                iconSize = 15.dp,
+                shape = RoundedCornerShape(6.dp)
             )
 
             Spacer(modifier = Modifier.height(4.dp))

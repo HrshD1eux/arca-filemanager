@@ -231,12 +231,12 @@ private fun AppHeader(
                 contentDescription = "ARCA App Icon",
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(12.dp))
             )
         } else {
             Surface(
                 modifier = Modifier.size(72.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.primaryContainer,
                 tonalElevation = 2.dp
             ) {
@@ -300,10 +300,11 @@ private fun ProductDescriptionCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -346,10 +347,11 @@ private fun AppUpdatesDisclosureCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -393,7 +395,7 @@ private fun AppUpdatesDisclosureCard(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
@@ -413,10 +415,11 @@ private fun PrivacyStatementCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -461,7 +464,7 @@ private fun PrivacyStatementCard(
             OutlinedButton(
                 onClick = onViewPrivacyStatement,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(text = stringResource(R.string.about_read_privacy_button))
                 Spacer(modifier = Modifier.width(8.dp))
@@ -521,10 +524,11 @@ private fun OpenSourceLicensesCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -620,7 +624,7 @@ private fun LeadDeveloperCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
@@ -682,7 +686,7 @@ private fun LeadDeveloperCard(
                             Toast.makeText(context, "Contact: HrshD1eux@proton.me", Toast.LENGTH_LONG).show()
                         }
                     },
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Icon(
@@ -843,10 +847,11 @@ private fun LegalInformationCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -897,10 +902,11 @@ private fun DeviceDiagnosticsCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

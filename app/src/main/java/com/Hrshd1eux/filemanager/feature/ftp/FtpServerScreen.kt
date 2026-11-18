@@ -227,8 +227,9 @@ fun FtpServerScreen(
             if (state.errorMessage != null) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -268,7 +269,7 @@ fun FtpServerScreen(
             if (!state.isRunning && !StoragePermissionManager.hasAllFilesAccess(context)) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
                         ),
@@ -518,17 +519,17 @@ private fun FtpServerStatusCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isRunning) {
-                VaultEmerald.copy(alpha = 0.12f)
+                VaultEmerald.copy(alpha = 0.08f)
             } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             }
         ),
         border = BorderStroke(
-            width = 1.dp,
-            color = if (isRunning) VaultEmerald.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
+            width = 0.5.dp,
+            color = if (isRunning) VaultEmerald.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
     ) {
         Column(
@@ -590,9 +591,9 @@ private fun FtpServerStatusCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surface)
-                        .border(1.dp, VaultEmerald.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .border(0.5.dp, VaultEmerald.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                         .padding(14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -600,7 +601,7 @@ private fun FtpServerStatusCard(
                         text = stringResource(R.string.ftp_address_label),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
+                        letterSpacing = 1.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -619,7 +620,7 @@ private fun FtpServerStatusCard(
                         OutlinedButton(
                             onClick = onCopyUrl,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
@@ -634,7 +635,7 @@ private fun FtpServerStatusCard(
                         OutlinedButton(
                             onClick = onShareUrl,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
@@ -699,7 +700,7 @@ private fun FtpServerStatusCard(
                 Button(
                     onClick = onStopClick,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 44.dp)
@@ -723,8 +724,9 @@ private fun FtpServerStatusCard(
 
                 if (!isNetworkAvailable) {
                     Card(
-                        shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -751,7 +753,7 @@ private fun FtpServerStatusCard(
                     onClick = onStartClick,
                     enabled = isNetworkAvailable && !isStarting && !isRunning,
                     colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (isStarting) {
@@ -791,10 +793,11 @@ private fun FtpServerSettingsCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier
@@ -819,9 +822,9 @@ private fun FtpServerSettingsCard(
                 )
 
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 ) {
                     Column(
                         modifier = Modifier
@@ -1080,10 +1083,11 @@ private fun FtpConnectionGuideCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
-        )
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier

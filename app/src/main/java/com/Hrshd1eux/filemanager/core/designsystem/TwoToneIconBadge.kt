@@ -17,25 +17,25 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Reusable two-tone icon badge featuring a 14% tint squircle container,
- * subtle 0.5dp border, and vibrant centered glyph.
+ * Reusable precision two-tone icon badge featuring an ultra-subtle 9% tint container,
+ * crisp 0.5dp hairline border, and refined glyph.
  */
 @Composable
 fun TwoToneIconBadge(
     icon: ImageVector,
     tint: Color,
     modifier: Modifier = Modifier,
-    size: Dp = 40.dp,
-    iconSize: Dp = 22.dp,
-    shape: Shape = RoundedCornerShape(11.dp),
+    size: Dp = 38.dp,
+    iconSize: Dp = 20.dp,
+    shape: Shape = RoundedCornerShape(8.dp),
     contentDescription: String? = null
 ) {
     Box(
         modifier = modifier
             .size(size)
             .clip(shape)
-            .background(tint.copy(alpha = 0.14f))
-            .border(0.5.dp, tint.copy(alpha = 0.28f), shape),
+            .background(tint.copy(alpha = 0.09f))
+            .border(0.5.dp, tint.copy(alpha = 0.16f), shape),
         contentAlignment = Alignment.Center
     ) {
         Icon(

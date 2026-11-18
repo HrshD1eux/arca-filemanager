@@ -1739,10 +1739,11 @@ private fun PermissionDeniedView(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
-            )
+            ),
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -1750,8 +1751,8 @@ private fun PermissionDeniedView(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1759,7 +1760,7 @@ private fun PermissionDeniedView(
                         imageVector = Icons.Default.Security,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(14.dp))
@@ -1778,10 +1779,11 @@ private fun PermissionDeniedView(
                 Spacer(modifier = Modifier.height(12.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
+                    ),
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1810,7 +1812,7 @@ private fun PermissionDeniedView(
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onGrantPermission,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -1824,7 +1826,7 @@ private fun PermissionDeniedView(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = onSelectScopedFolder,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
@@ -1891,7 +1893,7 @@ private fun ErrorView(
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = onRetry,
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(stringResource(R.string.action_retry))
             }

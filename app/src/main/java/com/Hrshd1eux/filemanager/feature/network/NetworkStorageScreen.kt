@@ -156,14 +156,14 @@ fun NetworkStorageScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .bounceClick(scaleDown = 0.98f, onClick = onNavigateToArcaDrop),
-                    shape = RoundedCornerShape(14.dp),
+                        .bounceClick(scaleDown = 0.985f, onClick = onNavigateToArcaDrop),
+                    shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
                     border = BorderStroke(
                         0.5.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                     )
                 ) {
                     Row(
@@ -175,9 +175,9 @@ fun NetworkStorageScreen(
                         TwoToneIconBadge(
                             icon = Icons.Default.Wifi,
                             tint = MaterialTheme.colorScheme.primary,
-                            size = 44.dp,
-                            iconSize = 22.dp,
-                            shape = RoundedCornerShape(12.dp)
+                            size = 38.dp,
+                            iconSize = 20.dp,
+                            shape = RoundedCornerShape(8.dp)
                         )
                         Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -203,14 +203,14 @@ fun NetworkStorageScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .bounceClick(scaleDown = 0.98f, onClick = onNavigateToFtpServer),
-                    shape = RoundedCornerShape(14.dp),
+                        .bounceClick(scaleDown = 0.985f, onClick = onNavigateToFtpServer),
+                    shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
                     border = BorderStroke(
                         0.5.dp,
-                        VaultEmerald.copy(alpha = 0.5f)
+                        VaultEmerald.copy(alpha = 0.4f)
                     )
                 ) {
                     Row(
@@ -222,9 +222,9 @@ fun NetworkStorageScreen(
                         TwoToneIconBadge(
                             icon = Icons.Default.Devices,
                             tint = VaultEmerald,
-                            size = 44.dp,
-                            iconSize = 22.dp,
-                            shape = RoundedCornerShape(12.dp)
+                            size = 38.dp,
+                            iconSize = 20.dp,
+                            shape = RoundedCornerShape(8.dp)
                         )
                         Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -259,7 +259,7 @@ fun NetworkStorageScreen(
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
@@ -296,7 +296,7 @@ fun NetworkStorageScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             Button(
                                 onClick = { showAddDialog = true },
-                                shape = RoundedCornerShape(10.dp)
+                                shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -312,7 +312,7 @@ fun NetworkStorageScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .bounceClick(scaleDown = 0.98f) {
+                            .bounceClick(scaleDown = 0.985f) {
                                 connectingId = config.id
                                 statusMessage = "Connecting to ${config.name}..."
                                 scope.launch {
@@ -327,7 +327,7 @@ fun NetworkStorageScreen(
                                     }
                                 }
                             },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer
                         ),
@@ -345,9 +345,9 @@ fun NetworkStorageScreen(
                             TwoToneIconBadge(
                                 icon = if (config.protocol.isEncryptedByDefault) Icons.Default.Lock else Icons.Default.Language,
                                 tint = if (config.protocol.isEncryptedByDefault) VaultEmerald else MaterialTheme.colorScheme.primary,
-                                size = 42.dp,
+                                size = 38.dp,
                                 iconSize = 20.dp,
-                                shape = RoundedCornerShape(10.dp)
+                                shape = RoundedCornerShape(8.dp)
                             )
 
                             Spacer(modifier = Modifier.width(14.dp))

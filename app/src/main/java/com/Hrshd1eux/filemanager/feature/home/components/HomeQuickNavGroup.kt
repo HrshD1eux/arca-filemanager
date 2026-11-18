@@ -56,12 +56,12 @@ fun HomeQuickNavGroup(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             QuickNavItemRow(
@@ -141,8 +141,8 @@ private fun QuickNavItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .bounceClick(scaleDown = 0.98f, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
+            .bounceClick(scaleDown = 0.985f, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -153,9 +153,9 @@ private fun QuickNavItemRow(
             TwoToneIconBadge(
                 icon = icon,
                 tint = iconTint,
-                size = 38.dp,
-                iconSize = 20.dp,
-                shape = RoundedCornerShape(10.dp)
+                size = 34.dp,
+                iconSize = 18.dp,
+                shape = RoundedCornerShape(8.dp)
             )
 
             Spacer(modifier = Modifier.width(14.dp))

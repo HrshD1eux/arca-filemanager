@@ -181,11 +181,11 @@ fun ArcaDropScreen(
             // 1. Server Status + Primary Start/Stop + QR Code Card
             item {
                 Card(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(
                         0.5.dp,
-                        if (state.isRunning) VaultEmerald.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant
+                        if (state.isRunning) VaultEmerald.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                 ) {
                     Column(
@@ -200,18 +200,19 @@ fun ArcaDropScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(
                                         (if (state.isRunning) VaultEmerald else MaterialTheme.colorScheme.primary)
-                                            .copy(alpha = 0.14f)
+                                            .copy(alpha = 0.12f)
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Devices,
                                     contentDescription = null,
-                                    tint = if (state.isRunning) VaultEmerald else MaterialTheme.colorScheme.primary
+                                    tint = if (state.isRunning) VaultEmerald else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
@@ -242,7 +243,7 @@ fun ArcaDropScreen(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(14.dp))
+                                            .clip(RoundedCornerShape(8.dp))
                                             .background(Color.White)
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center
@@ -258,9 +259,9 @@ fun ArcaDropScreen(
 
                                 val displayUrl = state.baseUrl ?: ""
                                 Surface(
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(8.dp),
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -295,9 +296,9 @@ fun ArcaDropScreen(
                                 }
 
                                 Surface(
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(8.dp),
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -346,7 +347,7 @@ fun ArcaDropScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (state.isRunning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                             ),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 44.dp)
@@ -380,9 +381,9 @@ fun ArcaDropScreen(
             // 3. Upload Destination Folder Card
             item {
                 Card(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 ) {
                     Row(
                         modifier = Modifier
@@ -420,9 +421,9 @@ fun ArcaDropScreen(
             // 3. Shared Files & Shared Text Queue
             item {
                 Card(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 ) {
                     Column(
                         modifier = Modifier
@@ -553,9 +554,9 @@ fun ArcaDropScreen(
             if (state.receivedFiles.isNotEmpty() || state.receivedTexts.isNotEmpty()) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     ) {
                         Column(
                             modifier = Modifier
@@ -622,9 +623,9 @@ fun ArcaDropScreen(
             if (state.logs.isNotEmpty()) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     ) {
                         Column(
                             modifier = Modifier
@@ -680,10 +681,13 @@ fun ArcaDropScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.setSharedText(textInput)
-                    showShareTextDialog = false
-                }) {
+                Button(
+                    onClick = {
+                        viewModel.setSharedText(textInput)
+                        showShareTextDialog = false
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
                     Text(stringResource(R.string.action_save))
                 }
             },
@@ -703,9 +707,9 @@ private fun ArcaDropTroubleshootingCard(
     var expanded by remember { mutableStateOf(false) }
 
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         modifier = modifier
     ) {
         Column(
@@ -776,7 +780,7 @@ private fun TroubleshootingItem(
     description: String
 ) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         modifier = Modifier.fillMaxWidth()
@@ -805,7 +809,7 @@ private fun TroubleshootingItem(
 @Composable
 private fun HotspotGuidanceBanner() {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.45f))
     ) {

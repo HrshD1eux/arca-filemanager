@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -555,7 +556,7 @@ fun VaultScreen(
                                                 Button(
                                                     onClick = { showAddOptionsDialog = true },
                                                     colors = ButtonDefaults.buttonColors(containerColor = VaultEmerald),
-                                                    shape = RoundedCornerShape(12.dp),
+                                                    shape = RoundedCornerShape(8.dp),
                                                     modifier = Modifier.heightIn(min = 44.dp)
                                                 ) {
                                                     Icon(
@@ -570,7 +571,7 @@ fun VaultScreen(
                                             secondaryButton = {
                                                 OutlinedButton(
                                                     onClick = { showCreateFolderDialog = true },
-                                                    shape = RoundedCornerShape(12.dp),
+                                                    shape = RoundedCornerShape(8.dp),
                                                     modifier = Modifier.heightIn(min = 44.dp)
                                                 ) {
                                                     Icon(
@@ -684,8 +685,9 @@ fun VaultScreen(
                             showAddOptionsDialog = false
                             systemPickerLauncher.launch(arrayOf("*/*"))
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -694,14 +696,15 @@ fun VaultScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .background(VaultEmerald.copy(alpha = 0.15f), CircleShape),
+                                    .size(38.dp)
+                                    .background(VaultEmerald.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                                     contentDescription = null,
-                                    tint = VaultEmerald
+                                    tint = VaultEmerald,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(14.dp))
@@ -725,8 +728,9 @@ fun VaultScreen(
                             showAddOptionsDialog = false
                             showImportPicker = true
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -735,14 +739,15 @@ fun VaultScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
+                                    .size(38.dp)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Folder,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(14.dp))
@@ -766,8 +771,9 @@ fun VaultScreen(
                             showAddOptionsDialog = false
                             showCreateFolderDialog = true
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -1135,12 +1141,13 @@ private fun VaultEntryRow(
     val view = LocalView.current
 
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         color = if (isSelected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
         } else {
             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
         },
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         modifier = modifier.fillMaxWidth()
     ) {
         Row(

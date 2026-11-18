@@ -8,12 +8,12 @@ enum class StorageCategory(
     val color: Color,
     val searchCategory: CategoryFilter?
 ) {
-    IMAGES("Images", Color(0xFF26A69A), CategoryFilter.IMAGES),
-    VIDEOS("Videos", Color(0xFFAB47BC), CategoryFilter.VIDEOS),
-    AUDIO("Audio", Color(0xFFFF7043), CategoryFilter.AUDIO),
-    DOCUMENTS("Documents", Color(0xFF42A5F5), CategoryFilter.DOCUMENTS),
-    ARCHIVES("Archives", Color(0xFFFFA726), CategoryFilter.ARCHIVES),
-    OTHER("Other", Color(0xFF78909C), CategoryFilter.OTHER)
+    IMAGES("Images", Color(0xFF2563EB), CategoryFilter.IMAGES),
+    VIDEOS("Videos", Color(0xFF7C3AED), CategoryFilter.VIDEOS),
+    AUDIO("Audio", Color(0xFFEA580C), CategoryFilter.AUDIO),
+    DOCUMENTS("Documents", Color(0xFF0D9488), CategoryFilter.DOCUMENTS),
+    ARCHIVES("Archives", Color(0xFFD97706), CategoryFilter.ARCHIVES),
+    OTHER("Other", Color(0xFF64748B), CategoryFilter.OTHER)
 }
 
 data class CategorySize(
