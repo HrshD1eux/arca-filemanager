@@ -4,6 +4,7 @@ import android.content.Context
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.feature.viewer.audio.model.AudioMetadata
 import com.Hrshd1eux.filemanager.feature.viewer.audio.model.AudioPlaybackState
+import com.Hrshd1eux.filemanager.feature.viewer.audio.service.AudioPlaybackService
 import com.Hrshd1eux.filemanager.feature.viewer.audio.util.AudioMetadataExtractor
 import com.Hrshd1eux.filemanager.feature.viewer.audio.util.AudioTimeFormatter
 import kotlinx.coroutines.CoroutineDispatcher
@@ -91,6 +92,7 @@ class AudioPlaybackController(
             engine.start()
             _playbackState.value = AudioPlaybackState.Playing(track, 0L, duration)
             startTicker()
+            context?.let { AudioPlaybackService.start(it) }
         }
 
         engine.setOnCompletionListener {
@@ -195,6 +197,7 @@ class AudioPlaybackController(
         engine.start()
         _playbackState.value = AudioPlaybackState.Playing(track, _currentPositionMs.value, duration)
         startTicker()
+        context?.let { AudioPlaybackService.start(it) }
     }
 
     fun pause() {
@@ -282,6 +285,7 @@ class AudioPlaybackController(
      * Stops playback and dismisses player completely.
      */
     fun stopAndDismiss() {
+        context?.let { AudioPlaybackService.stop(it) }
         stopTicker()
         becomingNoisyReceiver?.unregister()
         audioFocusHelper?.abandonFocus()
@@ -360,11 +364,14 @@ class AudioPlaybackController(
 
     /**
      * Stop playback when required by lifecycle.
-     * Keep background playback out of scope.
+     * With AudioPlaybackService active, background playback continues.
+     * When context is null (e.g. testing), pauses as fallback.
      */
     fun onAppBackgrounded() {
-        if (_playbackState.value is AudioPlaybackState.Playing) {
-            pause()
+        if (context == null) {
+            if (_playbackState.value is AudioPlaybackState.Playing) {
+                pause()
+            }
         }
     }
 

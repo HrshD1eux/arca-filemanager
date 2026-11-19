@@ -1,5 +1,8 @@
 package com.Hrshd1eux.filemanager.core.search.engine
 
+import android.content.Context
+import android.provider.MediaStore
+import com.Hrshd1eux.filemanager.ArcaApplication
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.search.model.DateFilter
 import com.Hrshd1eux.filemanager.core.search.model.FileTypeScope
@@ -22,8 +25,11 @@ import java.util.Calendar
 import java.util.regex.Pattern
 
 class FileSearchEngine(
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    context: Context? = null
 ) {
+    private val appContext: Context? = context?.applicationContext
+        ?: runCatching { ArcaApplication.instance?.applicationContext }.getOrNull()
 
     private val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "heic", "heif", "ico")
     private val videoExtensions = setOf("mp4", "mkv", "mov", "avi", "webm", "3gp", "flv", "wmv", "m4v")
@@ -49,6 +55,33 @@ class FileSearchEngine(
         val now = System.currentTimeMillis()
         val dateThreshold = calculateDateThreshold(criteria.dateFilter, now)
 
+        val canUseMediaStore = criteria.searchEverywhere &&
+                !criteria.includeHidden &&
+                criteria.fileTypeScope != FileTypeScope.FOLDERS_ONLY &&
+                appContext != null
+
+        if (canUseMediaStore) {
+            val mediaStoreResults = mutableListOf<StorageNode>()
+            val mediaStoreSuccess = runCatching {
+                searchViaMediaStore(
+                    context = appContext!!,
+                    criteria = criteria,
+                    rawQuery = rawQuery,
+                    dateThreshold = dateThreshold
+                ) { batch ->
+                    mediaStoreResults.clear()
+                    mediaStoreResults.addAll(batch)
+                    emit(batch)
+                }
+            }.getOrDefault(false)
+
+            if (mediaStoreSuccess && mediaStoreResults.isNotEmpty()) {
+                // Successfully served fast indexed search results
+                return@flow
+            }
+        }
+
+        // Targeted filesystem traversal fallback (for subdirectories, folders, hidden files, or unindexed items)
         val batch = mutableListOf<StorageNode>()
         var lastEmitTime = System.currentTimeMillis()
 
@@ -78,6 +111,90 @@ class FileSearchEngine(
         // Final emit of all collected items sorted
         emit(sortNodes(batch, criteria.sortBy, rawQuery))
     }.flowOn(ioDispatcher)
+
+    private suspend fun searchViaMediaStore(
+        context: Context,
+        criteria: SearchCriteria,
+        rawQuery: String,
+        dateThreshold: Long,
+        onBatch: suspend (List<StorageNode>) -> Unit
+    ): Boolean {
+        val uri = MediaStore.Files.getContentUri("external")
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.DATA,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.SIZE,
+            MediaStore.Files.FileColumns.DATE_MODIFIED
+        )
+
+        val (selection, selectionArgs) = if (rawQuery.isNotEmpty() && criteria.matchType != MatchType.WILDCARD) {
+            Pair(
+                "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?",
+                arrayOf("%$rawQuery%")
+            )
+        } else {
+            Pair(null, null)
+        }
+
+        val batch = mutableListOf<StorageNode>()
+        var lastEmitTime = System.currentTimeMillis()
+        var foundCount = 0
+
+        val cursor = runCatching {
+            context.contentResolver.query(
+                uri,
+                projection,
+                selection,
+                selectionArgs,
+                "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
+            )
+        }.getOrNull() ?: return false
+
+        cursor.use { c ->
+            val dataCol = c.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+            val nameCol = c.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+            val sizeCol = c.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
+            val dateCol = c.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED)
+
+            while (c.moveToNext()) {
+                currentCoroutineContext().ensureActive()
+                val path = if (dataCol >= 0) c.getString(dataCol) else null
+                if (path.isNullOrEmpty()) continue
+
+                val file = File(path)
+                if (file.exists() && matchesCriteria(file, rawQuery, criteria, dateThreshold)) {
+                    val name = if (nameCol >= 0) c.getString(nameCol) ?: file.name else file.name
+                    val size = if (sizeCol >= 0) c.getLong(sizeCol) else file.length()
+                    val lastMod = if (dateCol >= 0) c.getLong(dateCol) * 1000L else file.lastModified()
+
+                    val node = StorageNode(
+                        id = path,
+                        name = name,
+                        path = path,
+                        size = size,
+                        lastModified = lastMod,
+                        isDirectory = false,
+                        mimeType = MimeTypeResolver.getMimeType(file.extension)
+                    )
+                    batch.add(node)
+                    foundCount++
+
+                    val currentTime = System.currentTimeMillis()
+                    if (batch.size >= 25 || (currentTime - lastEmitTime >= 100 && batch.isNotEmpty())) {
+                        onBatch(sortNodes(batch, criteria.sortBy, rawQuery))
+                        lastEmitTime = currentTime
+                    }
+                }
+            }
+        }
+
+        if (batch.isNotEmpty()) {
+            onBatch(sortNodes(batch, criteria.sortBy, rawQuery))
+        }
+
+        return foundCount > 0
+    }
 
     private fun sortNodes(items: List<StorageNode>, sortBy: SearchSortBy, query: String): List<StorageNode> {
         return when (sortBy) {

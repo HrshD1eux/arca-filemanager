@@ -45,3 +45,17 @@
     public static int v(...);
     public static int d(...);
 }
+
+# 7. Zip4j & ISO Archive Engines
+-keep class net.lingala.zip4j.** { *; }
+-dontwarn net.lingala.zip4j.**
+-keep class com.palantir.isofilereader.** { *; }
+-dontwarn com.palantir.isofilereader.**
+
+# 8. Android WorkManager Workers
+-keep class * extends androidx.work.Worker {
+    <init>(...);
+}
+-keep class * extends androidx.work.ListenableWorker {
+    <init>(...);
+}
