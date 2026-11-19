@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
@@ -75,6 +76,7 @@ import com.Hrshd1eux.filemanager.feature.home.components.HomeStorageCard
 import com.Hrshd1eux.filemanager.feature.home.components.HomeStorageFoldersList
 import com.Hrshd1eux.filemanager.feature.home.components.NetworkStatusDialog
 import com.Hrshd1eux.filemanager.feature.home.components.RecentsSheet
+import com.Hrshd1eux.filemanager.feature.home.components.SecondaryVolumeCard
 import com.Hrshd1eux.filemanager.feature.network.components.NetworkConnectionsSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,6 +114,7 @@ fun HomeScreen(
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val storageBreakdown by viewModel.storageBreakdown.collectAsStateWithLifecycle()
+    val physicalVolumes by viewModel.physicalVolumes.collectAsStateWithLifecycle()
     val lockSettings by viewModel.lockSettings.collectAsStateWithLifecycle()
     val firstRunExplanationCompleted by viewModel.firstRunExplanationCompleted.collectAsStateWithLifecycle()
     val storageShortcuts by viewModel.storageShortcuts.collectAsStateWithLifecycle()
@@ -273,6 +276,19 @@ fun HomeScreen(
                     },
                     onStorageAnalyzerClick = onNavigateToStorageAnalyzer
                 )
+            }
+
+            // Removable Secondary Storage Volumes (MicroSD Cards, USB OTG drives)
+            val secondaryVolumes = physicalVolumes.filter { !it.isPrimary }
+            if (secondaryVolumes.isNotEmpty()) {
+                items(secondaryVolumes, key = { it.id }) { volume ->
+                    SecondaryVolumeCard(
+                        volume = volume,
+                        onCardClick = {
+                            onNavigateToBrowser(volume.path, volume.name)
+                        }
+                    )
+                }
             }
 
             // 2. Compact Quick Access Row: Recent, Favorites, Private Vault, Network (Saves ~200dp)

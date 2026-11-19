@@ -9,6 +9,8 @@ import com.Hrshd1eux.filemanager.core.recents.model.RecentItem
 import com.Hrshd1eux.filemanager.core.recents.repository.RecentsRepository
 import com.Hrshd1eux.filemanager.core.storage.analyzer.LocalStorageAnalyzer
 import com.Hrshd1eux.filemanager.core.storage.model.StorageBreakdown
+import com.Hrshd1eux.filemanager.core.storage.volume.PhysicalVolume
+import com.Hrshd1eux.filemanager.core.storage.volume.StorageVolumeResolver
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockManager
 import com.Hrshd1eux.filemanager.core.vault.lock.VaultLockSettings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +39,9 @@ class HomeViewModel @JvmOverloads constructor(
     private val _storageBreakdown = MutableStateFlow(StorageBreakdown(isCalculating = true))
     val storageBreakdown: StateFlow<StorageBreakdown> = _storageBreakdown.asStateFlow()
 
+    private val _physicalVolumes = MutableStateFlow<List<PhysicalVolume>>(emptyList())
+    val physicalVolumes: StateFlow<List<PhysicalVolume>> = _physicalVolumes.asStateFlow()
+
     init {
         refreshStorageBreakdown()
     }
@@ -44,6 +49,8 @@ class HomeViewModel @JvmOverloads constructor(
     fun refreshStorageBreakdown() {
         viewModelScope.launch {
             _storageBreakdown.value = _storageBreakdown.value.copy(isCalculating = true)
+            val volumes = StorageVolumeResolver.resolveVolumes(getApplication())
+            _physicalVolumes.value = volumes
             val result = storageAnalyzer.analyzeStorage()
             _storageBreakdown.value = result
         }

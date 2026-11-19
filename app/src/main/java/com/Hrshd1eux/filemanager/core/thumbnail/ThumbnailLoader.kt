@@ -9,6 +9,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.pdf.PdfRenderer
 import android.media.MediaMetadataRetriever
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.LruCache
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
@@ -16,9 +17,11 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
 
 /**
- * High-performance, memory-bounded asynchronous thumbnail generator.
+ * High-performance, dual-layer (RAM + 100MB Disk) asynchronous thumbnail generator.
  *
  * Supported formats:
  * - Images (JPG, PNG, WebP, BMP, HEIC, etc.) via downsampled BitmapFactory
@@ -27,9 +30,13 @@ import java.io.File
  * - Audio with embedded album art via MediaMetadataRetriever
  * - PDF documents via Android's built-in PdfRenderer
  *
- * Employs a strict LRU Memory Cache to guarantee low RAM overhead and avoid OOM.
+ * Employs a strict LRU Memory Cache to guarantee low RAM overhead and a persistent
+ * 100 MB WebP disk cache to eliminate frame drops and CPU spikes on repeated scrolls.
  */
 object ThumbnailLoader {
+
+    private const val MAX_DISK_CACHE_BYTES = 100L * 1024L * 1024L // 100 MB disk cache limit
+    private val diskCacheLock = Any()
 
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
     // Allocate up to 1/8th of heap memory, capped between 8MB and 32MB
@@ -47,8 +54,14 @@ object ThumbnailLoader {
         targetSize: Int = 160,
         dispatcher: CoroutineDispatcher = Dispatchers.IO
     ): Bitmap? = withContext(dispatcher) {
+        val file = File(filePath)
+        if (!file.exists() || !file.canRead() || file.length() == 0L) {
+            return@withContext null
+        }
+
         val cacheKey = "$filePath@$targetSize"
 
+        // 1. Layer 1: In-Memory LRU Cache lookup (fastest, zero I/O)
         synchronized(memoryCache) {
             val cached = memoryCache.get(cacheKey)
             if (cached != null && !cached.isRecycled) {
@@ -56,11 +69,28 @@ object ThumbnailLoader {
             }
         }
 
-        val file = File(filePath)
-        if (!file.exists() || !file.canRead() || file.length() == 0L) {
-            return@withContext null
+        // 2. Layer 2: Persistent Disk Cache lookup (avoids slow video decoding / re-read from flash)
+        val diskCacheKey = hashKey("$filePath@$targetSize@${file.lastModified()}@${file.length()}")
+        val diskCacheDir = File(context.cacheDir, "thumbnails").apply { if (!exists()) mkdirs() }
+        val diskCacheFile = File(diskCacheDir, "$diskCacheKey.webp")
+
+        if (diskCacheFile.exists()) {
+            val diskBitmap = runCatching {
+                val opts = BitmapFactory.Options().apply {
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                }
+                BitmapFactory.decodeFile(diskCacheFile.absolutePath, opts)
+            }.getOrNull()
+
+            if (diskBitmap != null) {
+                synchronized(memoryCache) {
+                    memoryCache.put(cacheKey, diskBitmap)
+                }
+                return@withContext diskBitmap
+            }
         }
 
+        // 3. Fallback to format-specific decoder
         val bitmap = runCatching {
             when {
                 FileTypeResolver.isImage(file.name) -> {
@@ -86,9 +116,51 @@ object ThumbnailLoader {
             synchronized(memoryCache) {
                 memoryCache.put(cacheKey, bitmap)
             }
+            saveToDiskCache(diskCacheFile, bitmap, diskCacheDir)
         }
 
         bitmap
+    }
+
+    private fun hashKey(input: String): String {
+        return runCatching {
+            val md = MessageDigest.getInstance("SHA-256")
+            val bytes = md.digest(input.toByteArray(Charsets.UTF_8))
+            bytes.joinToString("") { "%02x".format(it) }
+        }.getOrDefault(input.hashCode().toString())
+    }
+
+    private fun saveToDiskCache(cacheFile: File, bitmap: Bitmap, cacheDir: File) {
+        synchronized(diskCacheLock) {
+            runCatching {
+                FileOutputStream(cacheFile).use { out ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 80, out)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        bitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+                    }
+                }
+                pruneDiskCacheIfNeeded(cacheDir)
+            }
+        }
+    }
+
+    private fun pruneDiskCacheIfNeeded(cacheDir: File) {
+        runCatching {
+            val files = cacheDir.listFiles() ?: return
+            var totalSize = files.sumOf { it.length() }
+            if (totalSize > MAX_DISK_CACHE_BYTES) {
+                val sorted = files.sortedBy { it.lastModified() }
+                for (oldFile in sorted) {
+                    val len = oldFile.length()
+                    if (oldFile.delete()) {
+                        totalSize -= len
+                        if (totalSize <= (MAX_DISK_CACHE_BYTES * 0.8).toLong()) break
+                    }
+                }
+            }
+        }
     }
 
     private fun decodeImageThumbnail(file: File, targetSize: Int): Bitmap? {
@@ -103,7 +175,7 @@ object ThumbnailLoader {
 
         options.inSampleSize = calculateInSampleSize(options.outWidth, options.outHeight, targetSize, targetSize)
         options.inJustDecodeBounds = false
-        options.inPreferredConfig = Bitmap.Config.RGB_565 // Half memory footprint compared to ARGB_8888
+        options.inPreferredConfig = Bitmap.Config.RGB_565
 
         return BitmapFactory.decodeFile(file.absolutePath, options)
     }
@@ -150,11 +222,11 @@ object ThumbnailLoader {
     private fun decodeApkIcon(context: Context, file: File, targetSize: Int): Bitmap? {
         return try {
             val pm = context.packageManager
-            val packageInfo = pm.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_ACTIVITIES)
-            val appInfo = packageInfo?.applicationInfo ?: return null
+            val info = pm.getPackageArchiveInfo(file.absolutePath, PackageManager.GET_ACTIVITIES) ?: return null
+            val appInfo = info.applicationInfo ?: return null
             appInfo.sourceDir = file.absolutePath
             appInfo.publicSourceDir = file.absolutePath
-            val iconDrawable: Drawable = appInfo.loadIcon(pm) ?: return null
+            val iconDrawable = appInfo.loadIcon(pm)
             drawableToBitmap(iconDrawable, targetSize)
         } catch (_: Exception) {
             null
@@ -162,22 +234,26 @@ object ThumbnailLoader {
     }
 
     private fun decodePdfThumbnail(file: File, targetSize: Int): Bitmap? {
+        var pfd: ParcelFileDescriptor? = null
+        var renderer: PdfRenderer? = null
+        var page: PdfRenderer.Page? = null
         return try {
-            val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY) ?: return null
-            pfd.use { descriptor ->
-                PdfRenderer(descriptor).use { renderer ->
-                    if (renderer.pageCount == 0) return null
-                    renderer.openPage(0).use { page ->
-                        val width = targetSize
-                        val height = (targetSize * (page.height.toFloat() / page.width.toFloat())).toInt().coerceAtLeast(1)
-                        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                        bitmap
-                    }
-                }
-            }
+            pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            renderer = PdfRenderer(pfd)
+            if (renderer.pageCount > 0) {
+                page = renderer.openPage(0)
+                val width = targetSize
+                val height = (targetSize * (page.height.toFloat() / page.width.toFloat())).toInt().coerceAtLeast(1)
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                bitmap
+            } else null
         } catch (_: Exception) {
             null
+        } finally {
+            runCatching { page?.close() }
+            runCatching { renderer?.close() }
+            runCatching { pfd?.close() }
         }
     }
 
