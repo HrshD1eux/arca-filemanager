@@ -233,28 +233,80 @@
           </div>
         </div>
 
-        <!-- 8. Media & Package Dispatchers -->
+        <!-- 8. Multi-Volume Storage & OTG -->
         <div class="card feature-card">
-          <div class="feature-icon-badge icon-rose">🎬</div>
-          <h3>Integrated Media & APK Tools</h3>
-          <p>Direct "Play", "Open With", and viewer actions for audio, video, and documents. Inspect APK metadata, permissions, package version, and target SDK directly before installing with security warning disclosures.</p>
+          <div class="feature-icon-badge icon-sky">💾</div>
+          <h3>Multi-Volume Storage &amp; USB OTG</h3>
+          <p>Instant detection and capacity telemetry for Internal Storage, Removable SD Cards, and USB OTG Flash Drives. Inspect available space in real time, browse external drives with 1-tap shortcuts, and enjoy partitioned trash protection per volume.</p>
           <div class="feature-tag-list">
-            <span class="feature-tag">Media Dispatcher</span>
-            <span class="feature-tag">APK Package Inspector</span>
-            <span class="feature-tag">Image Preview</span>
-            <span class="feature-tag">Checksum Verifier</span>
+            <span class="feature-tag">SD Card Support</span>
+            <span class="feature-tag">USB OTG Drives</span>
+            <span class="feature-tag">Real-Time Telemetry</span>
+            <span class="feature-tag">Partitioned Trash</span>
           </div>
         </div>
 
-        <!-- 9. GitHub-Direct Updater -->
+        <!-- 9. Atomic Transfers & Conflict Resolution -->
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-emerald">🔒</div>
+          <h3>Atomic File Engine &amp; Conflict Dialog</h3>
+          <p>Transactional file operations with atomic write staging (.arca_tmp) guarantee zero data loss during power cuts or cancellations. Interactive conflict dialog provides Replace, Skip, or Auto-rename choices with batch "Apply to all" support.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">Atomic Staging</span>
+            <span class="feature-tag">Zero Data Loss</span>
+            <span class="feature-tag">Conflict Resolution</span>
+            <span class="feature-tag">Batch Transfers</span>
+          </div>
+        </div>
+
+        <!-- 10. Foreground Background Audio Player -->
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-indigo">🎵</div>
+          <h3>Background Audio Player &amp; MediaSession</h3>
+          <p>Dedicated foreground audio service with Android MediaSession integration. Keeps playback alive when switching apps or locking your device, complete with notification actions, album art rendering, and lockscreen controls.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">Foreground Service</span>
+            <span class="feature-tag">MediaSession</span>
+            <span class="feature-tag">Lockscreen Controls</span>
+            <span class="feature-tag">Album Artwork</span>
+          </div>
+        </div>
+
+        <!-- 11. Instant Search & Thumbnail Cache -->
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-amber">⚡</div>
+          <h3>Instant SQLite Search &amp; 100MB Disk Cache</h3>
+          <p>Sub-50ms search query response times across 100,000+ files via Android's indexed MediaStore SQLite database, with targeted filesystem traversal fallback. Stutter-free gallery scrolling powered by a persistent 100 MB WebP thumbnail disk cache.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">&lt;50ms MediaStore Search</span>
+            <span class="feature-tag">100 MB WebP Cache</span>
+            <span class="feature-tag">LRU Disk Management</span>
+            <span class="feature-tag">Zero Frame Stutter</span>
+          </div>
+        </div>
+
+        <!-- 12. Media & Package Dispatchers -->
+        <div class="card feature-card">
+          <div class="feature-icon-badge icon-rose">🎬</div>
+          <h3>Built-in Viewers &amp; APK Inspector</h3>
+          <p>Dedicated in-app viewers for photos (touch-isolated pinch-to-zoom), video player with seek scrubber, PDF renderer, and syntax-highlighted text reader. Inspect APK metadata, permissions, and target SDK directly before installation.</p>
+          <div class="feature-tag-list">
+            <span class="feature-tag">Zoomable Photo Viewer</span>
+            <span class="feature-tag">Video Player</span>
+            <span class="feature-tag">PDF &amp; Text Viewer</span>
+            <span class="feature-tag">APK Package Inspector</span>
+          </div>
+        </div>
+
+        <!-- 13. GitHub-Direct Updater & Lean R8 Build -->
         <div class="card feature-card">
           <div class="feature-icon-badge icon-teal">🔄</div>
-          <h3>Direct GitHub Release Updater</h3>
-          <p>Check for app updates directly against GitHub Releases without Google Play Services. Resumable background downloads via Android DownloadManager with SHA-256 verification and seamless PackageInstaller prompts.</p>
+          <h3>Direct Updater &amp; 4.4MB R8 Build</h3>
+          <p>Check for app updates directly against GitHub Releases without Google Play Services. Resumable background downloads via Android DownloadManager with SHA-256 verification. Ultra-lean 4.4 MB release footprint through aggressive R8 minification.</p>
           <div class="feature-tag-list">
+            <span class="feature-tag">4.4 MB Minified APK</span>
             <span class="feature-tag">GitHub Releases</span>
             <span class="feature-tag">Resumable Downloads</span>
-            <span class="feature-tag">SHA-256 Verified</span>
             <span class="feature-tag">Google-Free</span>
           </div>
         </div>
@@ -305,13 +357,13 @@
             <span class="arch-layer-badge badge-sky">Layer 03 • Storage</span>
             <span class="arch-icon">⚙️</span>
           </div>
-          <h3>Unified Filesystem & Protocols</h3>
+          <h3>Unified Filesystem &amp; Protocols</h3>
           <p class="arch-desc">Polymorphic storage abstraction across local, OTG, and remote paths.</p>
           <ul class="arch-specs">
-            <li><strong>Unified StorageNode:</strong> Seamless abstraction across local and network</li>
-            <li><strong>Embedded FTP (RFC 959):</strong> Low-overhead local socket server with write access</li>
-            <li><strong>Multi-Archive Hub:</strong> Native Apache Commons Compress & UnRAR</li>
-            <li><strong>Enterprise Protocols:</strong> Hardened SFTP (JSch), SMB 2/3, and WebDAV</li>
+            <li><strong>Multi-Volume Resolver:</strong> Physical storage discovery for Internal, SD Card, and USB OTG</li>
+            <li><strong>Atomic Staging Engine:</strong> Transactional copy/move staging with zero-data-loss protection</li>
+            <li><strong>MediaStore &amp; WebP Cache:</strong> Sub-50ms indexed search and 100 MB persistent thumbnail cache</li>
+            <li><strong>Canonical StorageNode:</strong> Unified domain abstraction across local, SAF, FTP, SMB, and SFTP</li>
           </ul>
         </div>
 

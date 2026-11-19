@@ -29,21 +29,40 @@
 ## ✨ Features
 
 - **🛡️ Fully Offline-First & Private:** No telemetry, no analytics SDKs, no cloud account requirements.
-- **🎨 Modern Design System:**
+- **🎨 Obsidian Design & Fluid Physics:**
   - True Obsidian OLED dark base (`#0B0E14`) and Deep Slate elevated containers.
   - Zero-overhead GPU RenderNode spring micro-interactions (`bounceClick`).
   - Two-tone semantic iconography badges.
+- **💾 Multi-Volume Storage Architecture:**
+  - Automatic detection and mounted capacity telemetry for **Internal Storage**, **Removable SD Cards**, and **USB OTG Flash Drives**.
+  - One-tap navigation across physical volumes with partitioned trash managers.
+- **🔒 Atomic File Operations & Conflict Resolution:**
+  - Transactional file transfers via atomic staging (`.arca_tmp_<UUID>`), completely preventing data loss during interrupted copies.
+  - Interactive conflict resolution dialog: **Replace / Overwrite**, **Skip**, or **Keep Both (Auto-rename)** with batch "Apply to all" support.
+- **⚡ High-Speed Search & Thumbnail Caching:**
+  - **Instant Search:** Leverages Android's indexed `MediaStore.Files` SQLite engine for sub-50ms query responses across 100k+ files, with targeted filesystem traversal fallback for hidden dot-files and subfolders.
+  - **100 MB Persistent Thumbnail Cache:** 2-tier caching (RAM LRU + WebP disk cache) for stutter-free scrolling through dense image and video directories.
+- **🎵 Foreground Background Audio Player:**
+  - Dedicated foreground service with `MediaSession` integration.
+  - Uninterrupted audio playback with screen turned off or app backgrounded.
+  - Full lockscreen and notification media controls (Play, Pause, Skip, Seek, Album Art).
+- **🖼️ Built-in Media Viewers:**
+  - **Photo Viewer:** Touch-isolated pinch-to-zoom and pan navigation without pager gesture conflicts.
+  - **Video Player:** Full-screen playback with scrubbing timeline, orientation handling, and metadata inspection.
+  - **Document & Code:** Integrated PDF page renderer and syntax-highlighted text reader.
 - **📦 Multi-Archive Compression & Extraction:**
   - Full archive support: **7z**, **ZIP**, **TAR**, **GZ**, **BZ2**, **XZ**, and password-protected **RAR** extraction.
   - Resumable background extraction and integrity testing.
-- **🔐 Encrypted Vault:**
-  - Hardware-backed AES-GCM encryption with biometric authentication or custom secure PIN.
+- **🔐 Hardware-Backed Encrypted Vault:**
+  - AES-256-GCM encryption with Android KeyStore HSM backing. Unlocks via Biometrics or master PIN.
 - **🌐 Network Storage & Zero-Cloud Wi-Fi Transfer:**
-  - Seamless SFTP, FTP, SMB, and WebDAV client integration.
+  - Seamless SFTP, FTP, SMB 2/3, and WebDAV client integration.
   - **ARCA Drop:** Two-way local Wi-Fi browser portal with pure-Kotlin QR code, 6-digit session PIN (`HttpOnly; SameSite=Strict` cookie + Host-header DNS-rebinding guard), streaming ZIP folder downloads, drag-and-drop uploads, shared text snippets, and Android Share Sheet target (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`).
   - Built-in local FTP server for high-speed Wi-Fi PC file transfers.
 - **📊 Storage Analyzer:**
-  - Interactive storage breakdown, largest files detection, duplicate scanner, and visual image/media previews.
+  - Interactive storage breakdown, largest files detection, duplicate scanner (SHA-256), and empty folder cleanup.
+- **⚡ Lean & Minified:**
+  - Release APK size of only **4.4 MB** via optimized R8 rule shrinking and resource optimization.
 - **🔄 In-App Updater:**
   - Resumable background release updates directly from GitHub Releases.
 
