@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.browser.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -154,6 +155,9 @@ fun DestinationPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(14.dp),
+        tonalElevation = 6.dp,
         title = {
             Column {
                 Text(
@@ -183,7 +187,7 @@ fun DestinationPickerDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
                 ) {
                     Row(
                         modifier = Modifier
@@ -660,9 +664,10 @@ private fun SmartDestinationCard(
             .clickable(enabled = item.isAvailable, onClick = onNavigateInto),
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (item.isAvailable) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
-        )
+            containerColor = if (item.isAvailable) MaterialTheme.colorScheme.surfaceContainer
+            else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.5f)
+        ),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Row(
             modifier = Modifier

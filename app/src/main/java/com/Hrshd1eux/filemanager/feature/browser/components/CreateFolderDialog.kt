@@ -56,6 +56,9 @@ fun CreateFolderDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(14.dp),
+        tonalElevation = 6.dp,
         title = {
             Text(
                 text = stringResource(R.string.create_folder_dialog_title),
@@ -84,7 +87,7 @@ fun CreateFolderDialog(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp)
                 )
             }
         },
@@ -92,7 +95,7 @@ fun CreateFolderDialog(
             Button(
                 onClick = { onConfirmCreate(trimmed) },
                 enabled = isValid,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text(stringResource(R.string.compress_button_create))
             }
@@ -100,7 +103,7 @@ fun CreateFolderDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text(stringResource(R.string.action_cancel))
             }

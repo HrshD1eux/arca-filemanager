@@ -60,6 +60,9 @@ fun RenameDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(14.dp),
+        tonalElevation = 6.dp,
         title = {
             Text(
                 text = if (node.isDirectory) stringResource(R.string.rename_dialog_title_folder) else stringResource(R.string.rename_dialog_title_file),
@@ -88,7 +91,7 @@ fun RenameDialog(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp)
                 )
             }
         },
@@ -96,7 +99,7 @@ fun RenameDialog(
             Button(
                 onClick = { onConfirmRename(trimmed) },
                 enabled = isValid,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text(stringResource(R.string.action_rename))
             }
@@ -104,7 +107,7 @@ fun RenameDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text(stringResource(R.string.action_cancel))
             }

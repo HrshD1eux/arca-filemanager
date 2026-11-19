@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.home.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,11 +70,13 @@ fun FirstRunStorageExplanationDialog(
 
     AlertDialog(
         onDismissRequest = onContinueWithLimitedAccess,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 6.dp,
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp),
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -146,10 +149,11 @@ fun FirstRunStorageExplanationDialog(
                 // Section 2: Important Android Limitation Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                    )
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    ),
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -179,10 +183,11 @@ fun FirstRunStorageExplanationDialog(
                 // Section 3: Privacy & Limited Access Guarantee
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = VaultEmerald.copy(alpha = 0.1f)
-                    )
+                    ),
+                    border = BorderStroke(0.5.dp, VaultEmerald.copy(alpha = 0.35f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
