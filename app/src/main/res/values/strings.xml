@@ -530,6 +530,7 @@
     <string name="theme_mode_system">System default</string>
     <string name="theme_mode_light">Light</string>
     <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_dynamic">Dynamic</string>
     <string name="settings_show_hidden_desc">Display files starting with a dot (.)</string>
     <string name="settings_confirm_delete_desc">Ask for confirmation before deleting items</string>
     <string name="settings_haptic_feedback_desc">Vibrate when selecting files and items</string>

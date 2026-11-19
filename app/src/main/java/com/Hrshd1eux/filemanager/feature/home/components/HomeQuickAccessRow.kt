@@ -103,19 +103,19 @@ private fun RowScope.QuickAccessTile(
     Card(
         modifier = modifier
             .weight(1f)
-            .heightIn(min = 84.dp)
+            .heightIn(min = 88.dp)
             .bounceClick(scaleDown = 0.985f, onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 8.dp),
+                .padding(horizontal = 6.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

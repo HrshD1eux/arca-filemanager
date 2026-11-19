@@ -1632,7 +1632,7 @@ private fun BreadcrumbBar(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Row(
             modifier = Modifier
@@ -1651,20 +1651,25 @@ private fun BreadcrumbBar(
                     )
                 }
 
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (item.isCurrent) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    fontWeight = if (item.isCurrent) FontWeight.Bold else FontWeight.Normal,
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (item.isCurrent) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .clickable(enabled = !item.isCurrent) { onBreadcrumbClick(item) }
-                        .padding(horizontal = 6.dp, vertical = 4.dp)
-                )
+                ) {
+                    Text(
+                        text = item.name,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (item.isCurrent) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        fontWeight = if (item.isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                    )
+                }
             }
         }
     }

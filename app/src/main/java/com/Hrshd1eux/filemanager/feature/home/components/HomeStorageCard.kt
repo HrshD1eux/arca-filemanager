@@ -58,9 +58,9 @@ fun HomeStorageCard(
                     onCardClick()
                 }
             }),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -68,7 +68,7 @@ fun HomeStorageCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(18.dp)
         ) {
             // Header Row: "Storage" title & percentage
             Row(
@@ -98,15 +98,15 @@ fun HomeStorageCard(
                     Surface(
                         onClick = onStorageAnalyzerClick ?: onCardClick,
                         shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
                     ) {
                         Text(
                             text = "$percent%",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
@@ -184,15 +184,15 @@ fun HomeStorageCard(
                             Surface(
                                 onClick = onStorageAnalyzerClick,
                                 shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
                             ) {
                                 Text(
                                     text = "Analyzer \u203A",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
                         }

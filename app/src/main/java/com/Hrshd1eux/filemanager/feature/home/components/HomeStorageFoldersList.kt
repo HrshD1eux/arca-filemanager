@@ -127,9 +127,9 @@ fun HomeStorageFoldersList(
         // Folders Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)

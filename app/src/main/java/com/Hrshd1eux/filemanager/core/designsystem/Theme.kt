@@ -13,7 +13,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
+import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLight,
@@ -26,11 +28,12 @@ private val LightColorScheme = lightColorScheme(
     onSurface = OnSurfaceLight,
     surfaceVariant = SurfaceVariantLight,
     onSurfaceVariant = OnSurfaceVariantLight,
-    surfaceContainer = SurfaceLight,
-    surfaceContainerHigh = SurfaceVariantLight,
-    surfaceContainerLow = BackgroundLight,
-    surfaceContainerLowest = androidx.compose.ui.graphics.Color.White,
-    surfaceContainerHighest = SurfaceVariantLight,
+    // Depth-based surface layering
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFF1F4F9),
+    surfaceContainer = Color(0xFFE8EDF2),
+    surfaceContainerHigh = Color(0xFFDFE4EA),
+    surfaceContainerHighest = Color(0xFFD0D7DE),
     outline = OutlineLight,
     outlineVariant = OutlineVariantLight
 )
@@ -46,23 +49,29 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = OnSurfaceDark,
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = OnSurfaceVariantDark,
-    surfaceContainer = SurfaceDark,
-    surfaceContainerHigh = SurfaceVariantDark,
-    surfaceContainerLow = BackgroundDark,
-    surfaceContainerLowest = androidx.compose.ui.graphics.Color.Black,
-    surfaceContainerHighest = SurfaceVariantDark,
+    // Depth-based surface layering
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF0F1521),
+    surfaceContainer = Color(0xFF182032),
+    surfaceContainerHigh = Color(0xFF222D42),
+    surfaceContainerHighest = Color(0xFF2D3B54),
     outline = OutlineDark,
     outlineVariant = OutlineVariantDark
 )
 
 @Composable
 fun ArcaTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        else -> isSystemInDarkTheme()
+    }
+
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        themeMode == ThemeMode.DYNAMIC && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }

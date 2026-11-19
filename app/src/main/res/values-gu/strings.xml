@@ -690,4 +690,5 @@
     <string name="sort_dialog_title">આના દ્વારા ગોઠવો</string>
     <string name="language_system_default">સિસ્ટમ ડિફૉલ્ટ</string>
     <string name="language_system_default_desc">સિસ્ટમ ભાષા અનુસરો</string>
-</resources>
+    <string name="theme_mode_dynamic">Dynamic</string>`n</resources>
+

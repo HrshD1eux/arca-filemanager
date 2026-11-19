@@ -65,6 +65,7 @@ fun ThemeSelectionDialog(
                         ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
                         ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
                         ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                        ThemeMode.DYNAMIC -> stringResource(R.string.theme_mode_dynamic)
                     }
                     Row(
                         modifier = Modifier

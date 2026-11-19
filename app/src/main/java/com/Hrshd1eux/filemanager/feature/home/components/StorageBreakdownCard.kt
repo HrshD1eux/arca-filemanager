@@ -51,9 +51,9 @@ fun StorageBreakdownCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {

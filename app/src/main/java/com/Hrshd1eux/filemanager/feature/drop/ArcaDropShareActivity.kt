@@ -57,11 +57,11 @@ class ArcaDropShareActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
+                ThemeMode.DYNAMIC -> isSystemInDarkTheme()
             }
 
             ArcaTheme(
-                darkTheme = isDark,
-                dynamicColor = dynamicColor
+                themeMode = themeMode
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ArcaDropScreen(

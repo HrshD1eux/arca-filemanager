@@ -690,4 +690,5 @@
     <string name="sort_dialog_title">இதன்படி வரிசைப்படுத்து</string>
     <string name="language_system_default">கணினி இயல்புநிலை</string>
     <string name="language_system_default_desc">கணினி மொழியைப் பின்தொடரவும்</string>
-</resources>
+    <string name="theme_mode_dynamic">Dynamic</string>`n</resources>
+

@@ -690,4 +690,5 @@
     <string name="sort_dialog_title">Ordenar por</string>
     <string name="language_system_default">Padrão do sistema</string>
     <string name="language_system_default_desc">Seguir o idioma do sistema</string>
-</resources>
+    <string name="theme_mode_dynamic">Dynamic</string>`n</resources>
+

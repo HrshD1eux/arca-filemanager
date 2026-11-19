@@ -191,6 +191,7 @@ fun SettingsScreen(
                         ThemeMode.SYSTEM -> stringResource(R.string.theme_mode_system)
                         ThemeMode.LIGHT -> stringResource(R.string.theme_mode_light)
                         ThemeMode.DARK -> stringResource(R.string.theme_mode_dark)
+                        ThemeMode.DYNAMIC -> stringResource(R.string.theme_mode_dynamic)
                     }
                     val themeDynamicSuffix = stringResource(R.string.settings_theme_dynamic_suffix)
                     val themeSubtitle = buildString {
@@ -431,10 +432,10 @@ private fun SettingsCategoryHeader(
 ) {
     Text(
         text = title,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(start = 4.dp, bottom = 4.dp)
+        modifier = modifier.padding(start = 4.dp, bottom = 6.dp)
     )
 }
 
@@ -445,13 +446,14 @@ private fun SettingsCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
-            modifier = Modifier.padding(14.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
             content()
         }
