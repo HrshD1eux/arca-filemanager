@@ -5,6 +5,7 @@ import android.os.StatFs
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.model.StorageStats
+import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -73,25 +74,5 @@ class LocalFileSystemProvider(
     override fun hasPermission(targetId: String): Boolean {
         val file = File(targetId)
         return file.exists() && file.canRead()
-    }
-
-    private fun File.toStorageNode(): StorageNode {
-        val isDir = isDirectory
-        val ext = if (isDir) "" else extension.lowercase()
-        val mime = if (ext.isNotEmpty()) MimeTypeResolver.getMimeType(ext) else null
-
-        return StorageNode(
-            id = absolutePath,
-            name = name.ifEmpty { absolutePath },
-            path = absolutePath,
-            uriString = null,
-            size = if (isDir) 0L else length(),
-            lastModified = lastModified(),
-            isDirectory = isDir,
-            isHidden = isHidden || name.startsWith("."),
-            mimeType = mime,
-            isReadable = canRead(),
-            isWritable = canWrite()
-        )
     }
 }

@@ -13,6 +13,7 @@ import com.Hrshd1eux.filemanager.core.search.model.SizeFilter
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
+import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -347,17 +348,5 @@ class FileSearchEngine(
                 calendar.timeInMillis
             }
         }
-    }
-
-    private fun File.toStorageNode(): StorageNode {
-        return StorageNode(
-            id = absolutePath,
-            name = name,
-            path = absolutePath,
-            size = if (isDirectory) 0L else length(),
-            lastModified = lastModified(),
-            isDirectory = isDirectory,
-            mimeType = if (isDirectory) null else MimeTypeResolver.getMimeType(extension)
-        )
     }
 }

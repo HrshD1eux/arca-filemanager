@@ -12,6 +12,7 @@ import com.Hrshd1eux.filemanager.core.operations.model.OperationProgress
 import com.Hrshd1eux.filemanager.feature.category.CategoryRepository
 import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
+import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
 import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
@@ -418,17 +419,5 @@ class UnifiedPreviewViewModel @JvmOverloads constructor(
         super.onCleared()
         activePdfRenderer?.close()
         activePdfRenderer = null
-    }
-
-    private fun File.toStorageNode(): StorageNode {
-        return StorageNode(
-            id = absolutePath,
-            name = name,
-            path = absolutePath,
-            size = length(),
-            lastModified = lastModified(),
-            isDirectory = isDirectory,
-            mimeType = FileTypeResolver.resolveMimeType(name)
-        )
     }
 }

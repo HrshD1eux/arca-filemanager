@@ -278,10 +278,11 @@ fun StorageNodeCompactItem(
                         )
                     }
 
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
+                    if (showMenu) {
+                        DropdownMenu(
+                            expanded = true,
+                            onDismissRequest = { showMenu = false }
+                        ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_copy_to)) },
                             leadingIcon = {
@@ -412,6 +413,7 @@ fun StorageNodeCompactItem(
                             }
                         )
                     }
+                }
                 }
             }
         }

@@ -12,6 +12,7 @@ import com.Hrshd1eux.filemanager.core.search.model.CategoryFilter
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
 import com.Hrshd1eux.filemanager.core.trash.manager.TrashManager
 import com.Hrshd1eux.filemanager.feature.category.CategoryRepository
 import com.Hrshd1eux.filemanager.feature.viewer.video.model.VideoMetadata
@@ -369,19 +370,6 @@ class VideoViewerViewModel @JvmOverloads constructor(
                 }
             }
         }
-    }
-
-    private fun File.toStorageNode(): StorageNode {
-        val mime = MimeTypeResolver.getMimeType(extension) ?: FileTypeResolver.resolveMimeType(name)
-        return StorageNode(
-            id = absolutePath,
-            name = name.ifEmpty { absolutePath },
-            path = absolutePath,
-            isDirectory = isDirectory,
-            size = length(),
-            lastModified = lastModified(),
-            mimeType = mime
-        )
     }
 
     override fun onCleared() {

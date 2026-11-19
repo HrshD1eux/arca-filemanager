@@ -282,10 +282,11 @@ fun StorageNodeItem(
                         )
                     }
 
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
+                    if (showMenu) {
+                        DropdownMenu(
+                            expanded = true,
+                            onDismissRequest = { showMenu = false }
+                        ) {
                         if (onDownloadClick != null && !node.isDirectory) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_download_to_device)) },
@@ -428,6 +429,7 @@ fun StorageNodeItem(
                             }
                         )
                     }
+                }
                 }
             }
         }

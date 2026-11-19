@@ -9,6 +9,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
+import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -186,18 +187,5 @@ class CategoryRepository(
             if (!currentFile.renameTo(destFile)) error("Failed to rename file")
             destFile.toStorageNode()
         }
-    }
-
-    private fun File.toStorageNode(): StorageNode {
-        val mime = if (isDirectory) null else (MimeTypeResolver.getMimeType(extension) ?: FileTypeResolver.resolveMimeType(name))
-        return StorageNode(
-            id = absolutePath,
-            name = name.ifEmpty { absolutePath },
-            path = absolutePath,
-            isDirectory = isDirectory,
-            size = length(),
-            lastModified = lastModified(),
-            mimeType = mime
-        )
     }
 }

@@ -14,6 +14,7 @@ import com.Hrshd1eux.filemanager.core.operations.verification.FileVerifier
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
+import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -929,26 +930,6 @@ class FileOperationEngine(
                 totalFiles = totalFiles,
                 currentFileName = currentFileName
             )
-        )
-    }
-
-    private fun File.toStorageNode(): StorageNode {
-        val isDir = isDirectory
-        val ext = if (isDir) "" else extension.lowercase()
-        val mime = if (ext.isNotEmpty()) MimeTypeResolver.getMimeType(ext) else null
-
-        return StorageNode(
-            id = absolutePath,
-            name = name.ifEmpty { absolutePath },
-            path = absolutePath,
-            uriString = null,
-            size = if (isDir) 0L else length(),
-            lastModified = lastModified(),
-            isDirectory = isDir,
-            isHidden = isHidden || name.startsWith("."),
-            mimeType = mime,
-            isReadable = canRead(),
-            isWritable = canWrite()
         )
     }
 }

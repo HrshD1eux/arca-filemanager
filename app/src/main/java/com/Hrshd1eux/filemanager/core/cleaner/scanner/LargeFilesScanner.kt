@@ -5,6 +5,7 @@ import com.Hrshd1eux.filemanager.core.cleaner.model.LargeFileThreshold
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
+import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -41,18 +42,5 @@ class LargeFilesScanner(
         }
 
         largeFiles.sortedByDescending { it.size }
-    }
-
-    private fun File.toStorageNode(): StorageNode {
-        val mime = if (isDirectory) null else MimeTypeResolver.getMimeType(extension)
-        return StorageNode(
-            id = absolutePath,
-            name = name.ifEmpty { absolutePath },
-            path = absolutePath,
-            isDirectory = isDirectory,
-            size = length(),
-            lastModified = lastModified(),
-            mimeType = mime
-        )
     }
 }

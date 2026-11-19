@@ -16,6 +16,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.StorageBreakdown
 import com.Hrshd1eux.filemanager.core.storage.model.StorageCategory
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
+import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -542,18 +543,5 @@ class StorageAnalyzer2Engine(
         } catch (_: Exception) {
             null
         }
-    }
-
-    private fun File.toStorageNode(): StorageNode {
-        val mime = if (isDirectory) null else MimeTypeResolver.getMimeType(extension)
-        return StorageNode(
-            id = absolutePath,
-            name = name.ifEmpty { absolutePath },
-            path = absolutePath,
-            isDirectory = isDirectory,
-            size = length(),
-            lastModified = lastModified(),
-            mimeType = mime
-        )
     }
 }
