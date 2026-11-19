@@ -171,8 +171,11 @@ fun ImageViewerScreen(
                     pageCount = { images.size }
                 )
 
+                var isCurrentPageZoomed by remember { mutableStateOf(false) }
+
                 // Sync pager swipes with ViewModel selection
                 LaunchedEffect(pagerState.currentPage) {
+                    isCurrentPageZoomed = false
                     if (pagerState.currentPage != currentIndex) {
                         viewModel.selectIndex(pagerState.currentPage)
                     }
@@ -188,7 +191,7 @@ fun ImageViewerScreen(
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
-                    userScrollEnabled = true, // individual page handles disabling user scroll when zoomed in
+                    userScrollEnabled = !isCurrentPageZoomed,
                     key = { page -> images.getOrNull(page)?.path ?: page.toString() }
                 ) { page ->
                     val pageNode = images.getOrNull(page)
@@ -200,7 +203,12 @@ fun ImageViewerScreen(
                             bitmapState = if (isCurrentPage) bitmapState else ImageBitmapState.Loading,
                             onToggleControls = { showControls = !showControls },
                             onRetry = { viewModel.retryCurrent() },
-                            onOpenWith = { FileIntentDispatcher.openWith(context, pageNode) }
+                            onOpenWith = { FileIntentDispatcher.openWith(context, pageNode) },
+                            onZoomChanged = { isZoomed ->
+                                if (isCurrentPage) {
+                                    isCurrentPageZoomed = isZoomed
+                                }
+                            }
                         )
                     }
                 }
@@ -312,6 +320,7 @@ private fun ZoomableImagePage(
     onToggleControls: () -> Unit,
     onRetry: () -> Unit,
     onOpenWith: () -> Unit,
+    onZoomChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
@@ -322,6 +331,7 @@ private fun ZoomableImagePage(
         if (!isCurrentPage) {
             scale = 1f
             offset = Offset.Zero
+            onZoomChanged(false)
         }
     }
 
@@ -335,8 +345,10 @@ private fun ZoomableImagePage(
                         if (scale > 1.2f) {
                             scale = 1f
                             offset = Offset.Zero
+                            onZoomChanged(false)
                         } else {
                             scale = 2.5f
+                            onZoomChanged(true)
                         }
                     }
                 )
@@ -345,6 +357,7 @@ private fun ZoomableImagePage(
                 detectTransformGestures { _, pan, zoom, _ ->
                     val newScale = (scale * zoom).coerceIn(1f, 5f)
                     scale = newScale
+                    onZoomChanged(newScale > 1.05f)
                     if (newScale > 1f) {
                         val maxOffsetX = (size.width * (newScale - 1f)) / 2f
                         val maxOffsetY = (size.height * (newScale - 1f)) / 2f

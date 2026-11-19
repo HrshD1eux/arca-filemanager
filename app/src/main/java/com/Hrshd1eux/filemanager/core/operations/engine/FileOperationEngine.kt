@@ -23,6 +23,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.UUID
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -724,13 +725,17 @@ class FileOperationEngine(
         verifyIntegrity: Boolean = false,
         onChunkCopied: (chunk: Int) -> Unit
     ) {
-        if (destination.exists() && conflictResolution == ConflictResolution.OVERWRITE) {
-            destination.delete()
+        val destExists = destination.exists()
+        val targetFile = if (destExists && conflictResolution == ConflictResolution.OVERWRITE) {
+            val parent = destination.parentFile ?: File(".")
+            File(parent, ".${destination.name}.arca_tmp_${UUID.randomUUID()}")
+        } else {
+            destination
         }
 
         try {
             FileInputStream(source).use { inStream ->
-                FileOutputStream(destination).use { outStream ->
+                FileOutputStream(targetFile).use { outStream ->
                     StreamCopier.copyStream(
                         source = inStream,
                         destination = outStream,
@@ -740,10 +745,23 @@ class FileOperationEngine(
             }
 
             if (verifyIntegrity) {
-                FileVerifier.verifyFilePair(source, destination, ioDispatcher)
+                FileVerifier.verifyFilePair(source, targetFile, ioDispatcher)
+            }
+
+            if (targetFile != destination) {
+                // Atomic replace: rename temp to destination
+                if (!targetFile.renameTo(destination)) {
+                    destination.delete()
+                    if (!targetFile.renameTo(destination)) {
+                        throw IOException("Failed to replace destination file: ${destination.absolutePath}")
+                    }
+                }
             }
         } catch (t: Throwable) {
-            if (destination.exists()) {
+            if (targetFile != destination && targetFile.exists()) {
+                targetFile.delete()
+            } else if (targetFile == destination && !destExists && destination.exists()) {
+                // If it was a new file that failed halfway, clean up incomplete stub
                 destination.delete()
             }
             throw t
@@ -782,14 +800,19 @@ class FileOperationEngine(
         destFile: File,
         onChunkCopied: (chunk: Int) -> Unit
     ) {
-        if (destFile.exists()) {
-            destFile.delete()
+        val destExists = destFile.exists()
+        val targetFile = if (destExists) {
+            val parent = destFile.parentFile ?: File(".")
+            File(parent, ".${destFile.name}.arca_tmp_${UUID.randomUUID()}")
+        } else {
+            destFile
         }
+
         try {
             val inStreamResult = srcOperator.openInputStream(srcNode)
             val inStream = inStreamResult.getOrThrow()
             inStream.use { input ->
-                FileOutputStream(destFile).use { output ->
+                FileOutputStream(targetFile).use { output ->
                     StreamCopier.copyStream(
                         source = input,
                         destination = output,
@@ -797,8 +820,19 @@ class FileOperationEngine(
                     )
                 }
             }
+
+            if (targetFile != destFile) {
+                if (!targetFile.renameTo(destFile)) {
+                    destFile.delete()
+                    if (!targetFile.renameTo(destFile)) {
+                        throw IOException("Failed to replace destination file: ${destFile.absolutePath}")
+                    }
+                }
+            }
         } catch (t: Throwable) {
-            if (destFile.exists()) {
+            if (targetFile != destFile && targetFile.exists()) {
+                targetFile.delete()
+            } else if (targetFile == destFile && !destExists && destFile.exists()) {
                 destFile.delete()
             }
             throw t
