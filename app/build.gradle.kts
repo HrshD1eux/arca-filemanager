@@ -9,8 +9,8 @@ android {
     namespace = "com.Hrshd1eux.filemanager"
     compileSdk = 35
 
-    val defaultVersionCode = 10640
-    val defaultVersionName = "1.6.40"
+    val defaultVersionCode = 10641
+    val defaultVersionName = "1.6.41"
 
     val dynamicVersionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull()
         ?: System.getenv("VERSION_CODE")?.toIntOrNull()
