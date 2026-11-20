@@ -59,8 +59,10 @@
   - Seamless SFTP, FTP, SMB 2/3, and WebDAV client integration.
   - **ARCA Drop:** Two-way local Wi-Fi browser portal with pure-Kotlin QR code, 6-digit session PIN (`HttpOnly; SameSite=Strict` cookie + Host-header DNS-rebinding guard), streaming ZIP folder downloads, drag-and-drop uploads, shared text snippets, and Android Share Sheet target (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`).
   - Built-in local FTP server for high-speed Wi-Fi PC file transfers.
-- **📊 Storage Analyzer:**
-  - Interactive storage breakdown, largest files detection, duplicate scanner (SHA-256), and empty folder cleanup.
+- **📊 Storage Analyzer & Categories:**
+  - Honest storage breakdown accounting for Installed Apps, Android OS partitions, media, and loose unclassified storage.
+  - Category views with responsive sort controls (ascending/descending, chronological date grouping), full multi-selection suite, batch ZIP compression, and overflow actions.
+  - Largest files detection, duplicate scanner (SHA-256), old files audit, and empty folder cleanup.
 - **⚡ Lean & Minified:**
   - Release APK size of only **4.4 MB** via optimized R8 rule shrinking and resource optimization.
 - **🔄 In-App Updater:**

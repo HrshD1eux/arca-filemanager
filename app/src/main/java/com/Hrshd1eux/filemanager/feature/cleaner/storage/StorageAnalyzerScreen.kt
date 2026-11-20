@@ -628,7 +628,11 @@ private fun OverviewTabContent(
                                 modifier = Modifier.weight(1f),
                                 categorySize = catSize,
                                 onClick = {
-                                    catSize.category.searchCategory?.let { onNavigateToCategory(it) }
+                                    when (catSize.category) {
+                                        com.Hrshd1eux.filemanager.core.storage.model.StorageCategory.APPS -> onNavigateToInstalledApps()
+                                        com.Hrshd1eux.filemanager.core.storage.model.StorageCategory.SYSTEM -> onOpenSystemStorage()
+                                        else -> catSize.category.searchCategory?.let { onNavigateToCategory(it) }
+                                    }
                                 }
                             )
                         }
@@ -1709,6 +1713,8 @@ private fun resolveCategoryIcon(category: com.Hrshd1eux.filemanager.core.storage
         com.Hrshd1eux.filemanager.core.storage.model.StorageCategory.AUDIO -> Icons.Default.MusicNote
         com.Hrshd1eux.filemanager.core.storage.model.StorageCategory.DOCUMENTS -> Icons.Default.Description
         com.Hrshd1eux.filemanager.core.storage.model.StorageCategory.ARCHIVES -> Icons.Default.Archive
+        com.Hrshd1eux.filemanager.core.storage.model.StorageCategory.APPS -> Icons.Default.Apps
+        com.Hrshd1eux.filemanager.core.storage.model.StorageCategory.SYSTEM -> Icons.Default.Security
         com.Hrshd1eux.filemanager.core.storage.model.StorageCategory.OTHER -> Icons.Default.Folder
     }
 }

@@ -148,4 +148,35 @@ class CategoryDateGrouperTest {
         assertEquals(DateBucketType.TODAY, groups[1].type)
         assertEquals("Today", groups[1].title)
     }
+
+    @Test
+    fun groupItems_sortsItemsInsideBucketByDirection() {
+        val fixedNow = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 13, 14, 0, 0)
+        }.timeInMillis
+
+        // Multiple files in Today bucket
+        val fileOlder = createNode("older_today.jpg", fixedNow - 4 * 3600 * 1000L)
+        val fileNewer = createNode("newer_today.jpg", fixedNow - 1 * 3600 * 1000L)
+
+        // Descending: newer first
+        val descGroups = CategoryDateGrouper.groupItems(
+            items = listOf(fileOlder, fileNewer),
+            sortDirection = SortDirection.DESCENDING,
+            nowProvider = { fixedNow }
+        )
+        assertEquals(1, descGroups.size)
+        assertEquals("newer_today.jpg", descGroups[0].items[0].name)
+        assertEquals("older_today.jpg", descGroups[0].items[1].name)
+
+        // Ascending: older first
+        val ascGroups = CategoryDateGrouper.groupItems(
+            items = listOf(fileNewer, fileOlder),
+            sortDirection = SortDirection.ASCENDING,
+            nowProvider = { fixedNow }
+        )
+        assertEquals(1, ascGroups.size)
+        assertEquals("older_today.jpg", ascGroups[0].items[0].name)
+        assertEquals("newer_today.jpg", ascGroups[0].items[1].name)
+    }
 }

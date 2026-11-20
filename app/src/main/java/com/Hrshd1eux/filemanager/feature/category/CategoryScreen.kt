@@ -12,6 +12,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,11 +26,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,12 +49,15 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Description
@@ -67,6 +76,7 @@ import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -90,6 +100,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -97,12 +108,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import com.Hrshd1eux.filemanager.feature.archive.components.CompressDialog
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -185,6 +199,13 @@ fun CategoryScreen(
     var inspectedNode by remember { mutableStateOf<StorageNode?>(null) }
     var showCopyDestinationPicker by remember { mutableStateOf(false) }
     var showMoveDestinationPicker by remember { mutableStateOf(false) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showCompressDialog by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
+
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(categoryName, rootPath) {
         viewModel.loadCategory(categoryName, rootPath)
@@ -240,20 +261,6 @@ fun CategoryScreen(
                                 contentDescription = if (allSelected) stringResource(R.string.action_deselect_all) else stringResource(R.string.action_select_all)
                             )
                         }
-                        // Copy Selected
-                        IconButton(onClick = { showCopyDestinationPicker = true }) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = stringResource(R.string.action_copy_to)
-                            )
-                        }
-                        // Move Selected
-                        IconButton(onClick = { showMoveDestinationPicker = true }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
-                                contentDescription = stringResource(R.string.action_move_to)
-                            )
-                        }
                         // Share Selected
                         IconButton(onClick = {
                             FileIntentDispatcher.shareMultiple(context, selectedNodes.toList())
@@ -270,6 +277,91 @@ fun CategoryScreen(
                                 contentDescription = stringResource(R.string.action_delete),
                                 tint = MaterialTheme.colorScheme.error
                             )
+                        }
+                        // 3-Dot Overflow Menu
+                        Box {
+                            IconButton(onClick = { showSelectionOverflowMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = stringResource(R.string.action_more)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_copy_to)) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showCopyDestinationPicker = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_move_to)) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showMoveDestinationPicker = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Compress (.zip)") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Archive,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showCompressDialog = true
+                                    }
+                                )
+                                if (selectedNodes.size == 1) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_rename)) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.DriveFileRenameOutline,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showSelectionOverflowMenu = false
+                                            nodeToRename = selectedNodes.first()
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_properties)) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Info,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        if (selectedNodes.size == 1) {
+                                            inspectedNode = selectedNodes.first()
+                                        } else {
+                                            showBatchPropertiesDialog = true
+                                        }
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -459,8 +551,22 @@ fun CategoryScreen(
                 CategorySortControlBar(
                     sortOrder = sortOrder,
                     groupByDate = groupByDate,
-                    onToggleGroupByDate = { viewModel.toggleGroupByDate() },
-                    onToggleDirection = { viewModel.toggleSortDirection() },
+                    onToggleGroupByDate = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        viewModel.toggleGroupByDate()
+                        coroutineScope.launch {
+                            runCatching { listState.scrollToItem(0) }
+                            runCatching { gridState.scrollToItem(0) }
+                        }
+                    },
+                    onToggleDirection = {
+                        SelectionHaptics.playSelectionFeedback(context, view)
+                        viewModel.toggleSortDirection()
+                        coroutineScope.launch {
+                            runCatching { listState.scrollToItem(0) }
+                            runCatching { gridState.scrollToItem(0) }
+                        }
+                    },
                     onOpenSortSheet = { showSortSheet = true }
                 )
             }
@@ -503,6 +609,7 @@ fun CategoryScreen(
                                 categoryColor = categoryColor,
                                 selectedNodes = selectedNodes,
                                 isSelectionMode = isSelectionMode,
+                                state = gridState,
                                 onToggleGroupSelection = { group ->
                                     SelectionHaptics.playSelectionFeedback(context, view)
                                     viewModel.toggleGroupSelection(group)
@@ -554,6 +661,7 @@ fun CategoryScreen(
                                 categoryColor = categoryColor,
                                 selectedNodes = selectedNodes,
                                 isSelectionMode = isSelectionMode,
+                                state = listState,
                                 onToggleGroupSelection = { group ->
                                     SelectionHaptics.playSelectionFeedback(context, view)
                                     viewModel.toggleGroupSelection(group)
@@ -704,6 +812,103 @@ fun CategoryScreen(
             onDismiss = { inspectedNode = null }
         )
     }
+
+    // Compress Dialog
+    if (showCompressDialog && selectedNodes.isNotEmpty()) {
+        val defaultName = if (selectedNodes.size == 1) {
+            selectedNodes.first().name.substringBeforeLast(".")
+        } else {
+            "archive_${System.currentTimeMillis()}"
+        }
+        val targetDir = StorageNode(
+            id = "download",
+            name = "Download",
+            path = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS).absolutePath,
+            size = 0L,
+            lastModified = System.currentTimeMillis(),
+            isDirectory = true
+        )
+        CompressDialog(
+            sources = selectedNodes.toList(),
+            defaultName = defaultName,
+            onConfirmCreate = { _, archiveName, _ ->
+                showCompressDialog = false
+                viewModel.compressSelected(archiveName, targetDir)
+            },
+            onDismiss = { showCompressDialog = false }
+        )
+    }
+
+    // Batch Properties Dialog
+    if (showBatchPropertiesDialog && selectedNodes.isNotEmpty()) {
+        val count = selectedNodes.size
+        val totalBytes = selectedNodes.sumOf { it.size }
+        val commonParent = remember(selectedNodes) {
+            val parents = selectedNodes.mapNotNull { File(it.path).parent }.distinct()
+            if (parents.size == 1) parents.first() else "Multiple folders (${parents.size})"
+        }
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.action_properties),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Selected Items",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "$count files",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Total Size",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = FileFormatter.formatFileSize(totalBytes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Text(
+                        text = "Location",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = commonParent,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        )
+    }
 }
 
 private fun handleItemClick(
@@ -744,70 +949,84 @@ private fun CategorySortControlBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .clickable { onOpenSortSheet() }
-        ) {
-            Text(
-                text = stringResource(R.string.category_sorted_by),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = sortOrder.field.displayName,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilterChip(
-                selected = groupByDate,
-                onClick = onToggleGroupByDate,
-                label = {
-                    Text(
-                        text = stringResource(R.string.category_group_by_date),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                shape = RoundedCornerShape(8.dp)
-            )
-
-            AssistChip(
-                onClick = onToggleDirection,
-                label = {
-                    Text(
-                        text = if (sortOrder.direction == SortDirection.ASCENDING) stringResource(R.string.category_ascending) else stringResource(R.string.category_descending),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = if (sortOrder.direction == SortDirection.ASCENDING) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp)
-                    )
-                },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        // 1. Sort Order Chip
+        FilterChip(
+            selected = true,
+            onClick = onOpenSortSheet,
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Sort,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-            )
-        }
+            },
+            label = {
+                Text(
+                    text = "${stringResource(R.string.category_sorted_by)} ${sortOrder.field.displayName}",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                selectedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            shape = RoundedCornerShape(8.dp)
+        )
+
+        // 2. Ascending / Descending Toggle Chip
+        AssistChip(
+            onClick = onToggleDirection,
+            leadingIcon = {
+                Icon(
+                    imageVector = if (sortOrder.direction == SortDirection.ASCENDING) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            label = {
+                Text(
+                    text = if (sortOrder.direction == SortDirection.ASCENDING) stringResource(R.string.category_ascending) else stringResource(R.string.category_descending),
+                    style = MaterialTheme.typography.labelMedium
+                )
+            },
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            shape = RoundedCornerShape(8.dp)
+        )
+
+        // 3. Group by Date Toggle Chip
+        FilterChip(
+            selected = groupByDate,
+            onClick = onToggleGroupByDate,
+            leadingIcon = {
+                Icon(
+                    imageVector = if (groupByDate) Icons.Default.CheckCircle else Icons.Default.DateRange,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            label = {
+                Text(
+                    text = stringResource(R.string.category_group_by_date),
+                    style = MaterialTheme.typography.labelMedium
+                )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                selectedLeadingIconColor = MaterialTheme.colorScheme.primary
+            ),
+            shape = RoundedCornerShape(8.dp)
+        )
     }
 }
 
@@ -1071,10 +1290,12 @@ private fun CategoryListView(
     onRename: (StorageNode) -> Unit,
     onDelete: (StorageNode) -> Unit,
     onProperties: (StorageNode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    state: LazyListState = rememberLazyListState()
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
+        state = state,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -1360,11 +1581,13 @@ private fun CategoryGridView(
     onRename: (StorageNode) -> Unit,
     onDelete: (StorageNode) -> Unit,
     onProperties: (StorageNode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    state: LazyGridState = rememberLazyGridState()
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 120.dp),
         modifier = modifier.fillMaxSize(),
+        state = state,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)

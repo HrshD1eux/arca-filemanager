@@ -186,12 +186,18 @@ object CategoryDateGrouper {
             groupsMap.values.sortedByDescending { it.sortKey }
         }
 
+        val itemComparator = if (sortDirection == SortDirection.ASCENDING) {
+            compareBy<StorageNode> { it.lastModified }.thenBy { it.name.lowercase(locale) }
+        } else {
+            compareByDescending<StorageNode> { it.lastModified }.thenBy { it.name.lowercase(locale) }
+        }
+
         return sortedBuilders.map { builder ->
             CategoryDateGroup(
                 id = builder.id,
                 type = builder.type,
                 title = builder.title,
-                items = builder.items
+                items = builder.items.sortedWith(itemComparator)
             )
         }
     }

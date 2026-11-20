@@ -13,6 +13,8 @@ enum class StorageCategory(
     AUDIO("Audio", Color(0xFFEA580C), CategoryFilter.AUDIO),
     DOCUMENTS("Documents", Color(0xFF0D9488), CategoryFilter.DOCUMENTS),
     ARCHIVES("Archives", Color(0xFFD97706), CategoryFilter.ARCHIVES),
+    APPS("Apps", Color(0xFF10B981), null),
+    SYSTEM("System", Color(0xFF6366F1), null),
     OTHER("Other", Color(0xFF64748B), CategoryFilter.OTHER)
 }
 

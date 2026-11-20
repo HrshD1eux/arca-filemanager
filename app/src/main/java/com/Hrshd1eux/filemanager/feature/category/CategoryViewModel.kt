@@ -393,6 +393,33 @@ class CategoryViewModel @JvmOverloads constructor(
         }
     }
 
+    fun compressSelected(
+        archiveName: String,
+        destinationDir: StorageNode,
+        onDone: (Boolean) -> Unit = {}
+    ) {
+        val targets = _selectedNodes.value.toList()
+        if (targets.isEmpty()) return
+
+        viewModelScope.launch(ioDispatcher) {
+            _isOperating.value = true
+            val targetFiles = targets.map { java.io.File(it.path) }
+            val cleanName = if (archiveName.endsWith(".zip", ignoreCase = true)) archiveName else "$archiveName.zip"
+            val destZip = java.io.File(destinationDir.path, cleanName)
+            val zipEngine = com.Hrshd1eux.filemanager.core.archive.engine.ZipEngine(ioDispatcher)
+            val result = zipEngine.createZip(
+                sources = targetFiles,
+                destinationZip = destZip,
+                onProgress = { _operationProgress.value = it }
+            )
+            _isOperating.value = false
+            _operationProgress.value = null
+            clearSelection()
+            refresh()
+            onDone(result.isSuccess)
+        }
+    }
+
     private fun getCategoryEmptyMessage(category: CategoryFilter): String {
         return when (category) {
             CategoryFilter.IMAGES -> "No image files found in internal storage. Photos and pictures will appear here."

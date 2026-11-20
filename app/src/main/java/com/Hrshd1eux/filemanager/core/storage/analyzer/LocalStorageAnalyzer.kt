@@ -12,7 +12,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class LocalStorageAnalyzer(
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val installedAppsRepository: InstalledAppsRepository? = null,
+    private val systemStorageRepository: SystemStorageRepository? = null
 ) {
 
     private val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "webp", "heic", "dng", "svg", "bmp")
@@ -22,9 +24,11 @@ class LocalStorageAnalyzer(
     private val archiveExtensions = setOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz", "apk")
 
     suspend fun analyzeStorage(rootPath: String? = null): StorageBreakdown = withContext(ioDispatcher) {
-        val targetPath = rootPath ?: runCatching {
+        val defaultPath = runCatching {
             Environment.getExternalStorageDirectory().absolutePath
         }.getOrDefault("/storage/emulated/0")
+        val isDefaultStorage = rootPath == null || rootPath == defaultPath
+        val targetPath = rootPath ?: defaultPath
 
         val rootFile = File(targetPath)
         if (!rootFile.exists() || !rootFile.canRead()) {
@@ -51,6 +55,8 @@ class LocalStorageAnalyzer(
         var docCount = 0
         var archiveBytes = 0L
         var archiveCount = 0
+        var otherFilesBytes = 0L
+        var otherFilesCount = 0
 
         runCatching {
             SafeFileWalker.walkSafe(rootFile, includeHidden = false)
@@ -79,21 +85,61 @@ class LocalStorageAnalyzer(
                             archiveBytes += length
                             archiveCount++
                         }
+                        else -> {
+                            otherFilesBytes += length
+                            otherFilesCount++
+                        }
                     }
                 }
         }
 
-        val classifiedSum = imageBytes + videoBytes + audioBytes + docBytes + archiveBytes
-        val otherBytes = if (usedBytes > classifiedSum) usedBytes - classifiedSum else 0L
+        var appBytes = 0L
+        var appCount = 0
+        var systemBytes = 0L
 
-        val categories = listOf(
+        if (isDefaultStorage) {
+            runCatching {
+                val appsRepo = installedAppsRepository ?: InstalledAppsRepository.getInstance()
+                val report = appsRepo.getInstalledApps(forceRefresh = false)
+                appBytes = report.totalMeasurableBytes
+                appCount = report.totalAppCount
+            }
+
+            runCatching {
+                val systemDir = Environment.getRootDirectory()
+                if (systemDir.exists() && systemDir.canRead()) {
+                    val stat = StatFs(systemDir.absolutePath)
+                    systemBytes = (stat.totalBytes - stat.availableBytes).coerceAtLeast(0L)
+                }
+            }
+        }
+
+        val classifiedFilesSum = imageBytes + videoBytes + audioBytes + docBytes + archiveBytes
+        val otherBytes = if (isDefaultStorage) {
+            val totalKnown = classifiedFilesSum + appBytes
+            if (usedBytes > totalKnown) (usedBytes - totalKnown).coerceAtLeast(otherFilesBytes) else otherFilesBytes
+        } else {
+            if (usedBytes > classifiedFilesSum) usedBytes - classifiedFilesSum else otherFilesBytes
+        }
+
+        val categories = mutableListOf(
             CategorySize(StorageCategory.IMAGES, imageBytes, imageCount),
             CategorySize(StorageCategory.VIDEOS, videoBytes, videoCount),
             CategorySize(StorageCategory.AUDIO, audioBytes, audioCount),
             CategorySize(StorageCategory.DOCUMENTS, docBytes, docCount),
-            CategorySize(StorageCategory.ARCHIVES, archiveBytes, archiveCount),
-            CategorySize(StorageCategory.OTHER, otherBytes, 0)
+            CategorySize(StorageCategory.ARCHIVES, archiveBytes, archiveCount)
         )
+
+        if (isDefaultStorage) {
+            if (appBytes > 0L || appCount > 0) {
+                categories.add(CategorySize(StorageCategory.APPS, appBytes, appCount))
+            }
+            if (systemBytes > 0L) {
+                categories.add(CategorySize(StorageCategory.SYSTEM, systemBytes, 0))
+            }
+        }
+
+        categories.add(CategorySize(StorageCategory.OTHER, otherBytes, otherFilesCount))
 
         StorageBreakdown(
             totalBytes = totalBytes,
