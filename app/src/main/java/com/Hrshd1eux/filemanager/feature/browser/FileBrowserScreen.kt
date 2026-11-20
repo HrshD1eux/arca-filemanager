@@ -521,7 +521,29 @@ fun FileBrowserScreen(
                     totalCount = allItems.size,
                     onCloseSelection = { viewModel.clearSelection() },
                     onSelectAllToggle = { viewModel.selectAll(allItems) },
+                    onBulkCopy = { bulkNodesToCopy = selectedItems },
+                    onBulkMove = { bulkNodesToMove = selectedItems },
+                    onBulkCompress = { bulkNodesToCompress = selectedItems },
+                    onBulkDelete = {
+                        if (confirmDelete) {
+                            bulkNodesToDelete = selectedItems
+                        } else {
+                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                            activeOperationTitle = "Deleting ${selectedItems.size} Items"
+                            viewModel.startDelete(
+                                targets = selectedItems,
+                                hasPermission = hasPermission
+                            )
+                        }
+                    },
                     onShare = { FileIntentDispatcher.shareMultiple(context, selectedItems) },
+                    onRename = {
+                        if (selectedItems.size == 1) {
+                            nodeToRename = selectedItems.first()
+                        } else if (selectedItems.size > 1) {
+                            nodesToBatchRename = selectedItems
+                        }
+                    },
                     onProperties = {
                         if (selectedItems.size == 1) {
                             selectedNodeForProperties = selectedItems.first()

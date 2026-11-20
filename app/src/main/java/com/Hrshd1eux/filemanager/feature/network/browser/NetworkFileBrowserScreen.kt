@@ -44,13 +44,18 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DensityMedium
+import androidx.compose.material.icons.filled.Deselect
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,6 +73,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -155,6 +162,8 @@ fun NetworkFileBrowserScreen(
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var bulkNodesToDelete by remember { mutableStateOf<List<StorageNode>?>(null) }
     var selectedNodeForProperties by remember { mutableStateOf<StorageNode?>(null) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.userMessage.collect { message ->
@@ -185,150 +194,258 @@ fun NetworkFileBrowserScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    if (isSearching) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { viewModel.setSearchQuery(it) },
-                            placeholder = { Text("Filter remote items...") },
-                            singleLine = true,
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                    }
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(end = 8.dp)
-                        )
-                    } else {
-                        Column {
-                            val displayTitle = when (val state = uiState) {
-                                is NetworkBrowserUiState.Success -> state.currentTitle
-                                else -> title
-                            }
-                            Text(
-                                text = displayTitle,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+            if (selectedNodeIds.isNotEmpty()) {
+                val state = uiState as? NetworkBrowserUiState.Success
+                val selectedItems = state?.items?.filter { selectedNodeIds.contains(it.id) } ?: emptyList()
+                val allSelected = state != null && state.items.isNotEmpty() && selectedNodeIds.size >= state.items.size
 
-                            // Security Subtitle & Host Indicator
-                            val successState = uiState as? NetworkBrowserUiState.Success
-                            if (successState != null) {
-                                val config = successState.serverConfig
-                                val isFtp = config.protocol == NetworkProtocol.FTP
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = if (isFtp) Icons.Default.Warning else Icons.Default.Lock,
-                                        contentDescription = null,
-                                        tint = if (isFtp) Color(0xFFE65100) else VaultEmerald,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = if (isFtp) "${config.host} • ⚠ Plaintext" else "${config.host} • ${config.protocol.name}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (isFtp) Color(0xFFBF360C) else VaultEmerald,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (selectedNodeIds.isNotEmpty()) {
-                            viewModel.clearSelection()
-                        } else if (isSearching) {
-                            viewModel.toggleSearch()
-                        } else {
-                            val handled = viewModel.navigateUp()
-                            if (!handled) {
-                                viewModel.disconnect()
-                                onNavigateBack()
-                            }
-                        }
-                    }) {
-                        Icon(
-                            imageVector = if (isSearching) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "${selectedNodeIds.size} selected",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                },
-                actions = {
-                    if (!isSearching) {
-                        // Search / Filter
-                        IconButton(onClick = { viewModel.toggleSearch() }) {
-                            Icon(Icons.Default.Search, contentDescription = "Filter")
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear Selection")
                         }
-
-                        // View Mode Cycle (List -> Compact -> Grid)
-                        IconButton(onClick = { viewModel.cycleViewMode() }) {
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            if (allSelected) viewModel.clearSelection() else viewModel.selectAll()
+                        }) {
                             Icon(
-                                imageVector = when (viewMode) {
-                                    ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
-                                    ViewMode.COMPACT -> Icons.Default.DensityMedium
-                                    ViewMode.GRID -> Icons.Default.GridView
-                                },
-                                contentDescription = "View Mode"
+                                imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                contentDescription = if (allSelected) "Deselect All" else "Select All"
                             )
                         }
-
-                        // Sort Order
-                        IconButton(onClick = { showSortBottomSheet = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                        IconButton(
+                            onClick = { viewModel.downloadSelected(selectedItems, downloadsDir) },
+                            enabled = !isDownloading
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Download Selected")
                         }
-
-                        // Refresh
-                        IconButton(onClick = { viewModel.refresh() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        IconButton(onClick = {
+                            if (confirmDelete) {
+                                bulkNodesToDelete = selectedItems
+                            } else {
+                                viewModel.delete(selectedItems)
+                            }
+                        }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete Selected",
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
-
-                        // Overflow Menu
                         Box {
-                            IconButton(onClick = { showMenu = !showMenu }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "More")
+                            IconButton(onClick = { showSelectionOverflowMenu = !showSelectionOverflowMenu }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More Options")
                             }
                             DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false }
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("New Folder") },
+                                    text = { Text("Copy") },
                                     leadingIcon = {
-                                        Icon(Icons.Default.CreateNewFolder, contentDescription = null)
+                                        Icon(Icons.Default.ContentCopy, contentDescription = null)
                                     },
                                     onClick = {
-                                        showMenu = false
-                                        showCreateFolderDialog = true
+                                        showSelectionOverflowMenu = false
+                                        viewModel.stageNodesForCopy(selectedItems)
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Disconnect", color = MaterialTheme.colorScheme.error) },
+                                    text = { Text("Move") },
                                     leadingIcon = {
-                                        Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                        Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null)
                                     },
                                     onClick = {
-                                        showMenu = false
-                                        viewModel.disconnect()
-                                        onNavigateBack()
+                                        showSelectionOverflowMenu = false
+                                        viewModel.stageNodesForMove(selectedItems)
+                                    }
+                                )
+                                if (selectedItems.size == 1) {
+                                    DropdownMenuItem(
+                                        text = { Text("Rename") },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Edit, contentDescription = null)
+                                        },
+                                        onClick = {
+                                            showSelectionOverflowMenu = false
+                                            nodeToRename = selectedItems.first()
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Properties") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Info, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        if (selectedItems.size == 1) {
+                                            selectedNodeForProperties = selectedItems.first()
+                                        } else {
+                                            showBatchPropertiesDialog = true
+                                        }
                                     }
                                 )
                             }
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = {
+                        if (isSearching) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { viewModel.setSearchQuery(it) },
+                                placeholder = { Text("Filter remote items...") },
+                                singleLine = true,
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(end = 8.dp)
+                            )
+                        } else {
+                            Column {
+                                val displayTitle = when (val state = uiState) {
+                                    is NetworkBrowserUiState.Success -> state.currentTitle
+                                    else -> title
+                                }
+                                Text(
+                                    text = displayTitle,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                // Security Subtitle & Host Indicator
+                                val successState = uiState as? NetworkBrowserUiState.Success
+                                if (successState != null) {
+                                    val config = successState.serverConfig
+                                    val isFtp = config.protocol == NetworkProtocol.FTP
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = if (isFtp) Icons.Default.Warning else Icons.Default.Lock,
+                                            contentDescription = null,
+                                            tint = if (isFtp) Color(0xFFE65100) else VaultEmerald,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = if (isFtp) "${config.host} • ⚠ Plaintext" else "${config.host} • ${config.protocol.name}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (isFtp) Color(0xFFBF360C) else VaultEmerald,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (isSearching) {
+                                viewModel.toggleSearch()
+                            } else {
+                                val handled = viewModel.navigateUp()
+                                if (!handled) {
+                                    viewModel.disconnect()
+                                    onNavigateBack()
+                                }
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (isSearching) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    actions = {
+                        if (!isSearching) {
+                            // Search / Filter
+                            IconButton(onClick = { viewModel.toggleSearch() }) {
+                                Icon(Icons.Default.Search, contentDescription = "Filter")
+                            }
+
+                            // View Mode Cycle (List -> Compact -> Grid)
+                            IconButton(onClick = { viewModel.cycleViewMode() }) {
+                                Icon(
+                                    imageVector = when (viewMode) {
+                                        ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
+                                        ViewMode.COMPACT -> Icons.Default.DensityMedium
+                                        ViewMode.GRID -> Icons.Default.GridView
+                                    },
+                                    contentDescription = "View Mode"
+                                )
+                            }
+
+                            // Sort Order
+                            IconButton(onClick = { showSortBottomSheet = true }) {
+                                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                            }
+
+                            // Refresh
+                            IconButton(onClick = { viewModel.refresh() }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            }
+
+                            // Overflow Menu
+                            Box {
+                                IconButton(onClick = { showMenu = !showMenu }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "More")
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("New Folder") },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.CreateNewFolder, contentDescription = null)
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            showCreateFolderDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Disconnect", color = MaterialTheme.colorScheme.error) },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            viewModel.disconnect()
+                                            onNavigateBack()
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
         },
         floatingActionButton = {
             if (uiState is NetworkBrowserUiState.Success && selectedNodeIds.isEmpty()) {
@@ -362,7 +479,7 @@ fun NetworkFileBrowserScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -372,21 +489,11 @@ fun NetworkFileBrowserScreen(
                                 fontWeight = FontWeight.Bold
                             )
 
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                TextButton(onClick = { viewModel.selectAll() }) {
-                                    Text("All")
-                                }
-
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 TextButton(onClick = { viewModel.stageNodesForCopy(selectedItems) }) {
                                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("Copy")
-                                }
-
-                                TextButton(onClick = { viewModel.stageNodesForMove(selectedItems) }) {
-                                    Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Move")
                                 }
 
                                 Button(
@@ -396,23 +503,6 @@ fun NetworkFileBrowserScreen(
                                     Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("Download")
-                                }
-
-                                IconButton(
-                                    onClick = {
-                                        if (confirmDelete) {
-                                            bulkNodesToDelete = selectedItems
-                                        } else {
-                                            viewModel.delete(selectedItems)
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(20.dp)
-                                    )
                                 }
                             }
                         }
@@ -804,6 +894,36 @@ fun NetworkFileBrowserScreen(
         FilePropertiesSheet(
             node = node,
             onDismiss = { selectedNodeForProperties = null }
+        )
+    }
+
+    // Selected Remote Items Properties Dialog
+    if (showBatchPropertiesDialog && uiState is NetworkBrowserUiState.Success) {
+        val state = uiState as NetworkBrowserUiState.Success
+        val selectedItems = state.items.filter { selectedNodeIds.contains(it.id) }
+        val totalSize = selectedItems.sumOf { it.size }
+        val folderCount = selectedItems.count { it.isDirectory }
+        val fileCount = selectedItems.count { !it.isDirectory }
+
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text("Selected Remote Items Properties", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Selected Items: ${selectedItems.size}", fontWeight = FontWeight.SemiBold)
+                    if (folderCount > 0) Text("Folders: $folderCount")
+                    if (fileCount > 0) Text("Files: $fileCount")
+                    Text("Total Size: ${FileFormatter.formatFileSize(totalSize)}")
+                    Text("Protocol: ${state.serverConfig.protocol.name}")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text("OK")
+                }
+            }
         )
     }
 

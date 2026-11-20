@@ -17,20 +17,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -41,6 +48,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -88,6 +96,8 @@ fun LargeFilesScreen(
 
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var inspectedNode by remember { mutableStateOf<StorageNode?>(null) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
 
     val isSelectionMode = selectedIds.isNotEmpty()
 
@@ -125,12 +135,19 @@ fun LargeFilesScreen(
                 },
                 actions = {
                     if (isSelectionMode) {
-                        IconButton(onClick = { viewModel.selectAll() }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "Select All")
+                        val state = uiState as? LargeFilesUiState.Success
+                        val allSelected = state != null && state.files.isNotEmpty() && selectedIds.size >= state.files.size
+
+                        IconButton(onClick = {
+                            if (allSelected) viewModel.clearSelection() else viewModel.selectAll()
+                        }) {
+                            Icon(
+                                imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                contentDescription = if (allSelected) "Deselect All" else "Select All"
+                            )
                         }
                         IconButton(onClick = {
-                            val state = uiState
-                            if (state is LargeFilesUiState.Success) {
+                            if (state != null) {
                                 val selectedNodes = state.files.filter { selectedIds.contains(it.id) }
                                 FileShareHelper.shareNodes(context, selectedNodes)
                             }
@@ -143,6 +160,36 @@ fun LargeFilesScreen(
                                 contentDescription = "Delete",
                                 tint = MaterialTheme.colorScheme.error
                             )
+                        }
+                        Box {
+                            IconButton(onClick = { showSelectionOverflowMenu = !showSelectionOverflowMenu }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More Options")
+                            }
+                            DropdownMenu(
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Properties") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Info, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBatchPropertiesDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Clear Selection") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Deselect, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        viewModel.clearSelection()
+                                    }
+                                )
+                            }
                         }
                     }
                 },
@@ -290,6 +337,41 @@ fun LargeFilesScreen(
         OperationProgressDialog(
             progress = activeProgress!!,
             onCancel = { /* Managed by engine */ }
+        )
+    }
+
+    // Selected Files Properties Dialog
+    if (showBatchPropertiesDialog && uiState is LargeFilesUiState.Success) {
+        val state = uiState as LargeFilesUiState.Success
+        val selectedNodes = state.files.filter { selectedIds.contains(it.id) }
+        val totalSize = selectedNodes.sumOf { it.size }
+
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text(
+                    if (selectedNodes.size == 1) "File Properties" else "Selected Files Properties",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (selectedNodes.size == 1) {
+                        val file = selectedNodes.first()
+                        Text("Name: ${file.name}", fontWeight = FontWeight.SemiBold)
+                        Text("Size: ${FileFormatter.formatFileSize(file.size)}")
+                        Text("Path: ${file.path}")
+                    } else {
+                        Text("Selected Files: ${selectedNodes.size}", fontWeight = FontWeight.SemiBold)
+                        Text("Total Size: ${FileFormatter.formatFileSize(totalSize)}")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text("OK")
+                }
+            }
         )
     }
 

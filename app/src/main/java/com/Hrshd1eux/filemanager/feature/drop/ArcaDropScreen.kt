@@ -90,6 +90,9 @@ import com.Hrshd1eux.filemanager.core.storage.provider.LocalFileSystemProvider
 import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import com.Hrshd1eux.filemanager.feature.browser.components.DestinationPickerDialog
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -638,9 +641,11 @@ fun ArcaDropScreen(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
+                            val timeFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
                             state.logs.take(8).forEach { log ->
+                                val timeFormatted = remember(log.timestampMs) { timeFormat.format(Date(log.timestampMs)) }
                                 Text(
-                                    text = "• ${log.message}",
+                                    text = "• [$timeFormatted] ${log.message}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (log.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                                 )

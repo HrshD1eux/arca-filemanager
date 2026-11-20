@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +60,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -112,6 +114,8 @@ fun InstalledAppsScreen(
     var showSortSheet by remember { mutableStateOf(false) }
     var showUsageAccessDialog by remember { mutableStateOf(false) }
     var showOverflowMenu by remember { mutableStateOf(false) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
 
     // Resume observer to detect when user returns from granting Usage Access
     DisposableEffect(lifecycleOwner) {
@@ -182,6 +186,49 @@ fun InstalledAppsScreen(
                                 contentDescription = "Share Selected APKs",
                                 tint = MaterialTheme.colorScheme.primary
                             )
+                        }
+                        Box {
+                            IconButton(onClick = { showSelectionOverflowMenu = !showSelectionOverflowMenu }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More Options")
+                            }
+                            DropdownMenu(
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Properties") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Info, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBatchPropertiesDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Share Selected APKs") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Share, contentDescription = null)
+                                    },
+                                    enabled = !uiState.isBatchExporting,
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        viewModel.exportSelectedApks(context) { chooserIntent ->
+                                            context.startActivity(chooserIntent)
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Clear Selection") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Close, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        viewModel.clearSelection()
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -626,6 +673,54 @@ fun InstalledAppsScreen(
             onShareApk = { app ->
                 viewModel.selectAppForDetails(null)
                 viewModel.selectAppForShare(app)
+            }
+        )
+    }
+
+    // Selected Applications Properties Dialog
+    if (showBatchPropertiesDialog) {
+        val selectedApps = uiState.filteredApps.filter { uiState.selectedPackageNames.contains(it.packageName) }
+        val totalApkBytes = selectedApps.mapNotNull { it.storageMeasurement.apkComponent.bytes }.sum()
+        val totalDataBytes = selectedApps.mapNotNull { it.storageMeasurement.dataComponent.bytes }.sum()
+        val totalCacheBytes = selectedApps.mapNotNull { it.storageMeasurement.cacheComponent.bytes }.sum()
+        val totalMeasuredBytes = selectedApps.mapNotNull { it.storageMeasurement.totalComponent.bytes }.sum()
+
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text(
+                    if (selectedApps.size == 1) "Application Properties" else "Selected Applications Properties",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (selectedApps.size == 1) {
+                        val app = selectedApps.first()
+                        Text("App: ${app.appName}", fontWeight = FontWeight.SemiBold)
+                        Text("Package: ${app.packageName}")
+                        Text("Version: ${app.displayVersion}")
+                        Text("APK Size: ${app.storageMeasurement.apkComponent.formattedSize}")
+                        if (app.storageMeasurement.dataComponent.isAccessible) {
+                            Text("User Data: ${app.storageMeasurement.dataComponent.formattedSize}")
+                        }
+                        if (app.storageMeasurement.cacheComponent.isAccessible) {
+                            Text("Cache: ${app.storageMeasurement.cacheComponent.formattedSize}")
+                        }
+                        Text("Total Storage: ${app.storageMeasurement.totalComponent.formattedSize}")
+                    } else {
+                        Text("Selected Apps: ${selectedApps.size}", fontWeight = FontWeight.SemiBold)
+                        Text("Total APK Size: ${FileFormatter.formatFileSize(totalApkBytes)}")
+                        if (totalDataBytes > 0) Text("Total Data: ${FileFormatter.formatFileSize(totalDataBytes)}")
+                        if (totalCacheBytes > 0) Text("Total Cache: ${FileFormatter.formatFileSize(totalCacheBytes)}")
+                        Text("Total Measured Storage: ${FileFormatter.formatFileSize(totalMeasuredBytes)}")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text("OK")
+                }
             }
         )
     }

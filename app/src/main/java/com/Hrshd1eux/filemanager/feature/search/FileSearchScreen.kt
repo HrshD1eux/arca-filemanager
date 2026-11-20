@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -54,6 +55,7 @@ import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -61,6 +63,7 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -78,6 +81,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import com.Hrshd1eux.filemanager.feature.archive.components.CompressDialog
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -167,6 +171,9 @@ fun FileSearchScreen(
     var showBulkDeleteDialog by remember { mutableStateOf(false) }
     var nodeToDelete by remember { mutableStateOf<StorageNode?>(null) }
     var nodeToRename by remember { mutableStateOf<StorageNode?>(null) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showCompressDialog by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
 
@@ -225,22 +232,6 @@ fun FileSearchScreen(
                             )
                         }
 
-                        // Copy Selected
-                        IconButton(onClick = { showCopyDestinationPicker = true }) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy selected"
-                            )
-                        }
-
-                        // Move Selected
-                        IconButton(onClick = { showMoveDestinationPicker = true }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
-                                contentDescription = "Move selected"
-                            )
-                        }
-
                         // Share Selected
                         IconButton(onClick = {
                             FileIntentDispatcher.shareMultiple(context, selectedNodes.toList())
@@ -258,6 +249,92 @@ fun FileSearchScreen(
                                 contentDescription = "Delete selected",
                                 tint = MaterialTheme.colorScheme.error
                             )
+                        }
+
+                        // 3-Dot Overflow Menu
+                        Box {
+                            IconButton(onClick = { showSelectionOverflowMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More options"
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Copy to…") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showCopyDestinationPicker = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Move to…") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.DriveFileMove,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showMoveDestinationPicker = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Compress (.zip)") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Archive,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showCompressDialog = true
+                                    }
+                                )
+                                if (selectedNodes.size == 1) {
+                                    DropdownMenuItem(
+                                        text = { Text("Rename") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.DriveFileRenameOutline,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showSelectionOverflowMenu = false
+                                            nodeToRename = selectedNodes.first()
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Properties") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Info,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        if (selectedNodes.size == 1) {
+                                            selectedNodeForProperties = selectedNodes.first()
+                                        } else {
+                                            showBatchPropertiesDialog = true
+                                        }
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -595,6 +672,103 @@ fun FileSearchScreen(
         FilePropertiesSheet(
             node = node,
             onDismiss = { selectedNodeForProperties = null }
+        )
+    }
+
+    // Compress Dialog
+    if (showCompressDialog && selectedNodes.isNotEmpty()) {
+        val defaultName = if (selectedNodes.size == 1) {
+            selectedNodes.first().name.substringBeforeLast(".")
+        } else {
+            "archive_${System.currentTimeMillis()}"
+        }
+        val targetDir = StorageNode(
+            id = "download",
+            name = "Download",
+            path = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS).absolutePath,
+            size = 0L,
+            lastModified = System.currentTimeMillis(),
+            isDirectory = true
+        )
+        CompressDialog(
+            sources = selectedNodes.toList(),
+            defaultName = defaultName,
+            onConfirmCreate = { _, archiveName, _ ->
+                showCompressDialog = false
+                viewModel.compressSelected(archiveName, targetDir)
+            },
+            onDismiss = { showCompressDialog = false }
+        )
+    }
+
+    // Batch Properties Dialog
+    if (showBatchPropertiesDialog && selectedNodes.isNotEmpty()) {
+        val count = selectedNodes.size
+        val totalBytes = selectedNodes.sumOf { it.size }
+        val commonParent = remember(selectedNodes) {
+            val parents = selectedNodes.mapNotNull { File(it.path).parent }.distinct()
+            if (parents.size == 1) parents.first() else "Multiple folders (${parents.size})"
+        }
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text(
+                    text = "Properties",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Selected Items",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "$count files",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Total Size",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = FileFormatter.formatFileSize(totalBytes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Text(
+                        text = "Location",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = commonParent,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text("Close")
+                }
+            }
         )
     }
 }

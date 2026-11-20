@@ -26,17 +26,25 @@ import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.outlined.Info
 import com.Hrshd1eux.filemanager.feature.archive.components.PasswordPromptDialog
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -118,6 +126,8 @@ fun ArchiveViewerScreen(
     var activeExtractVerify by remember { mutableStateOf(false) }
     var showAddPicker by remember { mutableStateOf(false) }
     var showArchiveChecksums by remember { mutableStateOf(false) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
     val localProvider = remember { LocalFileSystemProvider() }
 
     LaunchedEffect(archivePath) {
@@ -140,44 +150,120 @@ fun ArchiveViewerScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
+            if (selectedEntryPaths.isNotEmpty()) {
+                val success = uiState as? ArchiveViewerUiState.Success
+                val allSelected = success != null && success.items.isNotEmpty() &&
+                        selectedEntryPaths.containsAll(success.items.map { it.path })
+
+                TopAppBar(
+                    title = {
                         Text(
-                            text = title.ifEmpty { File(archivePath).name },
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            text = "${selectedEntryPaths.size} selected",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
-                        val success = uiState as? ArchiveViewerUiState.Success
-                        if (success?.formatBadge != null) {
-                            Text(
-                                text = success.formatBadge,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.tertiary,
-                                fontWeight = FontWeight.SemiBold
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear Selection")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.selectAll() }) {
+                            Icon(
+                                imageVector = if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                contentDescription = if (allSelected) "Deselect All" else "Select All"
                             )
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (!viewModel.navigateUp()) {
-                            onNavigateBack()
+                        IconButton(onClick = { showExtractOptionsSheet = true }) {
+                            Icon(Icons.Default.Unarchive, contentDescription = "Extract Selected")
                         }
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                        Box {
+                            IconButton(onClick = { showSelectionOverflowMenu = !showSelectionOverflowMenu }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More Options")
+                            }
+                            DropdownMenu(
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Extract Selected") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Unarchive, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showExtractOptionsSheet = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Properties") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Info, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBatchPropertiesDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Clear Selection") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Close, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        viewModel.clearSelection()
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = title.ifEmpty { File(archivePath).name },
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            val success = uiState as? ArchiveViewerUiState.Success
+                            if (success?.formatBadge != null) {
+                                Text(
+                                    text = success.formatBadge,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (!viewModel.navigateUp()) {
+                                onNavigateBack()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            }
         },
         bottomBar = {
             val successState = uiState as? ArchiveViewerUiState.Success
@@ -618,6 +704,53 @@ fun ArchiveViewerScreen(
                 }
             },
             onDismiss = { showExtractCustomPicker = false }
+        )
+    }
+
+    // Selected Archive Entries Properties Dialog
+    if (showBatchPropertiesDialog) {
+        val success = uiState as? ArchiveViewerUiState.Success
+        val selectedEntries = success?.items?.filter { selectedEntryPaths.contains(it.path) } ?: emptyList()
+        val totalUncompressed = selectedEntries.sumOf { it.uncompressedSize }
+        val totalCompressed = selectedEntries.sumOf { it.compressedSize }
+        val folderCount = selectedEntries.count { it.isDirectory }
+        val fileCount = selectedEntries.count { !it.isDirectory }
+
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text(
+                    if (selectedEntries.size == 1) "Archive Item Properties" else "Selected Items Properties",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (selectedEntries.size == 1) {
+                        val entry = selectedEntries.first()
+                        Text("Name: ${entry.name}", fontWeight = FontWeight.SemiBold)
+                        Text("Type: ${if (entry.isDirectory) "Folder" else "File"}")
+                        Text("Uncompressed Size: ${FileFormatter.formatFileSize(entry.uncompressedSize)}")
+                        if (entry.compressedSize > 0) {
+                            Text("Compressed Size: ${FileFormatter.formatFileSize(entry.compressedSize)}")
+                        }
+                        Text("Path: ${entry.path}")
+                    } else {
+                        Text("Selected Items: ${selectedEntries.size}", fontWeight = FontWeight.SemiBold)
+                        if (folderCount > 0) Text("Folders: $folderCount")
+                        if (fileCount > 0) Text("Files: $fileCount")
+                        Text("Total Uncompressed: ${FileFormatter.formatFileSize(totalUncompressed)}")
+                        if (totalCompressed > 0) {
+                            Text("Total Compressed: ${FileFormatter.formatFileSize(totalCompressed)}")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text("OK")
+                }
+            }
         )
     }
 

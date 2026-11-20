@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SelectAll
@@ -118,6 +120,8 @@ fun TrashScreen(
     var showBulkRestoreDialog by remember { mutableStateOf(false) }
     var showBulkShredDialog by remember { mutableStateOf(false) }
     var entryToPreview by remember { mutableStateOf<TrashEntry?>(null) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.userMessage.collect { message ->
@@ -176,6 +180,50 @@ fun TrashScreen(
                                 contentDescription = "Shred Selected",
                                 tint = MaterialTheme.colorScheme.error
                             )
+                        }
+
+                        // Overflow Menu
+                        Box {
+                            IconButton(onClick = { showSelectionOverflowMenu = !showSelectionOverflowMenu }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More Options")
+                            }
+                            DropdownMenu(
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Properties") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Info, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBatchPropertiesDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Restore Selected") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Restore, contentDescription = null)
+                                    },
+                                    enabled = !isOperating,
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBulkRestoreDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Shred Selected", color = MaterialTheme.colorScheme.error) },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                    },
+                                    enabled = !isOperating,
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBulkShredDialog = true
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -442,6 +490,46 @@ fun TrashScreen(
             dismissButton = {
                 TextButton(onClick = { entryToRestore = null }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Batch Properties Dialog
+    if (showBatchPropertiesDialog) {
+        val selectedEntries = entries.filter { selectedIds.contains(it.id) }
+        val totalBytes = selectedEntries.sumOf { it.sizeBytes }
+        val folderCount = selectedEntries.count { it.isDirectory }
+        val fileCount = selectedEntries.count { !it.isDirectory }
+
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text(
+                    if (selectedEntries.size == 1) "Trash Item Properties" else "Selected Trash Properties",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (selectedEntries.size == 1) {
+                        val entry = selectedEntries.first()
+                        Text("Name: ${entry.originalName}", fontWeight = FontWeight.SemiBold)
+                        Text("Type: ${if (entry.isDirectory) "Folder" else "File"}")
+                        Text("Size: ${FileFormatter.formatFileSize(entry.sizeBytes)}")
+                        Text("Original Path: ${entry.originalPath}")
+                        Text("Deleted: ${FileFormatter.formatDateTime(entry.trashedTimestampMillis)}")
+                    } else {
+                        Text("Selected Items: ${selectedEntries.size}", fontWeight = FontWeight.SemiBold)
+                        if (folderCount > 0) Text("Folders: $folderCount")
+                        if (fileCount > 0) Text("Files: $fileCount")
+                        Text("Total Size: ${FileFormatter.formatFileSize(totalBytes)}")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text("OK")
                 }
             }
         )

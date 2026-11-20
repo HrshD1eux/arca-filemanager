@@ -242,6 +242,16 @@ class ArchiveViewerViewModel @JvmOverloads constructor(
         _selectedEntryPaths.value = emptySet()
     }
 
+    fun selectAll() {
+        val success = _uiState.value as? ArchiveViewerUiState.Success ?: return
+        val currentPaths = success.items.map { it.path }
+        if (currentPaths.isNotEmpty() && _selectedEntryPaths.value.containsAll(currentPaths)) {
+            _selectedEntryPaths.value = emptySet()
+        } else {
+            _selectedEntryPaths.value = currentPaths.toSet()
+        }
+    }
+
     private var activeJob: kotlinx.coroutines.Job? = null
 
     fun cancelActiveOperation() {

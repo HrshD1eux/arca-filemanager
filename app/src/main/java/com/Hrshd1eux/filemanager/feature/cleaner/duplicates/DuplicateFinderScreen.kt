@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.feature.cleaner.duplicates
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,19 +21,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -91,6 +100,12 @@ fun DuplicateFinderScreen(
 
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var inspectedNode by remember { mutableStateOf<StorageNode?>(null) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = selectedIds.isNotEmpty()) {
+        viewModel.clearSelection()
+    }
 
     LaunchedEffect(rootPath) {
         viewModel.setRootPath(rootPath)
@@ -106,32 +121,112 @@ fun DuplicateFinderScreen(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Duplicate Finder",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+            if (selectedIds.isNotEmpty()) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "${selectedIds.size} selected",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.startScan() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Rescan")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear Selection")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showDeleteConfirmDialog = true }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete Selected",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Box {
+                            IconButton(onClick = { showSelectionOverflowMenu = !showSelectionOverflowMenu }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More Options")
+                            }
+                            DropdownMenu(
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Keep Newest") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.CleaningServices, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        viewModel.selectKeepNewest()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Keep Oldest") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.CleaningServices, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        viewModel.selectKeepOldest()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Properties") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Info, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBatchPropertiesDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Clear Selection") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Close, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        viewModel.clearSelection()
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Duplicate Finder",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.startScan() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Rescan")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            }
         },
         bottomBar = {
             if (selectedIds.isNotEmpty() && uiState is DuplicateFinderUiState.Success) {
@@ -366,6 +461,33 @@ fun DuplicateFinderScreen(
         OperationProgressDialog(
             progress = activeProgress!!,
             onCancel = { /* Managed by engine */ }
+        )
+    }
+
+    // Selected Duplicates Properties Dialog
+    if (showBatchPropertiesDialog && uiState is DuplicateFinderUiState.Success) {
+        val state = uiState as DuplicateFinderUiState.Success
+        val allFiles = state.result.groups.flatMap { it.files }
+        val selectedFiles = allFiles.filter { selectedIds.contains(it.id) }
+        val selectedBytes = selectedFiles.sumOf { it.size }
+
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text("Selected Duplicates Properties", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Selected Duplicates: ${selectedFiles.size}", fontWeight = FontWeight.SemiBold)
+                    Text("Reclaimable Storage: ${FileFormatter.formatFileSize(selectedBytes)}")
+                    Text("Affected File Types: ${selectedFiles.map { it.extension.ifEmpty { "unknown" } }.distinct().size}")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text("OK")
+                }
+            }
         )
     }
 

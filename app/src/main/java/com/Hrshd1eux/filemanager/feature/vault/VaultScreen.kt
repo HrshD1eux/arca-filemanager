@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SelectAll
@@ -148,6 +149,8 @@ fun VaultScreen(
     var entryToExport by remember { mutableStateOf<VaultFileEntry?>(null) }
     var showBatchExportPicker by remember { mutableStateOf(false) }
     var previewEntry by remember { mutableStateOf<VaultFileEntry?>(null) }
+    var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showBatchPropertiesDialog by remember { mutableStateOf(false) }
 
     val isUnlocked = uiState is VaultUiState.Unlocked
     val unlockedState = uiState as? VaultUiState.Unlocked
@@ -208,6 +211,8 @@ fun VaultScreen(
             showBatchMoveDialog = false
             showBatchDeleteDialog = false
             showBatchExportPicker = false
+            showSelectionOverflowMenu = false
+            showBatchPropertiesDialog = false
         }
     }
 
@@ -243,14 +248,58 @@ fun VaultScreen(
                                 contentDescription = if (allSelected) "Deselect All" else "Select All"
                             )
                         }
-                        IconButton(onClick = { showBatchMoveDialog = true }) {
-                            Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = "Move Selected", tint = VaultEmerald)
-                        }
                         IconButton(onClick = { showBatchExportPicker = true }) {
                             Icon(Icons.Default.FileDownload, contentDescription = "Export Selected")
                         }
                         IconButton(onClick = { showBatchDeleteDialog = true }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = MaterialTheme.colorScheme.error)
+                        }
+                        Box {
+                            IconButton(onClick = { showSelectionOverflowMenu = !showSelectionOverflowMenu }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More Options")
+                            }
+                            DropdownMenu(
+                                expanded = showSelectionOverflowMenu,
+                                onDismissRequest = { showSelectionOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Move Selected") },
+                                    leadingIcon = {
+                                        Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = null, tint = VaultEmerald)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBatchMoveDialog = true
+                                    }
+                                )
+                                if (unlockedState.selectedIds.size == 1) {
+                                    val singleEntryId = unlockedState.selectedIds.first()
+                                    val targetEntry = unlockedState.currentEntries.find { it.id == singleEntryId }
+                                        ?: unlockedState.searchResults.find { it.id == singleEntryId }
+                                    if (targetEntry != null) {
+                                        DropdownMenuItem(
+                                            text = { Text("Rename") },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Edit, contentDescription = null)
+                                            },
+                                            onClick = {
+                                                showSelectionOverflowMenu = false
+                                                entryToRename = targetEntry
+                                            }
+                                        )
+                                    }
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Properties") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Info, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showSelectionOverflowMenu = false
+                                        showBatchPropertiesDialog = true
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -980,6 +1029,49 @@ fun VaultScreen(
             dismissButton = {
                 TextButton(onClick = { showBatchDeleteDialog = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Batch Properties Dialog
+    if (showBatchPropertiesDialog && unlockedState != null) {
+        val selectedEntries = (unlockedState.currentEntries + unlockedState.searchResults)
+            .distinctBy { it.id }
+            .filter { unlockedState.selectedIds.contains(it.id) }
+        val totalSelectedSize = selectedEntries.sumOf { it.size }
+        val folderCount = selectedEntries.count { it.isDirectory }
+        val fileCount = selectedEntries.count { !it.isDirectory }
+
+        AlertDialog(
+            onDismissRequest = { showBatchPropertiesDialog = false },
+            title = {
+                Text(
+                    if (selectedEntries.size == 1) "File Properties" else "Selected Items Properties",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (selectedEntries.size == 1) {
+                        val entry = selectedEntries.first()
+                        val path = if (entry.parentVirtualPath.isEmpty()) entry.originalName else "${entry.parentVirtualPath}/${entry.originalName}"
+                        Text("Name: ${entry.originalName}", fontWeight = FontWeight.SemiBold)
+                        Text("Type: ${if (entry.isDirectory) "Encrypted Folder" else "Encrypted File"}")
+                        Text("Size: ${FileFormatter.formatFileSize(entry.size)}")
+                        Text("Path: $path")
+                    } else {
+                        Text("Selected Items: ${selectedEntries.size}", fontWeight = FontWeight.SemiBold)
+                        if (folderCount > 0) Text("Folders: $folderCount")
+                        if (fileCount > 0) Text("Files: $fileCount")
+                        Text("Total Size: ${FileFormatter.formatFileSize(totalSelectedSize)}")
+                        Text("Location: Encrypted Vault")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBatchPropertiesDialog = false }) {
+                    Text("OK")
                 }
             }
         )
