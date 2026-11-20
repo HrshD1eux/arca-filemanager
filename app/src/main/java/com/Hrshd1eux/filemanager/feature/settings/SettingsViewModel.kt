@@ -6,6 +6,8 @@ import com.Hrshd1eux.filemanager.core.archive.model.ArchiveFormatOption
 import com.Hrshd1eux.filemanager.core.archive.model.CompressionLevelPreset
 import com.Hrshd1eux.filemanager.core.archive.preferences.ArchivePreferencesRepository
 import com.Hrshd1eux.filemanager.core.display.preferences.DisplayPreferencesRepository
+import com.Hrshd1eux.filemanager.core.drop.model.DropHistoryRetention
+import com.Hrshd1eux.filemanager.core.drop.repository.ArcaDropHistoryRepository
 import com.Hrshd1eux.filemanager.core.settings.model.ThemeMode
 import com.Hrshd1eux.filemanager.core.settings.preferences.AppSettingsRepository
 import com.Hrshd1eux.filemanager.core.storage.analyzer.InstalledAppsRepository
@@ -28,8 +30,11 @@ class SettingsViewModel @JvmOverloads constructor(
     private val displayPreferencesRepository: DisplayPreferencesRepository = DisplayPreferencesRepository(),
     private val appSettingsRepository: AppSettingsRepository = AppSettingsRepository.getInstance(),
     private val archivePreferencesRepository: ArchivePreferencesRepository = ArchivePreferencesRepository.getInstance(),
-    private val vaultLockManager: VaultLockManager = VaultLockManager.getInstance()
+    private val vaultLockManager: VaultLockManager = VaultLockManager.getInstance(),
+    private val arcaDropHistoryRepository: ArcaDropHistoryRepository = ArcaDropHistoryRepository()
 ) : ViewModel() {
+
+    val arcaDropRetention: StateFlow<DropHistoryRetention> = arcaDropHistoryRepository.retention
 
     val themeMode: StateFlow<ThemeMode> = appSettingsRepository.themeMode
     val dynamicColor: StateFlow<Boolean> = appSettingsRepository.dynamicColor
@@ -112,5 +117,14 @@ class SettingsViewModel @JvmOverloads constructor(
     fun lockVaultNow() {
         vaultLockManager.manualLock()
         _userMessage.tryEmit("Private Vault locked.")
+    }
+
+    fun setArcaDropRetention(retention: DropHistoryRetention) {
+        arcaDropHistoryRepository.updateRetention(retention)
+    }
+
+    fun clearArcaDropHistory() {
+        arcaDropHistoryRepository.clearHistory()
+        _userMessage.tryEmit("ARCA Drop history cleared.")
     }
 }

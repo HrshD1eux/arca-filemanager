@@ -1,6 +1,7 @@
 package com.Hrshd1eux.filemanager.core.drop.model
 
 import android.net.Uri
+import kotlinx.serialization.Serializable
 import java.io.File
 
 /**
@@ -30,6 +31,14 @@ data class DropReceivedText(
     val timestampMs: Long = System.currentTimeMillis()
 )
 
+@Serializable
+enum class DropHistoryRetention(val displayName: String, val durationDays: Int?) {
+    ONE_MONTH("1 Month (Default)", 30),
+    LIFETIME("Lifetime", null),
+    STOP("Stop (Disabled)", 0)
+}
+
+@Serializable
 data class DropLogEntry(
     val timestampMs: Long = System.currentTimeMillis(),
     val message: String,
@@ -49,7 +58,8 @@ data class ArcaDropState(
     val bytesSent: Long = 0L,
     val bytesReceived: Long = 0L,
     val activeConnections: Int = 0,
-    val logs: List<DropLogEntry> = emptyList()
+    val logs: List<DropLogEntry> = emptyList(),
+    val historyRetention: DropHistoryRetention = DropHistoryRetention.ONE_MONTH
 ) {
     val baseUrl: String?
         get() = if (isRunning && ipAddress != null && port > 0) {

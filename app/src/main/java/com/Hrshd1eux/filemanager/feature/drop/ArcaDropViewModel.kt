@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Hrshd1eux.filemanager.core.drop.model.ArcaDropState
+import com.Hrshd1eux.filemanager.core.drop.model.DropHistoryRetention
 import com.Hrshd1eux.filemanager.core.drop.server.ArcaDropManager
 import com.Hrshd1eux.filemanager.core.drop.server.ArcaDropService
 import com.Hrshd1eux.filemanager.core.network.util.LocalLanNetworkUtil
@@ -59,5 +60,13 @@ class ArcaDropViewModel @JvmOverloads constructor(
 
     fun refreshLanIp() {
         manager.onIpUpdated(LocalLanNetworkUtil.getLocalIpAddress())
+    }
+
+    fun setHistoryRetention(retention: DropHistoryRetention) {
+        manager.updateHistoryRetention(retention)
+    }
+
+    fun clearHistory() {
+        manager.clearHistory()
     }
 }

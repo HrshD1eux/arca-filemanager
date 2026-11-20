@@ -20,9 +20,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -32,24 +34,33 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Wifi
 import com.Hrshd1eux.filemanager.BuildConfig
+import com.Hrshd1eux.filemanager.core.drop.model.DropHistoryRetention
 import com.Hrshd1eux.filemanager.core.update.ui.AppUpdateDialog
 import com.Hrshd1eux.filemanager.core.version.rememberAppVersionInfo
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -112,6 +123,7 @@ fun SettingsScreen(
     val vaultLockSettings by viewModel.vaultLockSettings.collectAsStateWithLifecycle()
     val hasAllFilesAccess by viewModel.hasAllFilesAccess.collectAsStateWithLifecycle()
     val hasUsageAccess by viewModel.hasUsageAccess.collectAsStateWithLifecycle()
+    val arcaDropRetention by viewModel.arcaDropRetention.collectAsStateWithLifecycle()
 
     DisposableEffect(lifecycleOwner) {
         viewModel.refreshPermissions(context)
@@ -134,6 +146,7 @@ fun SettingsScreen(
 
     var showAppLockDialog by remember { mutableStateOf(false) }
     var showUsageAccessDialog by remember { mutableStateOf(false) }
+    var showArcaDropHistoryDialog by remember { mutableStateOf(false) }
 
     val appLockManager = remember { AppLockManager.getInstance(context) }
     val appLockSettings by appLockManager.settings.collectAsStateWithLifecycle()
@@ -283,6 +296,13 @@ fun SettingsScreen(
                             }
                         }
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsRow(
+                        title = "ARCA Drop Transfer History",
+                        subtitle = "Retention: ${arcaDropRetention.displayName}",
+                        icon = Icons.Default.Wifi,
+                        onClick = { showArcaDropHistoryDialog = true }
+                    )
                 }
             }
 
@@ -421,6 +441,84 @@ fun SettingsScreen(
         AppUpdateDialog(
             currentVersion = versionInfo.versionName,
             onDismiss = { showUpdateDialog = false }
+        )
+    }
+
+    if (showArcaDropHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showArcaDropHistoryDialog = false },
+            title = {
+                Text("ARCA Drop History Retention", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Configure how long peer-to-peer Wi-Fi transfer logs are preserved:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    DropHistoryRetention.values().forEach { option ->
+                        val isSelected = arcaDropRetention == option
+                        Surface(
+                            onClick = {
+                                viewModel.setArcaDropRetention(option)
+                                showArcaDropHistoryDialog = false
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = {
+                                        viewModel.setArcaDropRetention(option)
+                                        showArcaDropHistoryDialog = false
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = option.displayName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                    Text(
+                                        text = when (option) {
+                                            DropHistoryRetention.ONE_MONTH -> "Automatically deletes entries older than 30 days"
+                                            DropHistoryRetention.LIFETIME -> "Keeps history indefinitely until manually cleared"
+                                            DropHistoryRetention.STOP -> "Disables history and clears all recorded entries"
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.clearArcaDropHistory()
+                            showArcaDropHistoryDialog = false
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Clear All Transfer History Now")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showArcaDropHistoryDialog = false }) {
+                    Text("Close")
+                }
+            }
         )
     }
 }

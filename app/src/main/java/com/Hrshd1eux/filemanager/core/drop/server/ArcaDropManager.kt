@@ -5,10 +5,12 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.OpenableColumns
 import com.Hrshd1eux.filemanager.core.drop.model.ArcaDropState
+import com.Hrshd1eux.filemanager.core.drop.model.DropHistoryRetention
 import com.Hrshd1eux.filemanager.core.drop.model.DropLogEntry
 import com.Hrshd1eux.filemanager.core.drop.model.DropReceivedFile
 import com.Hrshd1eux.filemanager.core.drop.model.DropReceivedText
 import com.Hrshd1eux.filemanager.core.drop.model.DropTransferItem
+import com.Hrshd1eux.filemanager.core.drop.repository.ArcaDropHistoryRepository
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
@@ -47,8 +49,14 @@ class ArcaDropManager private constructor() {
         }
     }
 
+    val historyRepository = ArcaDropHistoryRepository()
+
     private val _state = MutableStateFlow(
-        ArcaDropState(receiveDirectoryPath = defaultReceiveDirectoryPath())
+        ArcaDropState(
+            receiveDirectoryPath = defaultReceiveDirectoryPath(),
+            logs = historyRepository.logs.value,
+            historyRetention = historyRepository.retention.value
+        )
     )
     val state: StateFlow<ArcaDropState> = _state.asStateFlow()
 
@@ -235,9 +243,29 @@ class ArcaDropManager private constructor() {
     }
 
     internal fun appendLog(message: String, isError: Boolean) {
+        historyRepository.appendLog(message, isError)
         _state.update { current ->
-            val updated = (listOf(DropLogEntry(message = message, isError = isError)) + current.logs).take(60)
-            current.copy(logs = updated)
+            current.copy(
+                logs = historyRepository.logs.value,
+                historyRetention = historyRepository.retention.value
+            )
+        }
+    }
+
+    fun updateHistoryRetention(retention: DropHistoryRetention) {
+        historyRepository.updateRetention(retention)
+        _state.update { current ->
+            current.copy(
+                logs = historyRepository.logs.value,
+                historyRetention = retention
+            )
+        }
+    }
+
+    fun clearHistory() {
+        historyRepository.clearHistory()
+        _state.update { current ->
+            current.copy(logs = emptyList())
         }
     }
 
