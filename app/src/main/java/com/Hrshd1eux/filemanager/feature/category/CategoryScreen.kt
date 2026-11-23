@@ -119,6 +119,7 @@ import com.Hrshd1eux.filemanager.feature.archive.components.CompressDialog
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -200,6 +201,7 @@ fun CategoryScreen(
     var showCopyDestinationPicker by remember { mutableStateOf(false) }
     var showMoveDestinationPicker by remember { mutableStateOf(false) }
     var showSelectionOverflowMenu by remember { mutableStateOf(false) }
+    var showStandardOverflowMenu by remember { mutableStateOf(false) }
     var showCompressDialog by remember { mutableStateOf(false) }
     var showBatchPropertiesDialog by remember { mutableStateOf(false) }
 
@@ -425,19 +427,23 @@ fun CategoryScreen(
                 // Standard Category TopAppBar
                 TopAppBar(
                     title = {
-                        Column {
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
                                 text = localizedCategoryName,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             val successState = uiState as? CategoryUiState.Success
                             if (successState != null) {
                                 Text(
                                     text = stringResource(R.string.category_header_summary, successState.fileCount, FileFormatter.formatFileSize(successState.totalSizeBytes)),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -451,44 +457,125 @@ fun CategoryScreen(
                         }
                     },
                     actions = {
-                        if (category == CategoryFilter.APKS && onNavigateToInstalledApps != null) {
-                            IconButton(onClick = onNavigateToInstalledApps) {
-                                Icon(
-                                    imageVector = Icons.Default.Apps,
-                                    contentDescription = stringResource(R.string.category_installed_apps),
-                                    tint = categoryColor
-                                )
-                            }
-                        }
-                        // Search Action
+                        val configuration = LocalConfiguration.current
+                        val isWideScreen = configuration.screenWidthDp >= 600
+
+                        // Search Action (Primary, always directly visible)
                         IconButton(onClick = { viewModel.toggleSearch() }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = stringResource(R.string.action_search)
                             )
                         }
-                        // View Mode Toggle (Grid / List)
-                        IconButton(onClick = { viewModel.toggleViewMode() }) {
-                            Icon(
-                                imageVector = if (viewMode == ViewMode.GRID) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                                contentDescription = if (viewMode == ViewMode.GRID) stringResource(R.string.action_switch_to_list) else stringResource(R.string.action_switch_to_grid)
-                            )
-                        }
 
-                        // Sort Action
-                        IconButton(onClick = { showSortSheet = true }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Sort,
-                                contentDescription = stringResource(R.string.action_sort)
-                            )
-                        }
+                        if (isWideScreen) {
+                            if (category == CategoryFilter.APKS && onNavigateToInstalledApps != null) {
+                                IconButton(onClick = onNavigateToInstalledApps) {
+                                    Icon(
+                                        imageVector = Icons.Default.Apps,
+                                        contentDescription = stringResource(R.string.category_installed_apps),
+                                        tint = categoryColor
+                                    )
+                                }
+                            }
+                            // View Mode Toggle (Grid / List)
+                            IconButton(onClick = { viewModel.toggleViewMode() }) {
+                                Icon(
+                                    imageVector = if (viewMode == ViewMode.GRID) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                    contentDescription = if (viewMode == ViewMode.GRID) stringResource(R.string.action_switch_to_list) else stringResource(R.string.action_switch_to_grid)
+                                )
+                            }
 
-                        // Refresh Action
-                        IconButton(onClick = { viewModel.refresh() }) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = stringResource(R.string.action_refresh)
-                            )
+                            // Sort Action
+                            IconButton(onClick = { showSortSheet = true }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Sort,
+                                    contentDescription = stringResource(R.string.action_sort)
+                                )
+                            }
+
+                            // Refresh Action
+                            IconButton(onClick = { viewModel.refresh() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = stringResource(R.string.action_refresh)
+                                )
+                            }
+                        } else {
+                            // Compact/Phone mode: collapse secondary tools into 3-dot overflow menu
+                            Box {
+                                IconButton(onClick = { showStandardOverflowMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = stringResource(R.string.action_more)
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showStandardOverflowMenu,
+                                    onDismissRequest = { showStandardOverflowMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                if (viewMode == ViewMode.GRID) stringResource(R.string.action_switch_to_list)
+                                                else stringResource(R.string.action_switch_to_grid)
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = if (viewMode == ViewMode.GRID) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showStandardOverflowMenu = false
+                                            viewModel.toggleViewMode()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_sort)) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.Sort,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showStandardOverflowMenu = false
+                                            showSortSheet = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_refresh)) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showStandardOverflowMenu = false
+                                            viewModel.refresh()
+                                        }
+                                    )
+                                    if (category == CategoryFilter.APKS && onNavigateToInstalledApps != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.category_installed_apps)) },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Default.Apps,
+                                                    contentDescription = null,
+                                                    tint = categoryColor
+                                                )
+                                            },
+                                            onClick = {
+                                                showStandardOverflowMenu = false
+                                                onNavigateToInstalledApps()
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(

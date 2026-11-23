@@ -555,8 +555,9 @@ fun FileBrowserScreen(
             } else {
                 TopAppBar(
                     title = {
+                        val displayTitle = if (currentTitle == "0" || currentTitle.isEmpty()) "Internal Storage" else currentTitle
                         Text(
-                            text = currentTitle,
+                            text = displayTitle,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -578,6 +579,8 @@ fun FileBrowserScreen(
                         }
                     },
                     actions = {
+                        val isWideScreen = configuration.screenWidthDp >= 600
+
                         val pendingCount = (if (activeOperation != null) 1 else 0) + waitingQueue.size
                         if (pendingCount > 0) {
                             IconButton(onClick = { showOperationsQueueSheet = true }) {
@@ -612,48 +615,52 @@ fun FileBrowserScreen(
                                 contentDescription = "Search"
                             )
                         }
-                        if (isAdaptiveEligible) {
-                            IconButton(onClick = { userCollapsedDualPane = !userCollapsedDualPane }) {
+
+                        if (isWideScreen) {
+                            if (isAdaptiveEligible) {
+                                IconButton(onClick = { userCollapsedDualPane = !userCollapsedDualPane }) {
+                                    Icon(
+                                        imageVector = if (effectiveDualPane) Icons.AutoMirrored.Filled.ViewList else Icons.AutoMirrored.Filled.CompareArrows,
+                                        contentDescription = if (effectiveDualPane) "Collapse to Single Pane" else "Split into Dual-Pane",
+                                        tint = if (effectiveDualPane) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { viewModel.toggleTabsMode(context) }) {
                                 Icon(
-                                    imageVector = if (effectiveDualPane) Icons.AutoMirrored.Filled.ViewList else Icons.AutoMirrored.Filled.CompareArrows,
-                                    contentDescription = if (effectiveDualPane) "Collapse to Single Pane" else "Split into Dual-Pane",
-                                    tint = if (effectiveDualPane) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                                    imageVector = Icons.Default.Tab,
+                                    contentDescription = if (isTabsMode) "Exit Tabs mode" else "Tabs mode",
+                                    tint = if (isTabsMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                            IconButton(onClick = { showSortBottomSheet = true }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Sort,
+                                    contentDescription = "Sort"
+                                )
+                            }
+                            IconButton(onClick = { viewModel.cycleViewMode() }) {
+                                val icon = when (viewMode) {
+                                    ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
+                                    ViewMode.COMPACT -> Icons.Default.DensityMedium
+                                    ViewMode.GRID -> Icons.Default.GridView
+                                }
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = "View mode: ${viewMode.displayName}"
+                                )
+                            }
+                            IconButton(onClick = {
+                                val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                                viewModel.refresh(hasPermission)
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh"
                                 )
                             }
                         }
-                        IconButton(onClick = { viewModel.toggleTabsMode(context) }) {
-                            Icon(
-                                imageVector = Icons.Default.Tab,
-                                contentDescription = if (isTabsMode) "Exit Tabs mode" else "Tabs mode",
-                                tint = if (isTabsMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                        IconButton(onClick = { showSortBottomSheet = true }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Sort,
-                                contentDescription = "Sort"
-                            )
-                        }
-                        IconButton(onClick = { viewModel.cycleViewMode() }) {
-                            val icon = when (viewMode) {
-                                ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
-                                ViewMode.COMPACT -> Icons.Default.DensityMedium
-                                ViewMode.GRID -> Icons.Default.GridView
-                            }
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = "View mode: ${viewMode.displayName}"
-                            )
-                        }
-                        IconButton(onClick = {
-                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
-                            viewModel.refresh(hasPermission)
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh"
-                            )
-                        }
+
                         Box {
                             IconButton(onClick = { showOverflowMenu = true }) {
                                 Icon(
@@ -665,6 +672,83 @@ fun FileBrowserScreen(
                                 expanded = showOverflowMenu,
                                 onDismissRequest = { showOverflowMenu = false }
                             ) {
+                                if (!isWideScreen) {
+                                    val currentViewModeIcon = when (viewMode) {
+                                        ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
+                                        ViewMode.COMPACT -> Icons.Default.DensityMedium
+                                        ViewMode.GRID -> Icons.Default.GridView
+                                    }
+                                    DropdownMenuItem(
+                                        text = { Text("View: ${viewMode.displayName}") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = currentViewModeIcon,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            viewModel.cycleViewMode()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_sort)) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.Sort,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            showSortBottomSheet = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_refresh)) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            val hasPermission = StoragePermissionManager.hasAllFilesAccess(context)
+                                            viewModel.refresh(hasPermission)
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(if (isTabsMode) "Exit Tabs Mode" else "Tabs Mode") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Tab,
+                                                contentDescription = null,
+                                                tint = if (isTabsMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            viewModel.toggleTabsMode(context)
+                                        }
+                                    )
+                                    if (isAdaptiveEligible) {
+                                        DropdownMenuItem(
+                                            text = { Text(if (effectiveDualPane) "Single Pane" else "Dual-Pane View") },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = if (effectiveDualPane) Icons.AutoMirrored.Filled.ViewList else Icons.AutoMirrored.Filled.CompareArrows,
+                                                    contentDescription = null
+                                                )
+                                            },
+                                            onClick = {
+                                                showOverflowMenu = false
+                                                userCollapsedDualPane = !userCollapsedDualPane
+                                            }
+                                        )
+                                    }
+                                }
+
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.browser_go_to_path)) },
                                     leadingIcon = {
@@ -1680,8 +1764,9 @@ private fun BreadcrumbBar(
                         .clip(RoundedCornerShape(6.dp))
                         .clickable(enabled = !item.isCurrent) { onBreadcrumbClick(item) }
                 ) {
+                    val displayName = if (item.name == "0" || item.name.isEmpty()) "Internal Storage" else item.name
                     Text(
-                        text = item.name,
+                        text = displayName,
                         style = MaterialTheme.typography.labelLarge,
                         color = if (item.isCurrent) {
                             MaterialTheme.colorScheme.primary

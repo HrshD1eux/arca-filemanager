@@ -1202,7 +1202,7 @@ class FileBrowserViewModel @JvmOverloads constructor(
 
             _uiState.value = BrowserUiState.Success(
                 currentPath = path,
-                currentTitle = targetNode.name.ifEmpty { "Internal Storage" },
+                currentTitle = if (targetNode.name == "0" || targetNode.name.isEmpty()) "Internal Storage" else targetNode.name,
                 breadcrumbs = breadcrumbs,
                 items = sortedItems
             )
@@ -1323,10 +1323,11 @@ class FileBrowserViewModel @JvmOverloads constructor(
     }
 
     private fun generateBreadcrumbs(currentPath: String): List<BreadcrumbItem> {
+        val display = if (rootNode.name == "0" || rootNode.name.isEmpty()) "Internal Storage" else rootNode.name
         return buildBreadcrumbs(
             currentPath = currentPath,
             rootPath = rootNode.path,
-            rootDisplayName = rootNode.name.ifEmpty { "Internal Storage" }
+            rootDisplayName = display
         )
     }
 

@@ -25,7 +25,12 @@ class LocalFileSystemProvider(
     override val providerId: String = "local_fs"
 
     override fun getRootNode(): StorageNode {
-        return rootDirectory.toStorageNode()
+        val base = rootDirectory.toStorageNode()
+        return if (base.name == "0" || base.name.isEmpty()) {
+            base.copy(name = displayName)
+        } else {
+            base
+        }
     }
 
     override suspend fun listChildren(targetId: String): Result<List<StorageNode>> = withContext(ioDispatcher) {

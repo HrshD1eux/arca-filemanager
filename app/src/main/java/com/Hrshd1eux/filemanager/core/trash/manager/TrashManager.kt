@@ -1,6 +1,7 @@
 package com.Hrshd1eux.filemanager.core.trash.manager
 
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.os.Environment
 import com.Hrshd1eux.filemanager.ArcaApplication
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
@@ -30,23 +31,63 @@ class TrashManager(
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
     private val trashDir: File by lazy {
-        val root = baseTrashDir ?: runCatching {
+        resolveTrashDirectory()
+    }
+
+    private fun ensureWritableDir(dir: File): Boolean {
+        return runCatching {
+            if (!dir.exists()) {
+                dir.mkdirs()
+            }
+            if (!dir.exists() || !dir.isDirectory) return@runCatching false
+            val probe = File(dir, ".probe_${System.currentTimeMillis()}_${(0..9999).random()}")
+            val created = probe.createNewFile()
+            if (created) {
+                probe.delete()
+                val noMedia = File(dir, ".nomedia")
+                if (!noMedia.exists()) {
+                    runCatching { noMedia.createNewFile() }
+                }
+                true
+            } else {
+                false
+            }
+        }.getOrDefault(false)
+    }
+
+    private fun resolveTrashDirectory(): File {
+        // Priority 1: Explicit base trash directory (used in unit tests / explicit override)
+        baseTrashDir?.let {
+            if (ensureWritableDir(it)) return it
+        }
+
+        // Priority 2: External storage root directory /storage/emulated/0/.arca_trash
+        // (Works on Android 11+ with MANAGE_EXTERNAL_STORAGE and on unconstrained Android devices)
+        runCatching {
             if (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED) {
-                File(Environment.getExternalStorageDirectory(), ".arca_trash")
-            } else null
-        }.getOrNull() ?: run {
-            val base = appContext?.filesDir ?: File(System.getProperty("java.io.tmpdir") ?: ".")
-            File(base, ".arca_trash")
+                val extDir = File(Environment.getExternalStorageDirectory(), ".arca_trash")
+                if (ensureWritableDir(extDir)) return extDir
+            }
         }
-        if (!root.exists()) {
-            root.mkdirs()
+
+        // Priority 3: App-specific external files dir
+        // (/storage/emulated/0/Android/data/com.Hrshd1eux.filemanager/files/.arca_trash)
+        // CRITICAL FOR ANDROID 10 (Scoped Storage):
+        // Resides on the EXACT SAME storage volume as user files (/storage/emulated/0),
+        // completely bypassing Android 10 root-folder restrictions without requiring permissions,
+        // and enabling fast local rename/move operations.
+        runCatching {
+            val appExtDir = appContext?.getExternalFilesDir(null)
+            if (appExtDir != null) {
+                val appTrashDir = File(appExtDir, ".arca_trash")
+                if (ensureWritableDir(appTrashDir)) return appTrashDir
+            }
         }
-        // Ensure .nomedia is placed in trash to prevent indexing
-        val noMedia = File(root, ".nomedia")
-        if (!noMedia.exists()) {
-            runCatching { noMedia.createNewFile() }
-        }
-        root
+
+        // Priority 4: App internal files directory fallback
+        val internalTrashDir = File(appContext?.filesDir ?: File(System.getProperty("java.io.tmpdir") ?: "."), ".arca_trash")
+        ensureWritableDir(internalTrashDir)
+        return internalTrashDir
     }
 
     private val indexFile: File
@@ -90,18 +131,43 @@ class TrashManager(
                     throw IOException("Source file does not exist: ${node.path}")
                 }
 
+                if (!trashDir.exists()) {
+                    trashDir.mkdirs()
+                }
+
                 val entryId = UUID.randomUUID().toString()
                 val destinationFile = File(trashDir, "$entryId.trash")
 
                 val moved = sourceFile.renameTo(destinationFile)
                 if (!moved) {
-                    // Fallback to copy then shred source if cross-filesystem move
+                    // Fallback to copy then safe delete (e.g. cross-filesystem or Android 10 mount point boundaries)
                     if (sourceFile.isDirectory) {
                         sourceFile.copyRecursively(destinationFile, overwrite = true)
                     } else {
                         sourceFile.copyTo(destinationFile, overwrite = true)
                     }
-                    FileShredder.shred(sourceFile, ioDispatcher)
+
+                    val deleted = if (sourceFile.isDirectory) {
+                        sourceFile.deleteRecursively()
+                    } else {
+                        sourceFile.delete()
+                    }
+
+                    if (!deleted && sourceFile.exists()) {
+                        // Attempt shredder as secondary deletion attempt
+                        val shredResult = FileShredder.shred(sourceFile, ioDispatcher)
+                        if (shredResult.isFailure && sourceFile.exists()) {
+                            destinationFile.deleteRecursively()
+                            throw IOException("Failed to remove original file during move to trash: ${sourceFile.absolutePath}")
+                        }
+                    }
+                }
+
+                // Scan original path on Android so MediaStore clears cache of the deleted/moved item immediately
+                appContext?.let { ctx ->
+                    runCatching {
+                        MediaScannerConnection.scanFile(ctx, arrayOf(sourceFile.absolutePath), null, null)
+                    }
                 }
 
                 val entry = TrashEntry(
@@ -124,10 +190,20 @@ class TrashManager(
 
     suspend fun moveToTrash(nodes: List<StorageNode>): Result<Int> = withContext(ioDispatcher) {
         var count = 0
+        var firstError: Throwable? = null
         for (node in nodes) {
-            moveToTrash(node).onSuccess { count++ }
+            val res = moveToTrash(node)
+            if (res.isSuccess) {
+                count++
+            } else if (firstError == null) {
+                firstError = res.exceptionOrNull()
+            }
         }
-        Result.success(count)
+        if (nodes.isNotEmpty() && count == 0 && firstError != null) {
+            Result.failure(firstError)
+        } else {
+            Result.success(count)
+        }
     }
 
     suspend fun restore(entry: TrashEntry): Result<Unit> = withContext(ioDispatcher) {
@@ -164,6 +240,13 @@ class TrashManager(
                         trashedFile.copyTo(targetFile, overwrite = true)
                     }
                     trashedFile.deleteRecursively()
+                }
+
+                // Notify MediaStore to re-index the restored file
+                appContext?.let { ctx ->
+                    runCatching {
+                        MediaScannerConnection.scanFile(ctx, arrayOf(targetFile.absolutePath), null, null)
+                    }
                 }
 
                 _entries.value = _entries.value.filter { it.id != entry.id }

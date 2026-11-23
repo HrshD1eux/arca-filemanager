@@ -124,4 +124,39 @@ class TrashManagerTest {
         assertEquals(2, emptyResult.getOrNull())
         assertEquals(0, trashManager.entries.value.size)
     }
+
+    @Test
+    fun moveToTrash_nonExistentFile_returnsFailure() = runBlocking {
+        val nonExistent = File(trashDir, "ghost_file_${System.currentTimeMillis()}.txt")
+        val node = createNode(nonExistent)
+
+        val trashManager = TrashManager(context = null, ioDispatcher = Dispatchers.IO, baseTrashDir = trashDir)
+        val result = trashManager.moveToTrash(node)
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun moveToTrash_bulkAllFailed_returnsFailure() = runBlocking {
+        val nonExistent1 = File(trashDir, "ghost1.txt")
+        val nonExistent2 = File(trashDir, "ghost2.txt")
+
+        val trashManager = TrashManager(context = null, ioDispatcher = Dispatchers.IO, baseTrashDir = trashDir)
+        val result = trashManager.moveToTrash(listOf(createNode(nonExistent1), createNode(nonExistent2)))
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun moveToTrash_ensuresWritableDirectoryCreation() = runBlocking {
+        val subTrash = File(trashDir, "nested/trash/path")
+        val file = tempFolder.newFile("sample_nested.txt").apply { writeText("Nested Test") }
+
+        val trashManager = TrashManager(context = null, ioDispatcher = Dispatchers.IO, baseTrashDir = subTrash)
+        val result = trashManager.moveToTrash(createNode(file))
+
+        assertTrue(result.isSuccess)
+        assertTrue(subTrash.exists())
+        assertTrue(File(subTrash, ".nomedia").exists())
+    }
 }
