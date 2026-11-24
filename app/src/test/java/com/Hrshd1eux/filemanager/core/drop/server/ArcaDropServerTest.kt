@@ -27,6 +27,7 @@ class ArcaDropServerTest {
     private var sharedText: String? = null
     private val receivedFiles = mutableListOf<Triple<String, String, Long>>()
     private val receivedTexts = mutableListOf<String>()
+    private val receivingProgressEvents = mutableListOf<com.Hrshd1eux.filemanager.core.drop.model.DropReceivingProgress?>()
 
     private lateinit var server: ArcaDropServer
 
@@ -34,6 +35,7 @@ class ArcaDropServerTest {
     fun setUp() {
         receiveDir = tempFolder.newFolder("receive")
         shareDir = tempFolder.newFolder("share")
+        receivingProgressEvents.clear()
         server = ArcaDropServer(
             preferredPort = 0,
             pinOverride = "482910",
@@ -42,7 +44,8 @@ class ArcaDropServerTest {
             sharedTextProvider = { sharedText },
             ipAddressProvider = { "192.168.1.50" },
             onFileReceived = { name, path, size -> receivedFiles.add(Triple(name, path, size)) },
-            onTextReceived = { text -> receivedTexts.add(text) }
+            onTextReceived = { text -> receivedTexts.add(text) },
+            onReceivingProgress = { receivingProgressEvents.add(it) }
         )
         server.start()
     }
@@ -207,6 +210,49 @@ class ArcaDropServerTest {
         )
         assertEquals(200, textResp.statusCode)
         assertEquals(listOf("Clipboard snippet from browser"), receivedTexts)
+    }
+
+    @Test
+    fun apiItemsEndpoint_returnsRealtimeItemsAndSharedText() {
+        val testFile = File(shareDir, "photo.jpg").apply { writeBytes(ByteArray(1024)) }
+        sharedItems = listOf(
+            DropTransferItem(
+                id = "item-img",
+                name = "photo.jpg",
+                relativePath = "photo.jpg",
+                mimeType = "image/jpeg",
+                size = 1024L,
+                file = testFile
+            )
+        )
+        sharedText = "Dynamic text update"
+
+        val resp = sendRawHttp("GET /api/items HTTP/1.1\r\nHost: localhost\r\nX-Arca-Drop-Pin: 482910\r\nConnection: close\r\n\r\n")
+        assertEquals(200, resp.statusCode)
+        val bodyStr = resp.body.toString(Charsets.UTF_8)
+        assertTrue(bodyStr.contains("\"id\":\"item-img\""))
+        assertTrue(bodyStr.contains("\"name\":\"photo.jpg\""))
+        assertTrue(bodyStr.contains("\"totalSizeBytes\":1024"))
+        assertTrue(bodyStr.contains("\"sharedText\":\"Dynamic text update\""))
+    }
+
+    @Test
+    fun uploadFile_emitsReceivingProgressAndClearsOnCompletion() {
+        receivingProgressEvents.clear()
+        val data = ByteArray(65_536 * 2) { 0x42 }
+        val resp = sendRawHttp(
+            header = "POST /upload?filename=large_file.bin HTTP/1.1\r\nHost: localhost\r\nX-Arca-Drop-Pin: 482910\r\nContent-Length: ${data.size}\r\nConnection: close\r\n\r\n",
+            body = data
+        )
+        assertEquals(200, resp.statusCode)
+        assertTrue(receivingProgressEvents.isNotEmpty())
+        val firstProgress = receivingProgressEvents.first()
+        assertTrue(firstProgress != null)
+        assertEquals("large_file.bin", firstProgress?.fileName)
+        assertEquals(data.size.toLong(), firstProgress?.totalBytes)
+        // Last event should be null to indicate idle
+        val lastEvent = receivingProgressEvents.last()
+        assertEquals(null, lastEvent)
     }
 
     private data class RawHttpResponse(

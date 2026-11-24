@@ -438,8 +438,13 @@ fun CategoryScreen(
                             )
                             val successState = uiState as? CategoryUiState.Success
                             if (successState != null) {
+                                val summaryText = if (successState.fileCount == 1) {
+                                    stringResource(R.string.category_header_summary_single, FileFormatter.formatFileSize(successState.totalSizeBytes))
+                                } else {
+                                    stringResource(R.string.category_header_summary, successState.fileCount, FileFormatter.formatFileSize(successState.totalSizeBytes))
+                                }
                                 Text(
-                                    text = stringResource(R.string.category_header_summary, successState.fileCount, FileFormatter.formatFileSize(successState.totalSizeBytes)),
+                                    text = summaryText,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -1346,8 +1351,13 @@ private fun CategoryDateGroupHeader(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
         ) {
+            val groupCountText = if (group.fileCount == 1) {
+                stringResource(R.string.date_group_items_count_single, FileFormatter.formatFileSize(group.totalSizeBytes))
+            } else {
+                stringResource(R.string.date_group_items_count, group.fileCount, FileFormatter.formatFileSize(group.totalSizeBytes))
+            }
             Text(
-                text = stringResource(R.string.date_group_items_count, group.fileCount, FileFormatter.formatFileSize(group.totalSizeBytes)),
+                text = groupCountText,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)

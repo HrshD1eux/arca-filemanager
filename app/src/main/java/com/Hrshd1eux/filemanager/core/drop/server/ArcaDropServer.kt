@@ -5,8 +5,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaScannerConnection
+import com.Hrshd1eux.filemanager.core.drop.model.DropReceivingProgress
 import com.Hrshd1eux.filemanager.core.drop.model.DropTransferItem
 import com.Hrshd1eux.filemanager.core.network.util.LocalLanNetworkUtil
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -56,6 +58,7 @@ class ArcaDropServer(
     private val onFileReceived: (name: String, savedPath: String, sizeBytes: Long) -> Unit = { _, _, _ -> },
     private val onTextReceived: (text: String) -> Unit = {},
     private val onTransferProgress: (sentDelta: Long, receivedDelta: Long) -> Unit = { _, _ -> },
+    private val onReceivingProgress: (DropReceivingProgress?) -> Unit = {},
     private val onActiveConnectionsChanged: (Int) -> Unit = {},
     private val onLog: (message: String, isError: Boolean) -> Unit = { _, _ -> },
     private val onIdleTimeout: () -> Unit = {}
@@ -341,6 +344,41 @@ class ArcaDropServer(
                     )
                 }
 
+                method == "GET" && path == "/api/items" -> {
+                    val items = itemsProvider()
+                    val totalSize = items.sumOf { it.size }
+                    val sharedText = sharedTextProvider()
+                    val json = buildString {
+                        append("{\"items\":[")
+                        items.forEachIndexed { idx, item ->
+                            if (idx > 0) append(',')
+                            append('{')
+                            append("\"id\":\"").append(ArcaDropHtmlPortal.escapeJson(item.id)).append("\",")
+                            append("\"name\":\"").append(ArcaDropHtmlPortal.escapeJson(item.name)).append("\",")
+                            append("\"rel\":\"").append(ArcaDropHtmlPortal.escapeJson(item.relativePath)).append("\",")
+                            append("\"mime\":\"").append(ArcaDropHtmlPortal.escapeJson(item.mimeType)).append("\",")
+                            append("\"size\":").append(item.size).append(',')
+                            append("\"sizeText\":\"").append(ArcaDropHtmlPortal.escapeJson(FileFormatter.formatFileSize(item.size))).append('"')
+                            append('}')
+                        }
+                        append("],\"totalSizeBytes\":").append(totalSize)
+                        append(",\"totalSizeText\":\"").append(ArcaDropHtmlPortal.escapeJson(FileFormatter.formatFileSize(totalSize))).append('"')
+                        if (sharedText != null) {
+                            append(",\"sharedText\":\"").append(ArcaDropHtmlPortal.escapeJson(sharedText)).append('"')
+                        } else {
+                            append(",\"sharedText\":null")
+                        }
+                        append('}')
+                    }
+                    sendBytes(
+                        output = output,
+                        statusCode = 200,
+                        statusText = "OK",
+                        contentType = "application/json; charset=utf-8",
+                        body = json.toByteArray(Charsets.UTF_8)
+                    )
+                }
+
                 method == "GET" && path.startsWith("/file/") -> {
                     val id = decodeUrlComponent(path.removePrefix("/file/"))
                     val inline = queryParams["inline"] == "1"
@@ -614,11 +652,37 @@ class ArcaDropServer(
         val tempFile = File(targetDir, ".arca_drop_tmp_${UUID.randomUUID()}")
 
         var receivedBytes = 0L
+        val startTime = System.currentTimeMillis()
+        var lastReportTime = 0L
+
         try {
+            onReceivingProgress(
+                DropReceivingProgress(
+                    fileName = cleanName,
+                    bytesReceived = 0L,
+                    totalBytes = contentLength,
+                    speedBytesPerSec = 0L
+                )
+            )
             FileOutputStream(tempFile).use { fos ->
                 receivedBytes = copyStreamWithLimit(input, fos, contentLength) { delta ->
                     lastActivityMs.set(System.currentTimeMillis())
                     onTransferProgress(0L, delta)
+                    val currentReceived = tempFile.length()
+                    val now = System.currentTimeMillis()
+                    if (now - lastReportTime >= 150L || currentReceived == contentLength) {
+                        lastReportTime = now
+                        val elapsedSec = (now - startTime) / 1000.0
+                        val speed = if (elapsedSec > 0.05) (currentReceived / elapsedSec).toLong() else 0L
+                        onReceivingProgress(
+                            DropReceivingProgress(
+                                fileName = cleanName,
+                                bytesReceived = currentReceived,
+                                totalBytes = contentLength,
+                                speedBytesPerSec = speed
+                            )
+                        )
+                    }
                 }
                 fos.fd.sync()
             }
@@ -659,6 +723,8 @@ class ArcaDropServer(
             tempFile.delete()
             onLog("Upload error for $cleanName: ${e.message ?: "I/O error"}", true)
             sendSimpleResponse(output, 500, "Internal Server Error", "Upload failed")
+        } finally {
+            onReceivingProgress(null)
         }
     }
 

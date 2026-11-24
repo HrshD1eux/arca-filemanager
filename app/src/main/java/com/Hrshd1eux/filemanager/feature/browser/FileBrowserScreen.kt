@@ -598,14 +598,6 @@ fun FileBrowserScreen(
                             }
                         }
 
-                        val isCurrentFavorite = (uiState as? BrowserUiState.Success)?.let { viewModel.isFavorite(it.currentPath) } ?: false
-                        IconButton(onClick = { viewModel.toggleCurrentFolderFavorite() }) {
-                            Icon(
-                                imageVector = if (isCurrentFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                                contentDescription = if (isCurrentFavorite) "Remove Bookmark" else "Bookmark Folder",
-                                tint = if (isCurrentFavorite) Color(0xFFFFB300) else MaterialTheme.colorScheme.onBackground
-                            )
-                        }
                         IconButton(onClick = {
                             val currentPath = (uiState as? BrowserUiState.Success)?.breadcrumbs?.lastOrNull()?.path ?: initialPath
                             onNavigateToSearch(currentPath)
@@ -617,6 +609,14 @@ fun FileBrowserScreen(
                         }
 
                         if (isWideScreen) {
+                            val isCurrentFavorite = (uiState as? BrowserUiState.Success)?.let { viewModel.isFavorite(it.currentPath) } ?: false
+                            IconButton(onClick = { viewModel.toggleCurrentFolderFavorite() }) {
+                                Icon(
+                                    imageVector = if (isCurrentFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                                    contentDescription = if (isCurrentFavorite) "Remove Bookmark" else "Bookmark Folder",
+                                    tint = if (isCurrentFavorite) Color(0xFFFFB300) else MaterialTheme.colorScheme.onBackground
+                                )
+                            }
                             if (isAdaptiveEligible) {
                                 IconButton(onClick = { userCollapsedDualPane = !userCollapsedDualPane }) {
                                     Icon(
@@ -673,6 +673,21 @@ fun FileBrowserScreen(
                                 onDismissRequest = { showOverflowMenu = false }
                             ) {
                                 if (!isWideScreen) {
+                                    val isCurrentFavorite = (uiState as? BrowserUiState.Success)?.let { viewModel.isFavorite(it.currentPath) } ?: false
+                                    DropdownMenuItem(
+                                        text = { Text(if (isCurrentFavorite) "Remove Bookmark" else "Bookmark Folder") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = if (isCurrentFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                                                contentDescription = null,
+                                                tint = if (isCurrentFavorite) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        },
+                                        onClick = {
+                                            showOverflowMenu = false
+                                            viewModel.toggleCurrentFolderFavorite()
+                                        }
+                                    )
                                     val currentViewModeIcon = when (viewMode) {
                                         ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
                                         ViewMode.COMPACT -> Icons.Default.DensityMedium

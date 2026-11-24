@@ -15,7 +15,9 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.Hrshd1eux.filemanager.MainActivity
 import com.Hrshd1eux.filemanager.R
+import com.Hrshd1eux.filemanager.core.drop.model.DropReceivingProgress
 import com.Hrshd1eux.filemanager.core.network.util.LocalLanNetworkUtil
+import com.Hrshd1eux.filemanager.core.storage.util.FileFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -122,6 +124,9 @@ class ArcaDropService : Service() {
                     onTransferProgress = { sentDelta, receivedDelta ->
                         manager.onTransferProgress(sentDelta, receivedDelta)
                     },
+                    onReceivingProgress = { progress ->
+                        manager.onReceivingProgress(progress)
+                    },
                     onActiveConnectionsChanged = { count ->
                         manager.onActiveConnectionsChanged(count)
                     },
@@ -138,7 +143,18 @@ class ArcaDropService : Service() {
                 server = dropServer
                 val liveIp = LocalLanNetworkUtil.getLocalIpAddress()
                 manager.onServerStarted(dropServer.effectivePort, dropServer.sessionPin, liveIp)
-                updateNotification(liveIp, dropServer.effectivePort, dropServer.sessionPin)
+                updateNotification(liveIp, dropServer.effectivePort, dropServer.sessionPin, null)
+
+                // Live state observer for transfer progress updates
+                serviceScope.launch {
+                    manager.state.collect { st ->
+                        if (st.isRunning) {
+                            val activePort = server?.effectivePort ?: st.port
+                            val activePin = server?.sessionPin ?: st.pin
+                            updateNotification(st.ipAddress, activePort, activePin, st.activeReceiving)
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 manager.appendLog("Failed to start ARCA Drop: ${e.message ?: "Socket error"}", true)
                 manager.onServerStopped(applicationContext)
@@ -154,14 +170,22 @@ class ArcaDropService : Service() {
         ArcaDropManager.getInstance().onServerStopped(applicationContext)
     }
 
-    private fun updateNotification(ip: String?, port: Int, pin: String) {
+    private fun updateNotification(
+        ip: String?,
+        port: Int,
+        pin: String,
+        receiving: DropReceivingProgress? = null
+    ) {
         val nm = getSystemService(NotificationManager::class.java) ?: return
-        nm.notify(NOTIFICATION_ID, buildNotification(ip, port, pin))
+        nm.notify(NOTIFICATION_ID, buildNotification(ip, port, pin, receiving))
     }
 
-    private fun buildNotification(ip: String?, port: Int, pin: String): Notification {
-        val urlText = if (ip != null) "http://$ip:$port • PIN $pin" else "Connect Wi-Fi or Hotspot • Port $port"
-
+    private fun buildNotification(
+        ip: String?,
+        port: Int,
+        pin: String,
+        receiving: DropReceivingProgress? = null
+    ): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -182,16 +206,29 @@ class ArcaDropService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ARCA Drop Active")
-            .setContentText(urlText)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .setContentIntent(openPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop Sharing", stopPendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
+
+        if (receiving != null) {
+            val speedPart = if (receiving.speedBytesPerSec > 0) " • ${FileFormatter.formatFileSize(receiving.speedBytesPerSec)}/s" else ""
+            val contentText = "${FileFormatter.formatFileSize(receiving.bytesReceived)} / ${FileFormatter.formatFileSize(receiving.totalBytes)} (${FileFormatter.formatFileSize(receiving.bytesRemaining)} left)$speedPart"
+
+            builder.setContentTitle("Receiving: ${receiving.fileName} (${receiving.percentage}%)")
+                .setContentText(contentText)
+                .setProgress(100, receiving.percentage, false)
+        } else {
+            val urlText = if (ip != null) "http://$ip:$port • PIN $pin" else "Connect Wi-Fi or Hotspot • Port $port"
+            builder.setContentTitle("ARCA Drop Active")
+                .setContentText(urlText)
+                .setProgress(0, 0, false)
+        }
+
+        return builder.build()
     }
 
     private fun createNotificationChannel() {

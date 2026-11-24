@@ -31,6 +31,15 @@ data class DropReceivedText(
     val timestampMs: Long = System.currentTimeMillis()
 )
 
+data class DropReceivingProgress(
+    val fileName: String,
+    val bytesReceived: Long,
+    val totalBytes: Long,
+    val bytesRemaining: Long = (totalBytes - bytesReceived).coerceAtLeast(0L),
+    val percentage: Int = if (totalBytes > 0) ((bytesReceived * 100) / totalBytes).toInt().coerceIn(0, 100) else 0,
+    val speedBytesPerSec: Long = 0L
+)
+
 @Serializable
 enum class DropHistoryRetention(val displayName: String, val durationDays: Int?) {
     ONE_MONTH("1 Month (Default)", 30),
@@ -58,6 +67,7 @@ data class ArcaDropState(
     val bytesSent: Long = 0L,
     val bytesReceived: Long = 0L,
     val activeConnections: Int = 0,
+    val activeReceiving: DropReceivingProgress? = null,
     val logs: List<DropLogEntry> = emptyList(),
     val historyRetention: DropHistoryRetention = DropHistoryRetention.ONE_MONTH
 ) {

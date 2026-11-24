@@ -9,6 +9,7 @@ import com.Hrshd1eux.filemanager.core.drop.model.DropHistoryRetention
 import com.Hrshd1eux.filemanager.core.drop.model.DropLogEntry
 import com.Hrshd1eux.filemanager.core.drop.model.DropReceivedFile
 import com.Hrshd1eux.filemanager.core.drop.model.DropReceivedText
+import com.Hrshd1eux.filemanager.core.drop.model.DropReceivingProgress
 import com.Hrshd1eux.filemanager.core.drop.model.DropTransferItem
 import com.Hrshd1eux.filemanager.core.drop.repository.ArcaDropHistoryRepository
 import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
@@ -242,6 +243,10 @@ class ArcaDropManager private constructor() {
         _state.update { it.copy(activeConnections = count) }
     }
 
+    internal fun onReceivingProgress(progress: DropReceivingProgress?) {
+        _state.update { it.copy(activeReceiving = progress) }
+    }
+
     internal fun appendLog(message: String, isError: Boolean) {
         historyRepository.appendLog(message, isError)
         _state.update { current ->
@@ -276,7 +281,8 @@ class ArcaDropManager private constructor() {
                 isRunning = false,
                 port = 0,
                 pin = "",
-                activeConnections = 0
+                activeConnections = 0,
+                activeReceiving = null
             )
         }
     }

@@ -193,6 +193,7 @@ object ArcaDropHtmlPortal {
         val totalSize = items.sumOf { it.size.coerceAtLeast(0L) }
         val escapedPin = escapeHtml(pinToken)
         val escapedFolder = escapeHtml(receiveFolderName)
+        val initialSharedTextJson = if (sharedText != null) "\"${escapeJson(sharedText)}\"" else "null"
 
         val textSection = if (!sharedText.isNullOrBlank()) {
             val escapedText = escapeHtml(sharedText)
@@ -579,7 +580,7 @@ object ArcaDropHtmlPortal {
       </div>
       <div class="pill">
         <span class="dot"></span>
-        <span>${items.size} items (${escapeHtml(FileFormatter.formatFileSize(totalSize))})</span>
+        <span id="topbarPillText">${items.size} items (${escapeHtml(FileFormatter.formatFileSize(totalSize))})</span>
       </div>
     </div>
   </header>
@@ -620,12 +621,12 @@ object ArcaDropHtmlPortal {
     <section class="card">
       <div class="section-head">
         <div>
-          <h2>Shared from Phone (${items.size})</h2>
+          <h2 id="sharedSectionTitle">Shared from Phone (${items.size})</h2>
           <p class="sub">Preview in browser, download individually, or stream all folders as ZIP</p>
         </div>
         <div class="toolbar">
           <input id="searchBox" class="input" style="min-width:180px;" type="search" placeholder="Filter shared items…" oninput="renderFiles()" />
-          ${if (items.isNotEmpty()) """<a class="btn btn-primary" href="/download-all?pin=$escapedPin">Download All ZIP</a>""" else ""}
+          <span id="downloadAllWrap">${if (items.isNotEmpty()) """<a class="btn btn-primary" href="/download-all?pin=$escapedPin">Download All ZIP</a>""" else ""}</span>
         </div>
       </div>
 
@@ -648,7 +649,9 @@ object ArcaDropHtmlPortal {
 
   <script>
     const PIN = "$escapedPin";
-    const ITEMS = $itemsJson;
+    let ITEMS = $itemsJson;
+    let currentSharedText = $initialSharedTextJson;
+    let isPolling = false;
 
     function esc(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -832,13 +835,69 @@ object ArcaDropHtmlPortal {
     }
 
     renderFiles();
+
+    async function pollUpdates() {
+      if (isPolling) return;
+      isPolling = true;
+      try {
+        const res = await fetch('/api/items?pin=' + encodeURIComponent(PIN), {
+          headers: { 'X-Arca-Drop-Pin': PIN }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !Array.isArray(data.items)) return;
+
+        const newItemsJson = JSON.stringify(data.items);
+        const oldItemsJson = JSON.stringify(ITEMS);
+        if (newItemsJson !== oldItemsJson) {
+          const added = data.items.length > ITEMS.length;
+          ITEMS = data.items;
+          const pillText = document.getElementById('topbarPillText');
+          if (pillText && data.totalSizeText) {
+            pillText.textContent = data.items.length + ' items (' + data.totalSizeText + ')';
+          }
+          const sectionTitle = document.getElementById('sharedSectionTitle');
+          if (sectionTitle) {
+            sectionTitle.textContent = 'Shared from Phone (' + data.items.length + ')';
+          }
+          const dlWrap = document.getElementById('downloadAllWrap');
+          if (dlWrap) {
+            dlWrap.innerHTML = data.items.length > 0
+              ? '<a class="btn btn-primary" href="/download-all?pin=' + encodeURIComponent(PIN) + '">Download All ZIP</a>'
+              : '';
+          }
+          renderFiles();
+          if (added) {
+            showToast('Files updated from phone');
+          }
+        }
+
+        if (data.sharedText !== undefined) {
+          const newText = data.sharedText || '';
+          if (newText !== currentSharedText) {
+            currentSharedText = newText;
+            const textBox = document.getElementById('sharedTextBox');
+            if (textBox) {
+              textBox.textContent = newText;
+            }
+          }
+        }
+      } catch (_) {
+        // Ignored
+      } finally {
+        isPolling = false;
+      }
+    }
+
+    setInterval(pollUpdates, 2000);
+    window.addEventListener('focus', pollUpdates);
   </script>
 </body>
 </html>
         """.trimIndent()
     }
 
-    private fun escapeJson(raw: String): String {
+    internal fun escapeJson(raw: String): String {
         val sb = StringBuilder(raw.length + 16)
         for (ch in raw) {
             when (ch) {
