@@ -428,4 +428,49 @@ class StorageAnalyzerRegressionTest {
         assertTrue(disclaimer.contains("Wear-leveling on flash memory"))
         assertTrue(disclaimer.contains("does not cryptographically overwrite physical storage blocks"))
     }
+
+    @Test
+    fun storageAnalyzer_completelyIgnoresTrashedFilesAcrossAllViews() = runTest {
+        // 1. Setup normal files
+        val normalVideo = File(testRoot, "normal_movie.mp4").apply {
+            java.io.RandomAccessFile(this, "rw").use { it.setLength(30L * 1024 * 1024) }
+        }
+        val normalDoc = File(testRoot, "notes.txt").apply { writeText("Hello") }
+
+        // 2. Setup trashed files
+        val trashedLarge = File(testRoot, ".trashed-1712345678-large_video.mp4").apply {
+            java.io.RandomAccessFile(this, "rw").use { it.setLength(50L * 1024 * 1024) }
+        }
+        val arcaTrashFolder = File(testRoot, ".arca_trash").apply { mkdir() }
+        val arcaTrashFile = File(arcaTrashFolder, "c983a7df.trash").apply {
+            java.io.RandomAccessFile(this, "rw").use { it.setLength(40L * 1024 * 1024) }
+        }
+        val standaloneTrashFile = File(testRoot, "backup.zip.trash").apply {
+            java.io.RandomAccessFile(this, "rw").use { it.setLength(35L * 1024 * 1024) }
+        }
+        val emptyTrashFolder = File(testRoot, "Trash").apply { mkdir() }
+
+        // Large files scan must NOT include any trashed items
+        val (largeFiles, _) = engine.scanLargeFiles(
+            rootPath = testRoot.absolutePath,
+            threshold = LargeFileThreshold.MB_25
+        )
+        assertEquals(1, largeFiles.size)
+        assertEquals(normalVideo.name, largeFiles[0].name)
+
+        // Archives scan must NOT include .trash or .trashed archives
+        val (archives, _) = engine.scanArchives(rootPath = testRoot.absolutePath)
+        assertFalse(archives.any { it.name.contains("trash") })
+
+        // Empty folders scan must NOT include Trash directory
+        val (emptyFolders, _) = engine.scanEmptyFolders(rootPath = testRoot.absolutePath)
+        assertFalse(emptyFolders.any { it.name.equals("Trash", ignoreCase = true) })
+        assertFalse(emptyFolders.any { it.name.equals(".arca_trash", ignoreCase = true) })
+
+        // Category breakdown must NOT count trashed files
+        val (breakdown, _) = engine.scanCategoryBreakdown(rootPath = testRoot.absolutePath)
+        val videosCategory = breakdown.categories.first { it.category == StorageCategory.VIDEOS }
+        assertEquals(1, videosCategory.fileCount)
+        assertEquals(normalVideo.length(), videosCategory.byteCount)
+    }
 }

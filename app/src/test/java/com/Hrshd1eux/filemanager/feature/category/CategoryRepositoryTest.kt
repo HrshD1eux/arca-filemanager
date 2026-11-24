@@ -91,6 +91,21 @@ class CategoryRepositoryTest {
     }
 
     @Test
+    fun matchesCategory_rejectsTrashedAndHiddenFilesAcrossCategories() {
+        val mediaStoreTrashed = File(".trashed-1712345678-photo.jpg")
+        val arcaTrash = File("uuid.trash")
+        val hiddenFile = File(".hidden_doc.pdf")
+        val insideTrashDir = File("/storage/emulated/0/.arca_trash/image.png")
+
+        for (category in CategoryFilter.entries) {
+            assertFalse("Category $category must reject MediaStore trashed file", repository.matchesCategory(mediaStoreTrashed, category))
+            assertFalse("Category $category must reject ARCA trash file", repository.matchesCategory(arcaTrash, category))
+            assertFalse("Category $category must reject hidden file", repository.matchesCategory(hiddenFile, category))
+            assertFalse("Category $category must reject file inside trash dir", repository.matchesCategory(insideTrashDir, category))
+        }
+    }
+
+    @Test
     fun getFilesForCategory_scansDirectoryCorrectly() = runTest {
         // Create files in root
         File(rootDir, "photo1.jpg").apply { writeBytes(ByteArray(1024)) }

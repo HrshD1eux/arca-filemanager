@@ -17,6 +17,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.StorageCategory
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
+import com.Hrshd1eux.filemanager.core.trash.util.TrashFilter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -66,7 +67,7 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead() || TrashFilter.isTrashDirectory(dir)) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
@@ -77,7 +78,7 @@ class StorageAnalyzer2Engine(
                 .onFail { file, _ ->
                     inaccessiblePaths.add(file.absolutePath)
                 }
-                .filter { it.isFile && !it.name.startsWith(".") }
+                .filter { it.isFile && !it.name.startsWith(".") && !TrashFilter.isTrashed(it) }
                 .forEach { file ->
                     coroutineContext.ensureActive()
                     scannedFiles++
@@ -130,7 +131,7 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead() || TrashFilter.isTrashDirectory(dir)) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
@@ -141,7 +142,7 @@ class StorageAnalyzer2Engine(
                 .onFail { file, _ ->
                     inaccessiblePaths.add(file.absolutePath)
                 }
-                .filter { it.isFile && !it.name.startsWith(".") }
+                .filter { it.isFile && !it.name.startsWith(".") && !TrashFilter.isTrashed(it) }
                 .forEach { file ->
                     coroutineContext.ensureActive()
                     scannedFiles++
@@ -192,7 +193,7 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead() || TrashFilter.isTrashDirectory(dir)) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
@@ -203,7 +204,7 @@ class StorageAnalyzer2Engine(
                 .onFail { file, _ ->
                     inaccessiblePaths.add(file.absolutePath)
                 }
-                .filter { it.isFile && !it.name.startsWith(".") }
+                .filter { it.isFile && !it.name.startsWith(".") && !TrashFilter.isTrashed(it) }
                 .forEach { file ->
                     coroutineContext.ensureActive()
                     scannedFiles++
@@ -253,7 +254,7 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead() || TrashFilter.isTrashDirectory(dir)) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
@@ -264,10 +265,10 @@ class StorageAnalyzer2Engine(
                 .onFail { file, _ ->
                     inaccessiblePaths.add(file.absolutePath)
                 }
-                .filter { it.isDirectory && it.absolutePath != root.absolutePath && !it.name.startsWith(".") }
+                .filter { it.isDirectory && it.absolutePath != root.absolutePath && !it.name.startsWith(".") && !TrashFilter.isTrashDirectory(it) }
                 .forEach { dir ->
                     coroutineContext.ensureActive()
-                    val children = dir.listFiles()
+                    val children = dir.listFiles()?.filter { !TrashFilter.isTrashed(it) && it.name != ".nomedia" }
                     if (children != null && children.isEmpty()) {
                         emptyFolders.add(
                             EmptyFolderItem(
@@ -310,7 +311,7 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead() || TrashFilter.isTrashDirectory(dir)) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
@@ -321,7 +322,7 @@ class StorageAnalyzer2Engine(
                 .onFail { file, _ ->
                     inaccessiblePaths.add(file.absolutePath)
                 }
-                .filter { it.isFile && !it.name.startsWith(".") && it.length() > 0 }
+                .filter { it.isFile && !it.name.startsWith(".") && !TrashFilter.isTrashed(it) && it.length() > 0 }
                 .forEach { file ->
                     coroutineContext.ensureActive()
                     scannedFiles++
@@ -426,7 +427,7 @@ class StorageAnalyzer2Engine(
         if (root.exists() && root.canRead()) {
             root.walkTopDown()
                 .onEnter { dir ->
-                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead()) {
+                    if (SafeFileWalker.isRestrictedDirectory(dir) || !dir.canRead() || TrashFilter.isTrashDirectory(dir)) {
                         inaccessiblePaths.add(dir.absolutePath)
                         false
                     } else {
@@ -437,7 +438,7 @@ class StorageAnalyzer2Engine(
                 .onFail { file, _ ->
                     inaccessiblePaths.add(file.absolutePath)
                 }
-                .filter { it.isFile && !it.name.startsWith(".") }
+                .filter { it.isFile && !it.name.startsWith(".") && !TrashFilter.isTrashed(it) }
                 .forEach { file ->
                     coroutineContext.ensureActive()
                     scannedFiles++

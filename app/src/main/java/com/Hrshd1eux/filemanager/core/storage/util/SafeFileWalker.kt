@@ -1,5 +1,6 @@
 package com.Hrshd1eux.filemanager.core.storage.util
 
+import com.Hrshd1eux.filemanager.core.trash.util.TrashFilter
 import java.io.File
 
 /**
@@ -36,6 +37,7 @@ object SafeFileWalker {
         root: File,
         includeHidden: Boolean = false,
         maxDepth: Int = Int.MAX_VALUE,
+        excludeTrash: Boolean = true,
         onRestrictedDir: ((File) -> Unit)? = null
     ): Sequence<File> {
         if (!root.exists() || !root.isDirectory) return emptySequence()
@@ -46,6 +48,7 @@ object SafeFileWalker {
                     .maxDepth(maxDepth)
                     .onEnter { dir ->
                         if (!includeHidden && dir.name.startsWith(".")) return@onEnter false
+                        if (excludeTrash && TrashFilter.isTrashDirectory(dir)) return@onEnter false
                         if (isRestrictedDirectory(dir)) {
                             onRestrictedDir?.invoke(dir)
                             return@onEnter false
@@ -57,6 +60,8 @@ object SafeFileWalker {
                     }
                     .forEach { file ->
                         try {
+                            if (!includeHidden && file.name.startsWith(".")) return@forEach
+                            if (excludeTrash && TrashFilter.isTrashed(file)) return@forEach
                             yield(file)
                         } catch (_: Exception) {
                         }

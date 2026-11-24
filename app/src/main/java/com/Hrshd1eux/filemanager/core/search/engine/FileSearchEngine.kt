@@ -14,6 +14,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.MimeTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
+import com.Hrshd1eux.filemanager.core.trash.util.TrashFilter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -229,7 +230,7 @@ class FileSearchEngine(
             return false
         }
 
-        if (!criteria.includeHidden && file.name.startsWith(".")) {
+        if (!criteria.includeHidden && (file.name.startsWith(".") || TrashFilter.isTrashed(file))) {
             return false
         }
 

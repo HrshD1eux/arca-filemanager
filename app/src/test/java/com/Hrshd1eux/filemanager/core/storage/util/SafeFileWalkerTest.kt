@@ -53,4 +53,38 @@ class SafeFileWalkerTest {
         assertFalse(walked.any { it.name == "file_in_hidden.txt" })
         assertTrue(restrictedEncountered.contains("data"))
     }
+
+    @Test
+    fun walkSafe_excludesHiddenFilesAndTrashedItems() {
+        val root = tempFolder.newFolder("storage_trash_test")
+        val dcim = File(root, "DCIM").apply { mkdir() }
+
+        // Normal file
+        File(dcim, "photo.jpg").writeText("photo content")
+
+        // Android MediaStore trashed file
+        File(dcim, ".trashed-1712345678-deleted.jpg").writeText("trashed content")
+
+        // Hidden file in visible folder
+        File(dcim, ".hidden_cache").writeText("cache content")
+
+        // File with .trash extension
+        File(dcim, "uuid.trash").writeText("arca trash file")
+
+        // Trash folder with files inside
+        val trashFolder = File(root, ".arca_trash").apply { mkdir() }
+        File(trashFolder, "trashed_file.pdf").writeText("trashed in folder")
+
+        val walked = SafeFileWalker.walkSafe(
+            root = root,
+            includeHidden = false,
+            excludeTrash = true
+        ).toList()
+
+        assertTrue("Normal file must be included", walked.any { it.name == "photo.jpg" })
+        assertFalse("MediaStore trashed file must NOT be included", walked.any { it.name.startsWith(".trashed") })
+        assertFalse("Hidden file must NOT be included", walked.any { it.name == ".hidden_cache" })
+        assertFalse(".trash file must NOT be included", walked.any { it.name == "uuid.trash" })
+        assertFalse("Files in .arca_trash must NOT be included", walked.any { it.name == "trashed_file.pdf" })
+    }
 }

@@ -10,6 +10,7 @@ import com.Hrshd1eux.filemanager.core.storage.model.StorageNode
 import com.Hrshd1eux.filemanager.core.storage.util.SafeFileWalker
 import com.Hrshd1eux.filemanager.core.storage.util.FileTypeResolver
 import com.Hrshd1eux.filemanager.core.storage.util.toStorageNode
+import com.Hrshd1eux.filemanager.core.trash.util.TrashFilter
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -123,6 +124,9 @@ class CategoryRepository(
     }
 
     fun matchesCategory(file: File, category: CategoryFilter): Boolean {
+        if (file.name.startsWith(".") || TrashFilter.isTrashed(file)) {
+            return false
+        }
         val fileName = file.name
         return when (category) {
             CategoryFilter.ALL -> true
