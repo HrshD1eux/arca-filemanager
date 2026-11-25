@@ -54,6 +54,7 @@
     <string name="category_descending">இறங்குவரிசை</string>
     <string name="section_categories">வகைகள்</string>
     <string name="category_header_summary">%1$d உருப்படிகள் • %2$s</string>
+    <string name="category_header_summary_single">1 உருப்படி • %1$s</string>
     <string name="category_installed_apps">நிறுவப்பட்ட பயன்பாடுகள்</string>
     <string name="category_search_hint">%1$s இல் தேடுங்கள்...</string>
     <string name="category_no_files">இந்த பிரிவில் எந்த கோப்புகளும் கண்டறியப்படவில்லை.</string>
@@ -65,6 +66,7 @@
     <string name="date_group_older">பழையவை</string>
     <string name="date_group_unknown">தெரியாத தேதி</string>
     <string name="date_group_items_count">%1$d உருப்படிகள் • %2$s</string>
+    <string name="date_group_items_count_single">1 உருப்படி • %1$s</string>
     <string name="date_group_select_all">பிரிவைத் தேர்ந்தெடு</string>
     <string name="date_group_deselect_all">பிரிவுத் தேர்வை நீக்கு</string>
     <string name="home_internal_storage">உள் சேமிப்பகம்</string>

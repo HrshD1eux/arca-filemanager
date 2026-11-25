@@ -54,6 +54,7 @@
     <string name="category_descending">అవరోహణ</string>
     <string name="section_categories">వర్గాలు</string>
     <string name="category_header_summary">%1$d అంశాలు • %2$s</string>
+    <string name="category_header_summary_single">1 అంశం • %1$s</string>
     <string name="category_installed_apps">ఇన్‌స్టాల్ చేసిన యాప్‌లు</string>
     <string name="category_search_hint">%1$s లో వెతకండి...</string>
     <string name="category_no_files">ఈ వర్గంలో ఫైళ్లు ఏవీ కనుగొనబడలేదు.</string>
@@ -65,6 +66,7 @@
     <string name="date_group_older">పాతవి</string>
     <string name="date_group_unknown">తెలియని తేదీ</string>
     <string name="date_group_items_count">%1$d అంశాలు • %2$s</string>
+    <string name="date_group_items_count_single">1 అంశం • %1$s</string>
     <string name="date_group_select_all">విభాగాన్ని ఎంచుకోండి</string>
     <string name="date_group_deselect_all">విభాగం ఎంపిక తీసివేయండి</string>
     <string name="home_internal_storage">అంతర్గత నిల్వ</string>

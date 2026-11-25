@@ -54,6 +54,7 @@
     <string name="category_descending">নিম্নমুখী</string>
     <string name="section_categories">বিভাগসমূহ</string>
     <string name="category_header_summary">%1$d আইটেম • %2$s</string>
+    <string name="category_header_summary_single">1 আইটেম • %1$s</string>
     <string name="category_installed_apps">ইনস্টল করা অ্যাপ</string>
     <string name="category_search_hint">%1$s এ অনুসন্ধান করুন...</string>
     <string name="category_no_files">এই বিভাগে কোনো ফাইল পাওয়া যায়নি।</string>
@@ -65,6 +66,7 @@
     <string name="date_group_older">পুরোনো</string>
     <string name="date_group_unknown">অজানা তারিখ</string>
     <string name="date_group_items_count">%1$d আইটেম • %2$s</string>
+    <string name="date_group_items_count_single">1 আইটেম • %1$s</string>
     <string name="date_group_select_all">বিভাগ নির্বাচন করুন</string>
     <string name="date_group_deselect_all">বিভাগ অনির্বাচন করুন</string>
     <string name="home_internal_storage">অভ্যন্তরীণ মেমরি</string>

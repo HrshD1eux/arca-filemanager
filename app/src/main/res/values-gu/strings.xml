@@ -54,6 +54,7 @@
     <string name="category_descending">ઉતરતા ક્રમમાં</string>
     <string name="section_categories">શ્રેણીઓ</string>
     <string name="category_header_summary">%1$d આઇટમ્સ • %2$s</string>
+    <string name="category_header_summary_single">1 આઇટમ • %1$s</string>
     <string name="category_installed_apps">ઇન્સ્ટોલ કરેલી એપ્સ</string>
     <string name="category_search_hint">%1$s માં શોધો...</string>
     <string name="category_no_files">આ શ્રેણીમાં કોઈ ફાઇલ મળી નથી.</string>
@@ -65,6 +66,7 @@
     <string name="date_group_older">જૂનું</string>
     <string name="date_group_unknown">અજ્ઞાત તારીખ</string>
     <string name="date_group_items_count">%1$d આઇટમ્સ • %2$s</string>
+    <string name="date_group_items_count_single">1 આઇટમ • %1$s</string>
     <string name="date_group_select_all">વિભાગ પસંદ કરો</string>
     <string name="date_group_deselect_all">વિભાગ પસંદગી રદ કરો</string>
     <string name="home_internal_storage">આંતરિક મેમરી</string>

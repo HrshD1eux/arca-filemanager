@@ -54,6 +54,7 @@
     <string name="category_descending">Descendente</string>
     <string name="section_categories">Categorias</string>
     <string name="category_header_summary">%1$d itens • %2$s</string>
+    <string name="category_header_summary_single">1 item • %1$s</string>
     <string name="category_installed_apps">Aplicações instaladas</string>
     <string name="category_search_hint">Pesquisar em %1$s...</string>
     <string name="category_no_files">Nenhum arquivo encontrado nesta categoria.</string>
@@ -65,6 +66,7 @@
     <string name="date_group_older">Mais antigos</string>
     <string name="date_group_unknown">Data desconhecida</string>
     <string name="date_group_items_count">%1$d itens • %2$s</string>
+    <string name="date_group_items_count_single">1 item • %1$s</string>
     <string name="date_group_select_all">Selecionar secção</string>
     <string name="date_group_deselect_all">Desmarcar secção</string>
     <string name="home_internal_storage">Armazenamento interno</string>
