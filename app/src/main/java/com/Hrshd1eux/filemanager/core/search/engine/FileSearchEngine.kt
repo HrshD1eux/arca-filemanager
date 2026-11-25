@@ -35,7 +35,10 @@ class FileSearchEngine(
 
     private val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "heic", "heif", "ico")
     private val videoExtensions = setOf("mp4", "mkv", "mov", "avi", "webm", "3gp", "flv", "wmv", "m4v")
-    private val audioExtensions = setOf("mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "opus", "mid")
+    private val audioExtensions = setOf(
+        "mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "opus", "mid", "midi",
+        "amr", "awb", "3ga", "qcp", "oga", "m4r", "caf"
+    )
     private val docExtensions = setOf("pdf", "doc", "docx", "txt", "rtf", "odt", "xls", "xlsx", "ppt", "pptx", "csv", "json", "xml", "html", "md")
     private val archiveExtensions = setOf("zip", "tar", "gz", "7z", "rar", "bz2", "xz", "iso", "apk", "jar")
     private val apkExtensions = setOf("apk", "xapk", "apks", "apkm", "aab")

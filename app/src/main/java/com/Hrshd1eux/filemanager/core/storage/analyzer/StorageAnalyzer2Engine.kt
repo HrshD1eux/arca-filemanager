@@ -44,7 +44,10 @@ class StorageAnalyzer2Engine(
 
     private val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "webp", "heic", "dng", "svg", "bmp")
     private val videoExtensions = setOf("mp4", "mkv", "mov", "avi", "webm", "3gp", "flv", "m4v")
-    private val audioExtensions = setOf("mp3", "m4a", "flac", "wav", "aac", "ogg", "opus")
+    private val audioExtensions = setOf(
+        "mp3", "m4a", "flac", "wav", "aac", "ogg", "opus", "wma",
+        "amr", "awb", "3ga", "qcp", "oga", "m4r", "caf"
+    )
     private val documentExtensions = setOf("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "epub", "csv")
     private val archiveExtensions = setOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz", "iso", "apk", "tgz")
 

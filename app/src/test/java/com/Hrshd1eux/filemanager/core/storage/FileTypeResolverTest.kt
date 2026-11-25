@@ -50,6 +50,10 @@ class FileTypeResolverTest {
         assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("song.mp3"))
         assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("track.flac"))
         assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("voice.m4a"))
+        assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("call_recording.amr"))
+        assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("hd_call.awb"))
+        assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("samsung_voice.3ga"))
+        assertEquals(FileType.AUDIO, FileTypeResolver.resolveType("whatsapp_voice.opus"))
 
         // Code
         assertEquals(FileType.CODE, FileTypeResolver.resolveType("MainActivity.kt"))

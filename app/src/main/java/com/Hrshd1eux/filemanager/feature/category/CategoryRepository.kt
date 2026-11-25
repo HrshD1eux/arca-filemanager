@@ -108,6 +108,75 @@ class CategoryRepository(
             return@withContext result.values.toList()
         }
 
+        if (category == CategoryFilter.AUDIO) {
+            val result = LinkedHashMap<String, StorageNode>()
+
+            // 1. High-priority scan of standard audio & call recording locations across Android OEMs
+            val primaryDirs = listOfNotNull(
+                runCatching { Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC) }.getOrNull(),
+                runCatching {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RECORDINGS)
+                    } else null
+                }.getOrNull(),
+                runCatching { Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PODCASTS) }.getOrNull(),
+                File(basePath, "Recordings"),
+                File(basePath, "Recordings/Call"),
+                File(basePath, "Recordings/Call Recordings"),
+                File(basePath, "Record"),
+                File(basePath, "Record/Call"),
+                File(basePath, "MIUI/sound_recorder/call_rec"),
+                File(basePath, "MIUI/sound_recorder"),
+                File(basePath, "VoiceRecorder"),
+                File(basePath, "Voice Recorder"),
+                File(basePath, "Sounds"),
+                File(basePath, "Sounds/Call"),
+                File(basePath, "CallRecordings"),
+                File(basePath, "CubeCallRecorder"),
+                File(basePath, "Music"),
+                File(basePath, "Podcasts"),
+                File(basePath, "Download"),
+                File(basePath, "Downloads")
+            ).filter { it.exists() && it.isDirectory }
+
+            for (dir in primaryDirs) {
+                runCatching {
+                    SafeFileWalker.walkSafe(dir, includeHidden = false, maxDepth = 6)
+                        .filter { it.isFile }
+                        .forEach { file ->
+                            if (matchesCategory(file, CategoryFilter.AUDIO)) {
+                                runCatching { file.toStorageNode() }.getOrNull()?.let { node ->
+                                    result.putIfAbsent(node.path, node)
+                                }
+                            }
+                        }
+                }
+            }
+
+            // Also check direct files located in the root directory
+            runCatching {
+                rootFile.listFiles()?.filter { it.isFile && matchesCategory(it, CategoryFilter.AUDIO) }?.forEach { file ->
+                    runCatching { file.toStorageNode() }.getOrNull()?.let { node ->
+                        result.putIfAbsent(node.path, node)
+                    }
+                }
+            }
+
+            // 2. Comprehensive filesystem traversal for audio anywhere else on storage
+            runCatching {
+                SafeFileWalker.walkSafe(rootFile, includeHidden = false, maxDepth = 12)
+                    .filter { it.isFile }
+                    .forEach { file ->
+                        if (matchesCategory(file, CategoryFilter.AUDIO)) {
+                            runCatching { file.toStorageNode() }.getOrNull()?.let { node ->
+                                result.putIfAbsent(node.path, node)
+                            }
+                        }
+                    }
+            }
+            return@withContext result.values.toList()
+        }
+
         val result = mutableListOf<StorageNode>()
         runCatching {
             SafeFileWalker.walkSafe(rootFile, includeHidden = false, maxDepth = 12)

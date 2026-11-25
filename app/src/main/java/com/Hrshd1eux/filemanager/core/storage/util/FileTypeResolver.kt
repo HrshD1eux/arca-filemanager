@@ -15,7 +15,8 @@ object FileTypeResolver {
     )
 
     private val audioExtensions = setOf(
-        "mp3", "m4a", "flac", "wav", "aac", "ogg", "opus", "wma", "alac", "aiff", "mid", "midi"
+        "mp3", "m4a", "flac", "wav", "aac", "ogg", "opus", "wma", "alac", "aiff", "mid", "midi",
+        "amr", "awb", "3ga", "qcp", "oga", "m4r", "caf", "ra", "dss", "voc"
     )
 
     private val documentExtensions = setOf(

@@ -55,6 +55,10 @@ class CategoryRepositoryTest {
         assertTrue(repository.matchesCategory(File("song.flac"), CategoryFilter.AUDIO))
         assertTrue(repository.matchesCategory(File("recording.wav"), CategoryFilter.AUDIO))
         assertTrue(repository.matchesCategory(File("podcast.m4a"), CategoryFilter.AUDIO))
+        assertTrue(repository.matchesCategory(File("call_recording.amr"), CategoryFilter.AUDIO))
+        assertTrue(repository.matchesCategory(File("voip_call.awb"), CategoryFilter.AUDIO))
+        assertTrue(repository.matchesCategory(File("voice_memo.3ga"), CategoryFilter.AUDIO))
+        assertTrue(repository.matchesCategory(File("voice_note.opus"), CategoryFilter.AUDIO))
         assertFalse(repository.matchesCategory(File("clip.mp4"), CategoryFilter.AUDIO))
     }
 
