@@ -111,7 +111,54 @@ class CategoryRepository(
         if (category == CategoryFilter.AUDIO) {
             val result = LinkedHashMap<String, StorageNode>()
 
-            // 1. High-priority scan of standard audio & call recording locations across Android OEMs
+            // 1. Query Android MediaStore for indexed audio & recordings across all storage volumes
+            runCatching {
+                val context = com.Hrshd1eux.filemanager.ArcaApplication.instance
+                if (context != null) {
+                    val projection = arrayOf(
+                        android.provider.MediaStore.Audio.Media._ID,
+                        android.provider.MediaStore.Audio.Media.DATA,
+                        android.provider.MediaStore.Audio.Media.DISPLAY_NAME,
+                        android.provider.MediaStore.Audio.Media.SIZE,
+                        android.provider.MediaStore.Audio.Media.DATE_MODIFIED
+                    )
+                    context.contentResolver.query(
+                        android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                        projection,
+                        null,
+                        null,
+                        "${android.provider.MediaStore.Audio.Media.DATE_MODIFIED} DESC"
+                    )?.use { cursor ->
+                        val dataCol = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.DATA)
+                        val nameCol = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.DISPLAY_NAME)
+                        val sizeCol = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.SIZE)
+                        val dateCol = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.DATE_MODIFIED)
+
+                        while (cursor.moveToNext()) {
+                            val path = if (dataCol >= 0) cursor.getString(dataCol) else null
+                            if (!path.isNullOrBlank()) {
+                                val file = File(path)
+                                if (file.exists() && file.isFile && !TrashFilter.isTrashed(file)) {
+                                    val name = if (nameCol >= 0) cursor.getString(nameCol) ?: file.name else file.name
+                                    val size = if (sizeCol >= 0) cursor.getLong(sizeCol) else file.length()
+                                    val dateModified = if (dateCol >= 0) cursor.getLong(dateCol) * 1000L else file.lastModified()
+                                    val node = StorageNode(
+                                        id = file.absolutePath,
+                                        name = name,
+                                        path = file.absolutePath,
+                                        size = if (size > 0L) size else file.length(),
+                                        lastModified = if (dateModified > 0L) dateModified else file.lastModified(),
+                                        isDirectory = false
+                                    )
+                                    result.putIfAbsent(node.path, node)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. High-priority scan of standard audio & call recording locations across Android OEMs
             val primaryDirs = listOfNotNull(
                 runCatching { Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC) }.getOrNull(),
                 runCatching {
